@@ -38,6 +38,24 @@ archivo `.json` e importarlo en otro teléfono. Todo el acceso pasa por el objet
 pasar a una base de datos en la nube (Firebase, Supabase) alcanza con reescribir ese archivo.
 El PIN es solo para que nadie use tu perfil en el mismo teléfono: no es seguridad real.
 
+## Nube e inicio de sesión con Google (Firebase)
+Con Firebase configurado aparece **"Continuar con Google"**: el perfil y los puntos se guardan en la nube
+(Firestore, colección `usuarios`) y el ranking pasa a ser **mundial**. Los perfiles locales con PIN siguen funcionando.
+
+Configuración (una sola vez, gratis):
+1. Entrar a https://console.firebase.google.com → **Agregar proyecto** → nombre `el-impostor` (Analytics no hace falta).
+2. **Compilación → Authentication → Comenzar → Método de acceso → Google → Habilitar**, elegir el correo de asistencia y guardar.
+3. **Authentication → Configuración → Dominios autorizados → Agregar dominio:** `nachobracco1595.github.io`.
+4. **Compilación → Firestore Database → Crear base de datos** (ubicación `southamerica-east1`, modo producción).
+   En la pestaña **Reglas**, pegar el contenido de `firestore.rules` y **Publicar**.
+5. **Configuración del proyecto (⚙️) → Tus apps → Web (`</>`)** → registrar la app (sin Hosting) y copiar el objeto
+   `firebaseConfig` en `js/firebase-config.js` (`window.FIREBASE_CONFIG = { ... }`).
+
+Las reglas de `firestore.rules` permiten que cualquiera lea el ranking, pero cada uno solo puede escribir su propio
+perfil; los puntos no pueden bajar ni subir más de 500 de una vez. El correo de Google no se guarda.
+
+Para probar sin tocar la nube real: `firebase emulators:start --project demo-impostor` y abrir `index.html?emu=1`.
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
@@ -59,5 +77,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Firebase). `js/vendor/firebase/` es el SDK de Firebase 10.14.1 (licencia Apache 2.0). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

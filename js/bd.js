@@ -55,7 +55,10 @@ const BD = {
   },
   guardar() { try { localStorage.setItem(BD_CLAVE, JSON.stringify(this.datos)); } catch {} },
 
-  usuarios() { return Object.values(this.cargar().usuarios); },
+  /* Perfiles locales y, si hay sesión de Google, el perfil de la nube. Los perfiles de nube
+     de otras sesiones quedan en caché pero no se muestran ni suman puntos. */
+  usuarios() { const d = this.cargar(); return Object.values(d.usuarios).filter(u => !u.nube || u.id === d.sesion); },
+  locales() { return Object.values(this.cargar().usuarios).filter(u => !u.nube); },
   usuario(id) { return this.cargar().usuarios[id] || null; },
   porNombre(nombre) { const n = String(nombre).trim().toLowerCase(); return this.usuarios().find(u => u.nombre.toLowerCase() === n) || null; },
   sesion() { return this.usuario(this.cargar().sesion); },
@@ -80,6 +83,33 @@ const BD = {
     const u = { id, nombre, look, pin: await this.hash(pin, id), creado: Date.now(), puntos: 0, racha: 0, mejorRacha: 0, stats: statsVacias(), logros: {}, historial: [], contadas: [] };
     this.cargar().usuarios[id] = u;
     this.datos.sesion = id;
+    this.guardar();
+    return u;
+  },
+
+  /* Perfil de la nube (Google): el id es el uid de Firebase y no tiene PIN */
+  crearNube(uid, nombre, look) {
+    nombre = String(nombre).trim().slice(0, 16);
+    if (!nombre) throw new Error("Escribe un nombre.");
+    const u = { id: uid, nube: true, nombre, look, pin: null, creado: Date.now(), puntos: 0, racha: 0, mejorRacha: 0, stats: statsVacias(), logros: {}, historial: [], contadas: [], pendiente: true };
+    this.cargar().usuarios[uid] = u;
+    this.datos.sesion = uid;
+    this.guardar();
+    return u;
+  },
+
+  /* Trae el perfil de la nube. Si la copia local tiene más partidas (jugó sin conexión), gana la local y se sube. */
+  adoptarNube(uid, data) {
+    const local = this.cargar().usuarios[uid];
+    const nube = Object.assign({ puntos: 0, racha: 0, mejorRacha: 0, logros: {}, historial: [], contadas: [] }, data, { id: uid, nube: true, pin: null });
+    const base = statsVacias();
+    nube.stats = nube.stats || {};
+    for (const j in base) nube.stats[j] = Object.assign(base[j], nube.stats[j] || {});
+    let u = nube;
+    if (local && local.nube && total(local, "j") > total(nube, "j")) { u = local; u.pendiente = true; }
+    else u.pendiente = false;
+    this.datos.usuarios[uid] = u;
+    this.datos.sesion = uid;
     this.guardar();
     return u;
   },
@@ -125,10 +155,15 @@ const BD = {
     const nuevos = LOGROS.filter(l => !u.logros[l.id] && l.ok(u));
     nuevos.forEach(l => u.logros[l.id] = Date.now());
     this.guardar();
+    if (u.nube && typeof Nube !== "undefined") Nube.subir(u);
     return { ...calc, logros: nuevos, usuario: u };
   },
 
-  exportar() { return JSON.stringify({ ...this.cargar(), sesion: null, exportado: new Date().toISOString() }, null, 2); },
+  /* Exporta solo los perfiles locales: los de Google ya están en la nube */
+  exportar() {
+    const usuarios = Object.fromEntries(this.locales().map(u => [u.id, u]));
+    return JSON.stringify({ v: 1, usuarios, sesion: null, exportado: new Date().toISOString() }, null, 2);
+  },
 
   /* Suma perfiles de otro archivo. Si un perfil ya existe, se queda la versión con más partidas. */
   importar(texto) {
@@ -136,7 +171,7 @@ const BD = {
     if (!d || typeof d.usuarios !== "object") throw new Error("El archivo no es una base de datos de El Impostor.");
     let nuevos = 0, actualizados = 0;
     for (const u of Object.values(d.usuarios)) {
-      if (!u || !u.id || !u.nombre || !u.stats) continue;
+      if (!u || !u.id || !u.nombre || !u.stats || u.nube) continue;
       const base = statsVacias();
       for (const j in base) u.stats[j] = Object.assign(base[j], u.stats[j] || {});
       const ya = this.usuario(u.id);

@@ -361,6 +361,11 @@ details.panel > summary::-webkit-details-marker { display: none; }
 .audio-ctl button[aria-pressed="true"] { color: var(--spot-ink); background: var(--spot); }
 
 /* ---------- Cuentas, perfil y ranking ---------- */
+.btn.google { background: #fff; color: #1f1f1f; box-shadow: 0 4px 0 #b9b6c4; gap: 12px; }
+.btn.google:active { box-shadow: 0 1px 0 #b9b6c4; }
+.google-box { border-color: #4a3f75; background: linear-gradient(135deg, #2b2347, var(--card)); }
+.cuenta-tipo { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.tabs.dos { grid-template-columns: 1fr 1fr; }
 .barra-cuenta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .btn.chico { min-height: 40px; width: auto; font-size: 14px; padding: 0 14px; border-radius: 12px; box-shadow: 0 3px 0 #0c0a13; }
 .yo-chip { display: flex; align-items: center; gap: 8px; padding: 3px 14px 3px 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); text-align: left; min-width: 0; }

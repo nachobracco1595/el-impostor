@@ -26,6 +26,12 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Opcional (4 o más jugadores): un **soplón** sabe quién es el culpable y gana si arrestan a otra persona.
 - Los casos están en `js/casos-data.js`; para agregar uno nuevo se copia la estructura de un caso existente.
 
+## Música y sonidos
+La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
+Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
+un bar del oeste en la Mesa del Mentiroso y jazz noir en Detectives. Los botones de abajo a la
+derecha apagan la música y los efectos por separado. Está en `js/sonido.js`.
+
 ## Jugar online
 Un jugador toca **Jugar online → Crear sala** y comparte el código de 4 letras (o el enlace).
 Los demás tocan **Unirme** y escriben el código. El teléfono del anfitrión guarda la partida:

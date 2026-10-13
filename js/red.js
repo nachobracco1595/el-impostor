@@ -261,6 +261,7 @@ PANTALLAS.online = () => {
     on("cancel", () => Net.salir());
     return;
   }
+  UI.v = v;
   const lista = v.players || [];
   fijarColores(lista.map(p => p.name));
   const key = `${v.game}-${v.phase || ""}-${v.ronda || ""}`;

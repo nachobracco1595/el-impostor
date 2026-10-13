@@ -46,7 +46,7 @@ body::before {
 .app.entra > * { animation: entra .35s ease both; }
 .app.entra > *:nth-child(2) { animation-delay: .05s; }
 @keyframes entra { from { opacity: 0; transform: translateY(10px); } }
-.app { max-width: 540px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+.app { max-width: 540px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 84px; display: flex; flex-direction: column; gap: 18px; }
 header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .logo { font-family: var(--display); font-size: 21px; letter-spacing: .02em; margin: 0; padding: 0; }
 .logo span, .titulo span { color: var(--red); }
@@ -354,5 +354,10 @@ details.panel > summary::-webkit-details-marker { display: none; }
 .dif { font-size: 13px; display: flex; align-items: center; gap: 8px; }
 .dif .off { opacity: .25; }
 .dif em { font-style: normal; font-size: 11px; font-weight: 800; color: #fff; background: #2f9e44; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .08em; }
+
+/* Controles de sonido */
+.audio-ctl { position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(31, 27, 46, .88); border: 1px solid var(--line); backdrop-filter: blur(6px); box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.audio-ctl button { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: var(--card-2); }
+.audio-ctl button[aria-pressed="true"] { color: var(--spot-ink); background: var(--spot); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

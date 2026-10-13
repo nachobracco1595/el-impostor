@@ -30,7 +30,8 @@ const save = () => { store.set("players", S.players); store.set("themes", S.them
 const PANTALLAS = {};
 function render() {
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
-  (PANTALLAS[S.screen] || PANTALLAS.home)(); }
+  (PANTALLAS[S.screen] || PANTALLAS.home)();
+  if (typeof Sonido !== "undefined") Sonido.trasRender(); }
 let animT = null;
 function go(s) {
   S.screen = s;
@@ -95,6 +96,7 @@ setInterval(() => {
     el.classList.toggle("done", s === 0);
     const bar = el.parentElement.querySelector(".bar i"); if (bar) bar.style.width = (ms / 1000 / total) * 100 + "%";
     if (s === 0 && !el.dataset.beeped) { el.dataset.beeped = 1; beep(); }
+    if (s > 0 && s <= 10 && el.dataset.ultimo !== String(s)) { el.dataset.ultimo = s; if (typeof Sonido !== "undefined") Sonido.sfx("tic"); }
   });
 }, 250);
 

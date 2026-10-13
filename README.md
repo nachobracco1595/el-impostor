@@ -92,5 +92,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js` y `chinchon.js` los juegos nuevos). `js/vendor/supabase.js` es supabase-js 2.45.4 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js` y `chinchon.js` los juegos nuevos). `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

@@ -149,6 +149,16 @@ const Sonido = {
         if (k === 0) S2.pad(t, [[45, 52, 57], [45, 52, 57], [48, 55, 60], [43, 50, 55]][bar], d * 16, 0.02);
       }
     },
+    espacio: {   // ambiente espacial: pulso grave, arpegio lejano
+      bpm: 88, swing: 0, gain: 1.7,
+      tocar(S2, t, i, d) {
+        const bar = Math.floor(i / 16) % 4, k = i % 16;
+        if (k === 0) S2.pad(t, [[38, 45, 50], [36, 43, 48], [41, 48, 53], [40, 47, 52]][bar], d * 16, 0.028);
+        if (k % 8 === 0) S2.bajoRedondo(t, [26, 24, 29, 28][bar], d * 6, 0.3);
+        if (k % 2 === 0) S2.campana(t, [62, 69, 74, 77, 74, 69, 65, 69][(k / 2 + bar) % 8], 0.018, 0.8);
+        if (k === 4 || k === 12) S2.hat(t, 0.04);
+      }
+    },
     noir: {
       bpm: 84, swing: 0.34,
       tocar(S2, t, i, d) {
@@ -274,6 +284,7 @@ function escenaMusical() {
   if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
   if (sc === "chinchon") return "bar";
+  if (sc === "nave" || sc === "naveIntro") return S.nave && S.nave.fase === "reunion" ? "tension" : "espacio";
   if (sc === "online" && UI.v) {
     const v = UI.v;
     if (v.game === "liars") return "bar";
@@ -281,6 +292,7 @@ function escenaMusical() {
     if (v.game === "ajedrez") return "ajedrez";
     if (v.game === "naval") return "naval";
     if (v.game === "chinchon") return "bar";
+    if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";
     if (v.game === "impostor") return v.phase === "roles" ? "misterio" : v.phase === "end" ? "menu" : "tension";
   }
   return "menu";

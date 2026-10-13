@@ -52,6 +52,7 @@ const Cuenta = {
     else if (S.screen === "casos" && S.caso) deLocal(S.caso.players, p => Casos.resultado(S.caso, p.id, true));
     else if (S.screen === "ajedrez" && S.aj) deLocal(S.aj.jug.filter(j => !j.cpu), p => Ajedrez.resultado(S.aj, p.id));
     else if (S.screen === "naval" && S.nav) deLocal(S.nav.jug.filter(j => !j.cpu), p => Naval.resultado(S.nav, p.id));
+    else if (S.screen === "nave" && S.nave) deLocal(S.nave.jug.filter(j => !j.bot), p => Nave.resultado(S.nave, p.id));
     else if (S.screen === "chinchon" && S.chi) deLocal(S.chi.jug.filter(j => !j.cpu), p => Chin.resultado(S.chi, p.id));
     const hechos = pend.map(([u, r]) => r && BD.registrar(u.id, r)).filter(Boolean);
     if (!hechos.length) return;
@@ -255,6 +256,7 @@ PANTALLAS.perfil = () => {
         <div><b>🃏 Chinchón</b><span>${st.chinchon.p} pts · ${st.chinchon.g}/${st.chinchon.j} ganadas (${pct(st.chinchon.g, st.chinchon.j)})</span><small>${st.chinchon.chinchones} chinchones · ${st.chinchon.menos10} cortes con −10</small></div>
         <div><b>⚓ Batalla naval</b><span>${st.naval.p} pts · ${st.naval.g}/${st.naval.j} ganadas (${pct(st.naval.g, st.naval.j)})</span><small>${st.naval.hundidos} barcos hundidos</small></div>
         <div><b>♚ Ajedrez</b><span>${st.ajedrez.p} pts · ${st.ajedrez.g}/${st.ajedrez.j} ganadas (${pct(st.ajedrez.g, st.ajedrez.j)})</span><small>${st.ajedrez.mates} mates · ${st.ajedrez.tablas} tablas</small></div>
+        <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
         <div><b>🔍 Detectives</b><span>${st.casos.p} pts · ${st.casos.g}/${st.casos.j} ganadas (${pct(st.casos.g, st.casos.j)})</span><small>Casos resueltos: ${st.casos.resueltos.length} de ${CASOS.length}</small></div>
       </div></div>
     <div class="panel"><span class="label">Logros</span>
@@ -314,7 +316,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["naval", "Naval"], ["ajedrez", "Ajedrez"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}

@@ -41,6 +41,13 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
   triple repetición y material insuficiente. Se puede ofrecer tablas o rendirse.
 - Contra la compu (fácil o difícil), dos personas en el mismo teléfono, u online (los demás de la sala miran).
 
+### La Nave (estilo Among Us)
+- Mapa de una nave con 7 salas y pasillos. Te mueves arrastrando el dedo (o con las flechas), con visión limitada y minimapa.
+- Los tripulantes hacen tareas con mini-juegos (cables, descargas, calibrar, códigos). El impostor elimina cada 25 s.
+- Si alguien encuentra un cuerpo lo reporta (o toca el botón rojo de emergencia): todos votan desde su teléfono.
+- Gana la tripulación al terminar las tareas o echar a los impostores; ganan los impostores si igualan a la tripulación.
+- Práctica contra 5 compus en un teléfono, u online de 3 a 10 jugadores (2 impostores desde 7).
+
 ## Perfiles, puntos y ranking
 - **Iniciar sesión:** cada jugador crea un perfil con su personaje (color, sombrero, lentes…) y un PIN de 4 números.
 - **Puntos:** se suman al terminar cada partida, según el rol y el resultado (las reglas están en el Ranking → "¿Cómo se ganan puntos?").
@@ -71,6 +78,18 @@ Configuración (una sola vez, plan gratis):
 Seguridad (en `supabase/esquema.sql`): cualquiera puede leer el ranking, pero cada uno solo crea, edita y borra su propio
 perfil (Row Level Security), y un trigger impide que los puntos bajen o suban más de 500 de una vez. El correo no se muestra.
 
+## Racha diaria, monedas y tienda
+- Cada día que entras con tu perfil cobras un premio (10 a 40 🪙) y el día 7 un cofre con algo de la tienda.
+- Misión semanal: 10 partidas en la semana dan 150 🪙. Cada partida da monedas según los puntos.
+- En la tienda (🪙 en el inicio) se compran accesorios, colores, marcos, títulos y mascotas.
+
+## Amigos y chat
+- **Chat de sala:** botón 💬 dentro de cualquier sala online.
+- **Amigos (con cuenta en la nube):** buscar por nombre, pedir amistad, chatear e invitar a tu sala con un botón para unirse.
+- Tablas `amistades` y `mensajes` en `supabase/esquema.sql`: solo se leen los mensajes propios y solo se puede escribir a amigos.
+  Para mensajes al instante, en Supabase → Database → Publications, la tabla `mensajes` debe estar en `supabase_realtime`
+  (el script lo intenta); si no, el juego revisa cada 12 segundos.
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
@@ -92,5 +111,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js` y `chinchon.js` los juegos nuevos). `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

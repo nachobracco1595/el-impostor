@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -29,6 +29,8 @@ const LOGROS = [
   { id: "intacta", ic: "🚢", nombre: "Flota intacta", desc: "Gana una batalla con 3 barcos sin un rasguño.", ok: u => u.stats.naval.intactaG >= 1 },
   { id: "mate", ic: "♚", nombre: "Jaque mate", desc: "Gana una partida de ajedrez por mate.", ok: u => u.stats.ajedrez.mates >= 1 },
   { id: "maestro", ic: "🧠", nombre: "Gran maestro", desc: "Gánale a la compu difícil al ajedrez.", ok: u => u.stats.ajedrez.dificilG >= 1 },
+  { id: "abordo", ic: "🚀", nombre: "A bordo", desc: "Gana una partida de La Nave.", ok: u => u.stats.nave.g >= 1 },
+  { id: "cazador", ic: "🔪", nombre: "Cazador espacial", desc: "Elimina a 3 en una sola partida de La Nave.", ok: u => u.stats.nave.triple >= 1 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
   { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
@@ -43,7 +45,8 @@ function statsVacias() {
     casos: { j: 0, g: 0, p: 0, resueltos: [], soplonG: 0 },
     chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
     naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
-    ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 }
+    ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
+    nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 }
   };
 }
 
@@ -155,6 +158,8 @@ const BD = {
       st.chinchones += res.chinchon ? 1 : 0; st.menos10 += res.menos10; st.cortes += res.cortes;
     } else if (res.juego === "naval") {
       st.hundidos += res.hundidos; if (calc.gano && res.intactos >= 3) st.intactaG++;
+    } else if (res.juego === "nave") {
+      st.kills += res.kills; st.tareas += res.tareas; if (calc.gano && res.imp) st.impG++; if (res.kills >= 3) st.triple++;
     } else if (res.juego === "ajedrez") {
       if (res.tablas) st.tablas++; if (res.mate) st.mates++; if (calc.gano && res.nivel === "dificil") st.dificilG++;
     } else if (res.juego === "casos") {
@@ -239,6 +244,8 @@ const Puntos = {
     ["Batalla naval: barcos intactos al ganar", "+3 cada uno"],
     ["Ajedrez: ganar (persona / compu difícil / compu fácil)", "+30 / +25 / +10"],
     ["Ajedrez: tablas", "+10"],
+    ["La Nave: cada tarea / cada eliminación", "+2 / +5"],
+    ["La Nave: ganar como tripulación / impostor", "+15 / +30 (la mitad en práctica)"],
     ["Ajedrez: ganar por jaque mate", "+5 extra"]
   ],
 
@@ -269,6 +276,10 @@ const Puntos = {
     } else if (r.juego === "naval") {
       if (r.hundidos) d.push([`Hundiste ${r.hundidos} barco${r.hundidos > 1 ? "s" : ""}`, 2 * r.hundidos]);
       if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a la compu" : "Ganaste la batalla", r.vsCompu ? 15 : 25]); if (r.intactos) d.push([`${r.intactos} barco${r.intactos > 1 ? "s" : ""} intacto${r.intactos > 1 ? "s" : ""}`, 3 * r.intactos]); }
+    } else if (r.juego === "nave") {
+      if (r.tareas) d.push([`Hiciste ${r.tareas} tarea${r.tareas > 1 ? "s" : ""}`, 2 * r.tareas]);
+      if (r.kills) d.push([`Eliminaste a ${r.kills}`, 5 * r.kills]);
+      if (r.gano) { gano = true; d.push([r.imp ? "Ganaste como impostor" : "Ganó la tripulación", r.imp ? (r.vsCompus ? 15 : 30) : (r.vsCompus ? 10 : 15)]); }
     } else if (r.juego === "ajedrez") {
       if (r.gano) { gano = true; d.push([r.vsCompu ? (r.nivel === "dificil" ? "Le ganaste a la compu difícil" : "Le ganaste a la compu fácil") : "Ganaste la partida", r.vsCompu ? (r.nivel === "dificil" ? 25 : 10) : 30]); if (r.mate) d.push(["Por jaque mate", 5]); }
       else if (r.tablas) d.push(["Tablas", 10]);

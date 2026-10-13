@@ -174,20 +174,20 @@ $$;
 create table if not exists public.actividad (
   id       bigint generated always as identity primary key,
   usuario  uuid not null references public.perfiles (id) on delete cascade,
-  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste')),
+  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo')),
   juego    text check (char_length(juego) <= 20),
   puntos   integer not null default 0,
   monedas  integer not null default 0,
   creado   timestamptz not null default now()
 );
 alter table public.actividad drop constraint if exists actividad_tipo_check;
-alter table public.actividad add constraint actividad_tipo_check check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste'));
+alter table public.actividad add constraint actividad_tipo_check check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo'));
 create index if not exists actividad_creado_idx on public.actividad (creado);
 create index if not exists actividad_usuario_idx on public.actividad (usuario, creado);
 alter table public.actividad enable row level security;
 drop policy if exists "anotar mi actividad" on public.actividad;
 create policy "anotar mi actividad" on public.actividad for insert to authenticated
-  with check (auth.uid() = usuario and tipo in ('partida', 'ingreso', 'compra', 'mision') and monedas between -1000 and 500 and puntos between 0 and 500);
+  with check (auth.uid() = usuario and tipo in ('partida', 'ingreso', 'compra', 'mision') and monedas between -10000 and 500 and puntos between 0 and 500);
 drop policy if exists "admins leen actividad" on public.actividad;
 create policy "admins leen actividad" on public.actividad for select to authenticated using (public.es_admin());
 
@@ -218,6 +218,21 @@ begin
   m := least(greatest(coalesce((cfg ->> 'monedas')::integer, 20), 1), 200);
   insert into public.actividad (usuario, tipo, monedas) values (auth.uid(), 'anuncio', m);
   return jsonb_build_object('ok', true, 'monedas', m, 'quedan', tope - vistos - 1);
+end $$;
+
+-- Trabajos diarios (tala, mina, pesca): uno de cada uno por día, contando el día de Argentina
+create or replace function public.desbloquear_trabajo(juego text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'motivo', 'sin sesion'); end if;
+  if juego not in ('tala', 'mina', 'pesca') then raise exception 'Trabajo desconocido' using errcode = '22023'; end if;
+  if exists (select 1 from public.actividad a where a.usuario = auth.uid() and a.tipo = 'trabajo' and a.juego = desbloquear_trabajo.juego
+             and (a.creado at time zone 'America/Argentina/Buenos_Aires')::date = hoy) then
+    return jsonb_build_object('ok', false, 'motivo', 'hecho');
+  end if;
+  insert into public.actividad (usuario, tipo, juego) values (auth.uid(), 'trabajo', desbloquear_trabajo.juego);
+  return jsonb_build_object('ok', true);
 end $$;
 
 -- Regalos y ajustes que manda el admin (monedas y puntos, para sumar o quitar).

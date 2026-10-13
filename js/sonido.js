@@ -233,6 +233,9 @@ const Sonido = {
       agua: () => { this.ruido(t, 0.6, 0.35, B, "lowpass", 2500, 1, { fTo: 300, rev: 0.5 }); this.osc("sine", 600, t, 0.25, 0.08, B, { glide: 200 }); },
       tocado: () => { this.ruido(t, 0.7, 0.7, B, "lowpass", 2000, 0.8, { fTo: 200, rev: 0.5 }); this.osc("sine", 80, t, 0.5, 0.7, B, { glide: 35 }); },
       hundido: () => { this.sfx("tocado"); [55, 52, 48, 43].forEach((m, i) => this.osc("sawtooth", n(m), t + 0.3 + i * 0.18, 0.3, 0.08, B, { lp: 1200, rev: 0.5 })); },
+      hacha: () => { this.osc("triangle", 180, t, 0.09, 0.35, B, { glide: 90 }); this.ruido(t, 0.06, 0.3, B, "bandpass", 900, 1.5); },
+      cae: () => { this.ruido(t, 0.5, 0.3, B, "lowpass", 1500, 0.8, { fTo: 200 }); this.osc("sine", 110, t + 0.25, 0.3, 0.5, B, { glide: 50 }); },
+      pico: () => { this.osc("square", 1900 + Math.random() * 400, t, 0.05, 0.06, B, { lp: 5000 }); this.ruido(t, 0.05, 0.3, B, "bandpass", 4200, 3); },
       empieza: () => [67, 72].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.1, 0.35, 0.14, B, { rev: 0.4 }))
     };
     (E[nombre] || (() => {}))();
@@ -284,6 +287,7 @@ function escenaMusical() {
   if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
   if (sc === "chinchon") return "bar";
+  if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
   if (sc === "nave" || sc === "naveIntro") return S.nave && S.nave.fase === "reunion" ? "tension" : "espacio";
   if (sc === "online" && UI.v) {
     const v = UI.v;

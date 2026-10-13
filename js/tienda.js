@@ -153,7 +153,7 @@ const Anuncios = {
   },
 
   /* Anuncio de prueba: 10 segundos de espera, como uno de verdad */
-  prueba(c) {
+  prueba(c, boton) {
     return new Promise(res => {
       const caja = document.createElement("div");
       caja.className = "modal-fondo";
@@ -161,12 +161,12 @@ const Anuncios = {
         <div class="anuncio-espacio">📺<b>Aquí va la publicidad</b><small>Cuando conectes una red de anuncios, este espacio muestra un video.</small></div>
         <div class="bar"><i id="adBar" style="width:0%"></i></div>
         <button class="btn" id="adOk" disabled>Espera <span id="adT">10</span> s…</button>
-        <button class="linkish" id="adNo">Cerrar sin cobrar</button></div>`;
+        <button class="linkish" id="adNo">${boton ? "Cerrar" : "Cerrar sin cobrar"}</button></div>`;
       document.body.appendChild(caja);
       let t = 0; const total = 10;
       const iv = setInterval(() => {
         t++; caja.querySelector("#adBar").style.width = (t / total) * 100 + "%";
-        if (t >= total) { clearInterval(iv); const b = caja.querySelector("#adOk"); b.disabled = false; b.textContent = `Cobrar ${c.monedas} 🪙`; }
+        if (t >= total) { clearInterval(iv); const b = caja.querySelector("#adOk"); b.disabled = false; b.textContent = boton || `Cobrar ${c.monedas} 🪙`; }
         else caja.querySelector("#adT").textContent = total - t;
       }, 1000);
       caja.querySelector("#adOk").onclick = () => { caja.remove(); res(true); };

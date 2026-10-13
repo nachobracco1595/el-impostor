@@ -48,6 +48,14 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Gana la tripulación al terminar las tareas o echar a los impostores; ganan los impostores si igualan a la tripulación.
 - Práctica contra 5 compus en un teléfono, u online de 3 a 10 jugadores (2 impostores desde 7).
 
+### Trabajos diarios: Tala, Mina y Pesca
+- 3 trabajos por día (uno de cada uno). Cada uno se desbloquea mirando un anuncio (si los anuncios están activos en el panel; si no, se juega gratis). El servidor controla que sea uno por día.
+- 10 minutos por jornada: lo que juntas se convierte en monedas al terminar (hasta 450 por trabajo), y suma algunos puntos.
+- **Tala:** toca los árboles para talarlos; talar seguido da racha. Robles dan más madera, el árbol dorado mucha más; los panales te frenan 2 segundos.
+- **Mina:** rompe bloques y baja de profundidad. Abajo aparecen hierro, oro, esmeralda, diamante, adamantio, cristal arcano y fragmentos del vacío, pero los más duros necesitan un pico mejor. La TNT rompe todo alrededor.
+- **Pesca:** lanza, toca cuando pica y mantén apretado para recoger; suelta cuando el pez tira o se corta la línea.
+- Herramientas en 9 niveles: madera, piedra, metal, esmeralda, diamante, adamantio, encantada, del vacío y de los creadores (el tope). Se mejoran con monedas (de 150 a 3800); cada nivel pega más fuerte y da más material.
+
 ## Perfiles, puntos y ranking
 - **Iniciar sesión:** cada jugador crea un perfil con su personaje (color, sombrero, lentes…) y un PIN de 4 números.
 - **Puntos:** se suman al terminar cada partida, según el rol y el resultado (las reglas están en el Ranking → "¿Cómo se ganan puntos?").
@@ -93,7 +101,7 @@ perfil (Row Level Security), y un trigger impide que los puntos bajen o suban m�
 ## Panel de administración y anuncios
 Panel privado en **`admin.html`** (https://nachobracco1595.github.io/el-impostor/admin.html):
 jugadores, activos por día, partidas por día y por juego, monedas repartidas y gastadas, anuncios vistos,
-top 10, lista de jugadores con opción de sumar o quitar monedas y puntos (se aplican cuando el jugador entra), y configuración de los anuncios con recompensa.
+top 10, lista de jugadores con su nivel y la opción de sumar o quitar monedas y puntos o llevarlos a un nivel (se aplican cuando el jugador entra), y configuración de los anuncios con recompensa.
 
 Para entrar, corre una vez en Supabase → SQL Editor (con tu correo):
 `insert into public.admins (id) select id from auth.users where email = 'TU_CORREO' on conflict do nothing;`
@@ -127,5 +135,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel; `trabajos.js` los trabajos diarios. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

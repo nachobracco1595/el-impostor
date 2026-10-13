@@ -4,7 +4,7 @@ const CFG = EMU ? { url: "http://127.0.0.1:54321", anonKey: "anon-key" } : windo
 const app = document.getElementById("app"), tip = document.getElementById("tip");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = n => new Intl.NumberFormat("es").format(n || 0);
-const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave" };
+const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca" };
 const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };
@@ -92,9 +92,9 @@ function pintar() {
   <section class="tarjeta">
     <div class="headrow"><h2>Jugadores</h2><form id="fBus" class="add busca"><input id="q" placeholder="Buscar por nombre" value="${esc(P.q)}" aria-label="Buscar jugadores"><button type="submit" aria-label="Buscar">🔍</button></form></div>
     <div class="tabla-scroll"><table class="tabla">
-      <thead><tr><th>Jugador</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
-      <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
-        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="50" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100).</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
+      <thead><tr><th>Jugador</th><th class="n">Nivel</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
+      <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n" title="${esc(nivelDe(u.puntos).titulo)}">${nivelDe(u.puntos).n}</td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
+        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="0" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">🏅 Llevar a nivel<select class="campo" name="nv" data-pts="${u.puntos}"><option value="">—</option>${NIVELES.map(([p, t], k) => `<option value="${p}" ${k + 1 === nivelDe(u.puntos).n ? "disabled" : ""}>${k + 1}. ${esc(t)}</option>`).join("")}</select></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100). El nivel sale de los puntos: al elegir un nivel se calculan los puntos que hay que sumar o quitar.</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
     </table></div>
   </section>
   <p class="summary center">La actividad se cuenta desde que se creó la tabla <code>actividad</code>; los días anteriores aparecen en cero.</p>`;
@@ -104,6 +104,7 @@ function pintar() {
   document.getElementById("salir").onclick = async () => { await P.sb.auth.signOut(); P.user = null; pintar(); };
   document.getElementById("fBus").onsubmit = e => { e.preventDefault(); P.q = document.getElementById("q").value.trim(); cargar(); };
   app.querySelectorAll("[data-regalo]").forEach(b => b.onclick = () => { P.regalo = b.dataset.regalo; pintar(); });
+  app.querySelectorAll("select[name=nv]").forEach(sel => sel.onchange = () => { if (sel.value !== "") sel.form.p.value = +sel.value - +sel.dataset.pts; });
   app.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => { P.regalo = null; pintar(); });
   app.querySelectorAll("form.regalo").forEach(f => f.onsubmit = async e => {
     e.preventDefault();

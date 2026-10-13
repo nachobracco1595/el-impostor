@@ -116,7 +116,8 @@ function juegosMenu() {
     ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
-    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "t-aj"]
+    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "t-aj"],
+    ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
   ];
 }
 
@@ -136,6 +137,7 @@ PANTALLAS.home = () => {
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");
+    if (S.mode === "trabajos") return go("trabajos");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });
   Cuenta.conectarBarra();

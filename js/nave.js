@@ -39,7 +39,9 @@ const NV = {
   ICONO: { cables: "🔌", descarga: "📶", calibrar: "🎯", codigo: "🔢" }
 };
 NV.ZONAS = [...NV.SALAS, ...NV.PASILLOS];
-NV.dentro = (x, y, m = 16) => NV.ZONAS.some(z => x >= z.x + m && x <= z.x + z.w - m && y >= z.y + m && y <= z.y + z.h - m);
+NV.enZona = (x, y) => NV.ZONAS.some(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
+/* El cuerpo del jugador (radio r) entra si todo su borde cae en alguna sala o pasillo: así se cruza de una zona a otra */
+NV.dentro = (x, y, r = 14) => [[0, 0], [-r, -r], [0, -r], [r, -r], [-r, 0], [r, 0], [-r, r], [0, r], [r, r]].every(([dx, dy]) => NV.enZona(x + dx, y + dy));
 NV.salaDe = (x, y) => (NV.SALAS.find(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) || {}).nombre || "Pasillo";
 NV.dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 

@@ -75,13 +75,19 @@ const Nube = {
     return data;
   },
 
-  /* Regalos de monedas que mandó el administrador */
+  /* Regalos y ajustes del administrador: el servidor ya los aplicó; acá sumamos lo mismo en el teléfono */
   async revisarRegalos(u) {
     if (!this.user || !u || !u.nube || this.user.id !== u.id) return;
     const { data, error } = await this.sb.rpc("cobrar_regalos");
-    if (error || !data || !data.monedas) return;
-    Eco.completar(u); u.monedas += data.monedas; Eco.guardar(u);
-    Toast.mostrar(`<div class="t-ic">🎁</div><div class="t-txt"><small>Regalo</small><b>+${data.monedas} 🪙</b><span>${esc(data.motivo || "¡Que lo disfrutes!")}</span></div>`, "logro");
+    if (error || !data || (!data.monedas && !data.puntos)) return;
+    const dm = data.monedas | 0, dp = data.puntos | 0;
+    Eco.completar(u);
+    u.monedas = Math.max(0, u.monedas + dm); u.puntos = Math.max(0, (u.puntos || 0) + dp);
+    Eco.guardar(u);
+    const sig = n => (n > 0 ? "+" : "") + n;
+    const partes = [dm ? `${sig(dm)} 🪙` : "", dp ? `${sig(dp)} pts` : ""].filter(Boolean).join(" · ");
+    const regalo = dm >= 0 && dp >= 0;
+    Toast.mostrar(`<div class="t-ic">${regalo ? "🎁" : "🛠️"}</div><div class="t-txt"><small>${regalo ? "Regalo" : "Ajuste del administrador"}</small><b>${partes}</b><span>${esc(data.motivo || (regalo ? "¡Que lo disfrutes!" : "Se corrigió tu perfil."))}</span></div>`, "logro");
     render();
   },
 

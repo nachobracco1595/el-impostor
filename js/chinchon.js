@@ -1,21 +1,24 @@
-/* Chinchón con baraja española de 40 cartas (y 2 comodines opcionales).
+/* Chinchón con baraja española de 48 cartas (con 8 y 9) o de 40, y 2 comodines opcionales.
    - 7 cartas por jugador. En tu turno robas (del mazo o del descarte) y tiras una.
-   - Juegos: escaleras (3+ del mismo palo seguidas; el 7 va con la sota) y grupos (3 o 4 del mismo número).
+   - Juegos: escaleras (3+ del mismo palo seguidas; en la de 40 el 7 va con la sota) y grupos (3 o 4 del mismo número).
    - Puedes cortar si lo que te queda suelto suma 5 o menos. Todo ligado: −10. Escalera de 7 del mismo palo: ¡chinchón!, ganas la partida.
    - Al cortar, cada uno suma sus puntos sueltos. Quien pasa de 100 queda afuera. Gana el último que queda. */
 const PALOS = { O: ["Oros", "🪙", "#c99400"], C: ["Copas", "🍷", "#c92a2a"], E: ["Espadas", "🗡️", "#1c6fd1"], B: ["Bastos", "🪵", "#2f8a3e"] };
-const ORDEN_CH = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
+const ORDEN_CH = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];            // baraja de 40: el 7 sigue con la sota
+const ORDEN_48 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];       // baraja de 48: con 8 y 9
 const FIGURA = { 10: "Sota", 11: "Caballo", 12: "Rey" };
 
 const Chin = {
   palo: c => c[0], num: c => c[0] === "J" ? 0 : +c.slice(1),
-  pos: c => ORDEN_CH.indexOf(+c.slice(1)),
+  orden: ORDEN_CH,
+  usar(cfg) { Chin.orden = cfg && cfg.con89 ? ORDEN_48 : ORDEN_CH; },
+  pos: c => Chin.orden.indexOf(+c.slice(1)),
   esJ: c => c[0] === "J",
   puntos: c => c[0] === "J" ? 25 : Math.min(10, +c.slice(1)),
 
   mazo(comodines) {
     const m = [];
-    for (const p of "OCEB") for (const n of ORDEN_CH) m.push(p + n);
+    for (const p of "OCEB") for (const n of Chin.orden) m.push(p + n);
     if (comodines) m.push("J1", "J2");
     return shuffle(m);
   },
@@ -31,7 +34,7 @@ const Chin = {
     const ps = nat.map(Chin.pos).sort((a, b) => a - b);
     if (new Set(ps).size !== ps.length) return false;
     const huecos = ps[ps.length - 1] - ps[0] + 1 - ps.length;
-    return huecos <= js && cs.length <= 10;
+    return huecos <= js && cs.length <= Chin.orden.length;
   },
 
   /* Mejor forma de ligar una mano: devuelve { resto, juegos: [[cartas]], libres: [cartas] } */
@@ -71,7 +74,7 @@ const Chin = {
     const s = {
       id: "chi-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       jug: jug.map(j => ({ ...j, mano: [], pts: 0, fuera: false, cortes: 0, menos10: 0 })),
-      cfg: { comodines: !!cfg.comodines, limite: 100 }, ronda: 0, mano: Math.floor(Math.random() * jug.length),
+      cfg: { comodines: !!cfg.comodines, con89: !!cfg.con89, limite: 100 }, ronda: 0, mano: Math.floor(Math.random() * jug.length),
       mazo: [], descarte: [], turno: 0, fase: "robar", cierre: null, ganador: null, chinchon: null, log: ""
     };
     Chin.nuevaRonda(s);
@@ -81,6 +84,7 @@ const Chin = {
   sig(s, i) { const n = s.jug.length; for (let k = 1; k <= n; k++) { const x = (i + k) % n; if (!s.jug[x].fuera) return x; } return i; },
 
   nuevaRonda(s) {
+    Chin.usar(s.cfg);
     s.ronda++;
     s.mano = Chin.sig(s, s.mano);
     s.mazo = Chin.mazo(s.cfg.comodines);
@@ -92,6 +96,7 @@ const Chin = {
   },
 
   act(s, pid, a) {
+    Chin.usar(s.cfg);
     const i = pid === null ? s.turno : s.jug.findIndex(j => j.id === pid);
     const J = s.jug[i];
     if (a.t === "siguiente") { if (s.fase === "ronda" && (pid === null || pid === "H")) Chin.nuevaRonda(s); return; }
@@ -146,6 +151,7 @@ const Chin = {
 
   /* ---------- Compu ---------- */
   jugarCompu(s) {
+    Chin.usar(s.cfg);
     const i = s.turno, J = s.jug[i];
     if (s.fase === "robar") {
       const top = s.descarte[s.descarte.length - 1];
@@ -190,6 +196,7 @@ const Chin = {
   },
 
   render(v, send, opts) {
+    Chin.usar(v.cfg);
     const yo = v.yo, jefe = opts.local || opts.isHost;
     const miTurno = yo === v.turno && (v.fase === "robar" || v.fase === "tirar") && !v.jug[yo]?.cpu;
     const marcador = `<div class="ch-marcador">${v.jug.map((j, k) => `<div class="ch-j ${k === v.turno && v.fase !== "ronda" && v.fase !== "fin" ? "turno" : ""} ${j.fuera ? "fuera" : ""}">${j.cpu ? `<span class="cpu-ic">🤖</span>` : avatar(j.name, 30)}<b>${esc(j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name)}${k === yo && !opts.local ? " (tú)" : ""}</b><span>${j.fuera ? "Afuera" : `${j.pts} pts`}</span></div>`).join("")}</div>`;
@@ -224,7 +231,7 @@ const Chin = {
           <div class="ch-mano">${an.juegos.map(g => `<span class="ch-juego">${g.map(c => Chin.carta(c, { cls: `${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</span>`).join("")}${an.libres.map(c => Chin.carta(c, { cls: `suelta ${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</div>
           ${miTurno && v.fase === "tirar" ? `<div class="row"><button class="btn" id="chTirar" ${sel ? "" : "disabled"}>Tirar</button><button class="btn ${corte && corte.ok ? "danger" : "ghost"}" id="chCortar" ${corte && corte.ok ? "" : "disabled"}>${corte ? corte.txt : "Cortar"}</button></div>` : ""}
         </div>` : ""}
-        <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Escaleras: 3 o más del mismo palo seguidas (el 7 sigue con la sota). Grupos: 3 o 4 del mismo número. Un comodín por juego. Puedes cortar si lo suelto suma 5 o menos; con todo ligado restas 10. Una escalera de 7 del mismo palo es <b>chinchón</b> y gana la partida. Quien pasa de 100 queda afuera.</p></details>`;
+        <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Escaleras: 3 o más del mismo palo seguidas (${v.cfg && v.cfg.con89 ? "baraja de 48: 7, 8, 9 y la sota" : "baraja de 40: no hay 8 ni 9, el 7 sigue con la sota"}). Grupos: 3 o 4 del mismo número. Un comodín por juego. Puedes cortar si lo suelto suma 5 o menos; con todo ligado restas 10. Una escalera de 7 del mismo palo es <b>chinchón</b> y gana la partida. Quien pasa de 100 queda afuera.</p></details>`;
     }
     app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="screen chinchon">${body}</section>`;
     on("chMazo", () => send({ t: "robar", de: "mazo" }));
@@ -242,7 +249,7 @@ const Chin = {
 
   /* ---------- Un teléfono ---------- */
   empezarLocal(jug) {
-    S.chi = Chin.setup(jug, { comodines: S.chCfg.comodines });
+    S.chi = Chin.setup(jug, S.chCfg);
     Object.assign(UI, { chSel: null, chGate: null, chPens: null });
     go("chinchon");
   },
@@ -250,7 +257,7 @@ const Chin = {
     const jug = R.players.filter(p => p.on);
     if (jug.length < 2) return "Hacen falta al menos 2 jugadores.";
     if (jug.length > 5) return "El chinchón es de 2 a 5 jugadores.";
-    R.chi = Chin.setup(jug.map(p => ({ id: p.id, name: p.name })), { comodines: S.chCfg.comodines });
+    R.chi = Chin.setup(jug.map(p => ({ id: p.id, name: p.name })), S.chCfg);
     R.game = "chinchon";
     return null;
   },

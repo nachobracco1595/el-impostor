@@ -27,8 +27,8 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Los casos están en `js/casos-data.js`; para agregar uno nuevo se copia la estructura de un caso existente.
 
 ### Chinchón
-- Baraja española de 40 cartas (con 2 comodines opcionales), de 2 a 5 jugadores; se pueden sumar compus.
-- Escaleras (3+ del mismo palo seguidas, el 7 sigue con la sota) y grupos (3 o 4 del mismo número). Un comodín por juego.
+- Baraja española de 48 cartas (con 8 y 9) o de 40 a elección, con 2 comodines opcionales; de 2 a 5 jugadores, se pueden sumar compus.
+- Escaleras (3+ del mismo palo seguidas, en la de 40 el 7 sigue con la sota) y grupos (3 o 4 del mismo número). Un comodín por juego.
 - Se corta con 5 o menos sueltos; todo ligado resta 10; escalera de 7 del mismo palo es **chinchón** y gana la partida.
 - Quien pasa de 100 queda afuera. Si el mazo se agota dos veces en una ronda, la ronda se anula.
 
@@ -93,7 +93,7 @@ perfil (Row Level Security), y un trigger impide que los puntos bajen o suban m�
 ## Panel de administración y anuncios
 Panel privado en **`admin.html`** (https://nachobracco1595.github.io/el-impostor/admin.html):
 jugadores, activos por día, partidas por día y por juego, monedas repartidas y gastadas, anuncios vistos,
-top 10, lista de jugadores con opción de regalar monedas, y configuración de los anuncios con recompensa.
+top 10, lista de jugadores con opción de sumar o quitar monedas y puntos (se aplican cuando el jugador entra), y configuración de los anuncios con recompensa.
 
 Para entrar, corre una vez en Supabase → SQL Editor (con tu correo):
 `insert into public.admins (id) select id from auth.users where email = 'TU_CORREO' on conflict do nothing;`

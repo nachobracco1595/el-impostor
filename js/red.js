@@ -137,7 +137,7 @@ const Net = {
     if (R.game === "chinchon") return { ...Chin.view(R.chi, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, chCom: S.chCfg.comodines, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -341,7 +341,7 @@ function renderLobby(v) {
       <div class="elige">${Object.entries(juegos).map(([k, j]) => `<button class="elige-j" data-g="${k}" aria-pressed="${v.sel === k}" ${H ? "" : "disabled"}>${j[1]}<b>${j[0]}</b><small>${j[2]}</small></button>`).join("")}</div>
       ${v.sel === "impostor" ? `<p class="summary">${esc(v.resumen)}</p>${H ? `<button class="btn ghost" id="ajustes">Ajustar temas y reglas</button>` : ""}`
         : v.sel === "casos" ? `<p class="summary">Caso: <b>${esc(v.caso)}</b> · ${v.casoCfg.min ? v.casoCfg.min + " min por acto" : "sin cronómetro"}${v.casoCfg.soplon ? " · con soplón" : ""}</p>${H ? `<button class="btn ghost" id="ajCaso">Elegir caso</button>` : ""}`
-        : v.sel === "chinchon" ? `<p class="summary">De 2 a 5 jugadores · ${v.chCom ? "con 2 comodines" : "sin comodines"} · se pierde al pasar de 100.</p>${H ? `<div class="opt"><div class="txt"><b>Con comodines</b></div><button class="switch" role="switch" aria-checked="${v.chCom}" id="chComOn" aria-label="Con comodines"></button></div>` : ""}`
+        : v.sel === "chinchon" ? `<p class="summary">De 2 a 5 jugadores · ${v.chCom ? "con 2 comodines" : "sin comodines"} · ${v.ch89 ? "baraja de 48 (con 8 y 9)" : "baraja de 40 (sin 8 ni 9)"} · se pierde al pasar de 100.</p>${H ? `<div class="opt"><div class="txt"><b>Con comodines</b></div><button class="switch" role="switch" aria-checked="${v.chCom}" id="chComOn" aria-label="Con comodines"></button></div><div class="opt"><div class="txt"><b>Con 8 y 9</b></div><button class="switch" role="switch" aria-checked="${v.ch89}" id="ch89On" aria-label="Con 8 y 9"></button></div>` : ""}`
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
         : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
         : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
@@ -360,6 +360,7 @@ function renderLobby(v) {
   on("ajustes", () => { S.online = true; go("themes"); });
   on("ajCaso", () => { S.online = true; go("casoSel"); });
   on("chComOn", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
+  on("ch89On", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("empezar", () => Net.send({ t: "start" }));
   on("invitar", () => invitarAmigos());
 }

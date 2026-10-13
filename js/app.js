@@ -17,7 +17,7 @@ const S = {
   themes: store.get("themes", ["Cine", "Series", "Dibujos animados", "Vehículos"]).filter(t => TEMAS[t]),
   cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, allImp: false, noImp: false, minutes: 3 }, store.get("cfg", {})),
   used: store.get("used", []),
-  chCfg: Object.assign({ comodines: true, cpus: 1 }, store.get("chCfg", {})),
+  chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
   casoId: store.get("casoId", "collar"),
   caso: null,         // partida local de detectives
@@ -190,6 +190,7 @@ PANTALLAS.players = () => {
       <div class="stepper"><div class="txt"><b>Compus en la mesa</b><small>Jugadores de la computadora. En total, de 2 a 5.</small></div>
         <div class="ctl"><button id="cpuMenos" aria-label="Menos compus" ${S.chCfg.cpus <= 0 ? "disabled" : ""}>−</button><output>${S.chCfg.cpus}</output><button id="cpuMas" aria-label="Más compus" ${S.chCfg.cpus >= 3 ? "disabled" : ""}>+</button></div></div>
       <div class="opt"><div class="txt"><b>Con comodines</b><small>Agrega 2 comodines que sirven como cualquier carta.</small></div><button class="switch" role="switch" aria-checked="${S.chCfg.comodines}" id="chCom" aria-label="Con comodines"></button></div>
+      <div class="opt"><div class="txt"><b>Con 8 y 9</b><small>${S.chCfg.con89 ? "Baraja de 48: la escalera va 7, 8, 9, sota." : "Baraja de 40: sin 8 ni 9, el 7 sigue con la sota."}</small></div><button class="switch" role="switch" aria-checked="${S.chCfg.con89}" id="ch89" aria-label="Con 8 y 9"></button></div>
     </div>` : ""}
     ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : 0), max = S.mode === "chinchon" ? 5 : S.mode === "impostor" ? 99 : 8, ok = tot >= min && tot <= max && (S.mode !== "chinchon" || n >= 1);
       return `${S.mode === "chinchon" && tot > 5 ? `<p class="warn">El chinchón es de 2 a 5 jugadores (contando las compus).</p>` : ""}<div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${ok ? "" : "disabled"}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : S.mode === "chinchon" ? "¡Repartir!" : S.mode === "ajedrez" || S.mode === "naval" ? "Listo" : "Elegir temas"}</button></div>`; })()}
@@ -209,6 +210,7 @@ PANTALLAS.players = () => {
   on("cpuMenos", () => { S.chCfg.cpus--; store.set("chCfg", S.chCfg); render(); });
   on("cpuMas", () => { S.chCfg.cpus++; store.set("chCfg", S.chCfg); render(); });
   on("chCom", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); render(); });
+  on("ch89", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); render(); });
   on("next", () => {
     if (S.mode === "liars") return Lie.empezarLocal();
     if (S.mode === "casos") return go("casoSel");

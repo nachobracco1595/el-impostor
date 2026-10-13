@@ -94,7 +94,7 @@ function pintar() {
     <div class="tabla-scroll"><table class="tabla">
       <thead><tr><th>Jugador</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
       <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
-        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><input class="campo" type="number" min="1" max="500" value="50" aria-label="Monedas"><input class="campo" maxlength="80" placeholder="Motivo (opcional)" aria-label="Motivo"><button class="btn chico" type="submit">Enviar</button></form>` : `<button class="btn ghost chico" data-regalo="${u.id}">🎁 Regalar</button>`}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
+        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="50" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100).</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
     </table></div>
   </section>
   <p class="summary center">La actividad se cuenta desde que se creó la tabla <code>actividad</code>; los días anteriores aparecen en cero.</p>`;
@@ -104,12 +104,17 @@ function pintar() {
   document.getElementById("salir").onclick = async () => { await P.sb.auth.signOut(); P.user = null; pintar(); };
   document.getElementById("fBus").onsubmit = e => { e.preventDefault(); P.q = document.getElementById("q").value.trim(); cargar(); };
   app.querySelectorAll("[data-regalo]").forEach(b => b.onclick = () => { P.regalo = b.dataset.regalo; pintar(); });
+  app.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => { P.regalo = null; pintar(); });
   app.querySelectorAll("form.regalo").forEach(f => f.onsubmit = async e => {
     e.preventDefault();
-    const [c, m] = f.querySelectorAll("input");
-    const { error } = await P.sb.rpc("admin_regalar", { destino: f.dataset.id, cantidad: +c.value, motivo: m.value || null });
-    P.regalo = null; P.msg = error ? "No se pudo enviar el regalo: " + error.message : "";
-    if (!error) aviso(`🎁 Regalo enviado: ${c.value} 🪙. Lo recibe la próxima vez que entre.`);
+    const m = Math.trunc(+f.m.value || 0), p = Math.trunc(+f.p.value || 0);
+    if (!m && !p) { aviso("Pon monedas o puntos (negativo para quitar)."); return; }
+    const u = P.usuarios.find(x => x.id === f.dataset.id);
+    if ((m < 0 || p < 0) && !confirm(`¿Quitarle a ${u ? u.nombre : "este jugador"} ${[m < 0 ? -m + " monedas" : "", p < 0 ? -p + " puntos" : ""].filter(Boolean).join(" y ")}?`)) return;
+    const { error } = await P.sb.rpc("admin_ajustar", { destino: f.dataset.id, monedas: m, puntos: p, motivo: f.t.value.trim() || null });
+    P.regalo = null; P.msg = error ? "No se pudo enviar el ajuste: " + error.message : "";
+    const txt = [m ? `${m > 0 ? "+" : ""}${m} 🪙` : "", p ? `${p > 0 ? "+" : ""}${p} pts` : ""].filter(Boolean).join(" · ");
+    if (!error) aviso(`${m >= 0 && p >= 0 ? "🎁" : "🛠️"} ${txt} enviado. Se aplica la próxima vez que entre (la tabla se actualiza ahí).`);
     pintar();
   });
   document.getElementById("fAds").onsubmit = async e => {

@@ -62,6 +62,11 @@ create policy "borrar mi perfil" on public.perfiles for delete to authenticated
 create or replace function public.perfiles_controlar() returns trigger
 language plpgsql as $$
 begin
+  -- Los ajustes del administrador (cobrar_regalos) pasan sin estos controles
+  if current_setting('impostor.ajuste', true) = '1' then
+    new.id := old.id; new.creado := old.creado; new.actualizado := now();
+    return new;
+  end if;
   if new.puntos < old.puntos or new.puntos > old.puntos + 500 then
     raise exception 'Cambio de puntos no permitido' using errcode = '42501';
   end if;
@@ -169,12 +174,14 @@ $$;
 create table if not exists public.actividad (
   id       bigint generated always as identity primary key,
   usuario  uuid not null references public.perfiles (id) on delete cascade,
-  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo')),
+  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste')),
   juego    text check (char_length(juego) <= 20),
   puntos   integer not null default 0,
   monedas  integer not null default 0,
   creado   timestamptz not null default now()
 );
+alter table public.actividad drop constraint if exists actividad_tipo_check;
+alter table public.actividad add constraint actividad_tipo_check check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste'));
 create index if not exists actividad_creado_idx on public.actividad (creado);
 create index if not exists actividad_usuario_idx on public.actividad (usuario, creado);
 alter table public.actividad enable row level security;
@@ -213,36 +220,56 @@ begin
   return jsonb_build_object('ok', true, 'monedas', m, 'quedan', tope - vistos - 1);
 end $$;
 
--- Regalos de monedas que manda el admin; el jugador los cobra al entrar
+-- Regalos y ajustes que manda el admin (monedas y puntos, para sumar o quitar).
+-- Se aplican cuando el jugador entra: el servidor cambia su perfil y el juego suma lo mismo en el teléfono.
 create table if not exists public.regalos (
   id       bigint generated always as identity primary key,
   usuario  uuid not null references public.perfiles (id) on delete cascade,
-  monedas  integer not null check (monedas between 1 and 500),
+  monedas  integer not null default 0,
   motivo   text check (char_length(motivo) <= 80),
   cobrado  boolean not null default false,
   creado   timestamptz not null default now()
 );
+alter table public.regalos add column if not exists puntos integer not null default 0;
+alter table public.regalos drop constraint if exists regalos_monedas_check;
+alter table public.regalos drop constraint if exists regalos_valores;
+alter table public.regalos add constraint regalos_valores check (monedas between -100000 and 100000 and puntos between -1000000 and 1000000);
 alter table public.regalos enable row level security;   -- solo se usa con las funciones de abajo
 
+drop function if exists public.cobrar_regalos();
 create or replace function public.cobrar_regalos() returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare total integer; motivos text;
+declare dm integer; dp integer; motivos text; antes public.perfiles; despues public.perfiles;
 begin
-  if auth.uid() is null then return jsonb_build_object('monedas', 0); end if;
-  with r as (update public.regalos set cobrado = true where usuario = auth.uid() and not cobrado returning monedas, motivo)
-  select coalesce(sum(monedas), 0), string_agg(motivo, ' · ') into total, motivos from r;
-  if total > 0 then insert into public.actividad (usuario, tipo, monedas) values (auth.uid(), 'regalo', least(total, 500)); end if;
-  return jsonb_build_object('monedas', least(total, 500), 'motivo', motivos);
+  if auth.uid() is null then return jsonb_build_object('monedas', 0, 'puntos', 0); end if;
+  with r as (update public.regalos set cobrado = true where usuario = auth.uid() and not cobrado returning monedas, puntos, motivo)
+  select coalesce(sum(monedas), 0), coalesce(sum(puntos), 0), string_agg(motivo, ' · ') into dm, dp, motivos from r;
+  if dm = 0 and dp = 0 then return jsonb_build_object('monedas', 0, 'puntos', 0); end if;
+  select * into antes from public.perfiles where id = auth.uid() for update;
+  if not found then return jsonb_build_object('monedas', 0, 'puntos', 0); end if;
+  perform set_config('impostor.ajuste', '1', true);
+  update public.perfiles set monedas = greatest(0, monedas + dm), puntos = greatest(0, puntos + dp)
+    where id = auth.uid() returning * into despues;
+  perform set_config('impostor.ajuste', '', true);
+  dm := despues.monedas - antes.monedas; dp := despues.puntos - antes.puntos;
+  insert into public.actividad (usuario, tipo, monedas, puntos)
+    values (auth.uid(), case when dm > 0 and dp = 0 then 'regalo' else 'ajuste' end, dm, dp);
+  return jsonb_build_object('monedas', dm, 'puntos', dp, 'motivo', motivos);
 end $$;
 
-create or replace function public.admin_regalar(destino uuid, cantidad integer, motivo text default null) returns jsonb
+create or replace function public.admin_ajustar(destino uuid, monedas integer default 0, puntos integer default 0, motivo text default null) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
-  if cantidad < 1 or cantidad > 500 then raise exception 'Entre 1 y 500 monedas' using errcode = '22023'; end if;
-  insert into public.regalos (usuario, monedas, motivo) values (destino, cantidad, left(motivo, 80));
+  if coalesce(monedas, 0) = 0 and coalesce(puntos, 0) = 0 then raise exception 'Pon monedas o puntos para sumar o quitar' using errcode = '22023'; end if;
+  insert into public.regalos (usuario, monedas, puntos, motivo) values (destino, coalesce(monedas, 0), coalesce(puntos, 0), left(motivo, 80));
   return jsonb_build_object('ok', true);
 end $$;
+
+create or replace function public.admin_regalar(destino uuid, cantidad integer, motivo text default null) returns jsonb
+language sql security definer set search_path = public as $$
+  select public.admin_ajustar(destino, cantidad, 0, motivo)
+$$;
 
 -- Resumen para el panel (solo admins)
 create or replace function public.panel_resumen(dias integer default 30) returns jsonb

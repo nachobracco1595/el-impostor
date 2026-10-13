@@ -34,7 +34,8 @@ function render() {
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
-  if (typeof Sonido !== "undefined") Sonido.trasRender(); }
+  if (typeof Sonido !== "undefined") Sonido.trasRender();
+  if (typeof revisarDiario !== "undefined") revisarDiario(); }
 let animT = null;
 function go(s) {
   S.screen = s;

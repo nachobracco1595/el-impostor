@@ -103,10 +103,10 @@ const Nube = {
   },
 
   aFila(u) {
-    return { nombre: u.nombre, look: u.look, puntos: u.puntos, racha: u.racha, mejor_racha: u.mejorRacha, stats: u.stats, logros: u.logros, historial: u.historial, contadas: u.contadas };
+    return { nombre: u.nombre, look: u.look, puntos: u.puntos, racha: u.racha, mejor_racha: u.mejorRacha, stats: u.stats, logros: u.logros, historial: u.historial, contadas: u.contadas, monedas: u.monedas || 0, inventario: u.inv || [], diario: u.diario || {} };
   },
   deFila(r) {
-    return { nombre: r.nombre, look: r.look, puntos: r.puntos, racha: r.racha, mejorRacha: r.mejor_racha, stats: r.stats, logros: r.logros || {}, historial: r.historial || [], contadas: r.contadas || [], creado: Date.parse(r.creado) || Date.now() };
+    return { nombre: r.nombre, look: r.look, puntos: r.puntos, racha: r.racha, mejorRacha: r.mejor_racha, stats: r.stats, logros: r.logros || {}, historial: r.historial || [], contadas: r.contadas || [], monedas: r.monedas || 0, inv: r.inventario || [], diario: r.diario || {}, creado: Date.parse(r.creado) || Date.now() };
   },
 
   async crearPerfil(nombre, look) {

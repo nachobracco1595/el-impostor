@@ -20,6 +20,11 @@ create table if not exists public.perfiles (
   pts_casos    integer generated always as (coalesce((stats -> 'casos' ->> 'p')::integer, 0)) stored
 );
 
+-- Monedas, cosas compradas y premio diario
+alter table public.perfiles add column if not exists monedas integer not null default 0 check (monedas >= 0);
+alter table public.perfiles add column if not exists inventario jsonb not null default '[]'::jsonb;
+alter table public.perfiles add column if not exists diario jsonb not null default '{}'::jsonb;
+
 -- Juegos agregados después (se pueden correr sobre una tabla ya creada)
 alter table public.perfiles add column if not exists pts_chinchon integer generated always as (coalesce((stats -> 'chinchon' ->> 'p')::integer, 0)) stored;
 alter table public.perfiles add column if not exists pts_naval    integer generated always as (coalesce((stats -> 'naval' ->> 'p')::integer, 0)) stored;
@@ -41,7 +46,7 @@ create policy "ranking publico" on public.perfiles for select using (true);
 
 drop policy if exists "crear mi perfil" on public.perfiles;
 create policy "crear mi perfil" on public.perfiles for insert to authenticated
-  with check (auth.uid() = id and puntos = 0);
+  with check (auth.uid() = id and puntos = 0 and monedas = 0);
 
 drop policy if exists "editar mi perfil" on public.perfiles;
 create policy "editar mi perfil" on public.perfiles for update to authenticated
@@ -57,6 +62,10 @@ language plpgsql as $$
 begin
   if new.puntos < old.puntos or new.puntos > old.puntos + 500 then
     raise exception 'Cambio de puntos no permitido' using errcode = '42501';
+  end if;
+  -- Las monedas pueden bajar (compras) pero no subir más de 500 de una vez
+  if new.monedas > old.monedas + 500 then
+    raise exception 'Cambio de monedas no permitido' using errcode = '42501';
   end if;
   new.id := old.id;
   new.creado := old.creado;

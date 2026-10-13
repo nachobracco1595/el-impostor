@@ -7,8 +7,8 @@ const Cuenta = {
   look(u = BD.sesion()) { return u ? u.look : null; },
 
   lookValido(l) {
-    if (!l || typeof l !== "object" || !COLORES.includes(l.color) || !Array.isArray(l.acc)) return null;
-    return { color: l.color, acc: l.acc.filter(a => ACCESORIOS[a]).slice(0, 3) };
+    if (!l || typeof l !== "object" || !(COLORES.includes(l.color) || COLORES_TIENDA.includes(l.color)) || !Array.isArray(l.acc)) return null;
+    return { color: l.color, acc: l.acc.filter(a => ACCESORIOS[a]).slice(0, 3), marco: MARCOS[l.marco] ? l.marco : "", titulo: typeof l.titulo === "string" ? l.titulo.slice(0, 24) : "", mascota: MASCOTAS[l.mascota] ? l.mascota : "" };
   },
 
   /* Los avatares de jugadores con perfil usan su color y accesorios */
@@ -26,14 +26,18 @@ const Cuenta = {
     const u = BD.sesion();
     if (!u) return `<div class="barra-cuenta"><button class="btn ghost chico" id="entrar">👤 Iniciar sesión</button><button class="btn ghost chico" id="verRanking">🏆 Ranking</button></div>`;
     const nv = nivelDe(u.puntos);
+    Eco.completar(u);
+    const regalo = Eco.diario(u).puede || (Eco.mision(u).hechas >= Eco.mision(u).meta && !Eco.mision(u).cobrada);
     return `<div class="barra-cuenta">
-      <button class="yo-chip" id="miPerfil">${personaje(u.look.color, "civ", 34, u.look.acc)}<span><b>${esc(u.nombre)}${u.nube ? " ☁️" : ""}</b><small>Nivel ${nv.n} · ${u.puntos} pts</small></span></button>
-      <button class="btn ghost chico" id="verRanking">🏆 Ranking</button></div>`;
+      <button class="yo-chip" id="miPerfil">${retrato(u.look, 34)}<span><b>${esc(u.nombre)}${u.nube ? " ☁️" : ""}</b><small>Nv ${nv.n} · ${u.puntos} pts</small></span></button>
+      <div class="barra-acc"><button class="btn ghost chico ${regalo ? "aviso" : ""}" id="verTienda" aria-label="Tienda, ${u.monedas} monedas">🪙 ${u.monedas}</button>${typeof Social !== "undefined" ? Social.boton() : ""}<button class="btn ghost chico" id="verRanking" aria-label="Ranking">🏆</button></div></div>`;
   },
   conectarBarra() {
     on("entrar", () => go("cuenta"));
     on("miPerfil", () => go("perfil"));
     on("verRanking", () => go("ranking"));
+    on("verTienda", () => go("tienda"));
+    on("verAmigos", () => go("amigos"));
   },
 
   /* Después de cada pantalla: si terminó una partida, suma puntos (una sola vez) */
@@ -53,9 +57,9 @@ const Cuenta = {
     if (!hechos.length) return;
     if (hechos.length === 1) {
       const h = hechos[0];
-      Toast.mostrar(`<div class="t-pts">+${h.puntos}<small>puntos</small></div><div class="t-txt"><b>${esc(h.usuario.nombre)}</b>${h.detalle.map(([t, p]) => `<span>${esc(t)} <em>+${p}</em></span>`).join("")}</div>`, "puntos");
+      Toast.mostrar(`<div class="t-pts">+${h.puntos}<small>puntos</small></div><div class="t-txt"><b>${esc(h.usuario.nombre)} · +${h.monedas} 🪙</b>${h.detalle.map(([t, p]) => `<span>${esc(t)} <em>+${p}</em></span>`).join("")}</div>`, "puntos");
     } else {
-      Toast.mostrar(`<div class="t-txt"><b>Puntos de la partida</b>${hechos.map(h => `<span>${esc(h.usuario.nombre)} <em>+${h.puntos}</em></span>`).join("")}</div>`, "puntos");
+      Toast.mostrar(`<div class="t-txt"><b>Puntos de la partida</b>${hechos.map(h => `<span>${esc(h.usuario.nombre)} <em>+${h.puntos} pts · +${h.monedas} 🪙</em></span>`).join("")}</div>`, "puntos");
     }
     hechos.forEach(h => h.logros.forEach(l => Toast.mostrar(`<div class="t-ic">${l.ic}</div><div class="t-txt"><small>Logro desbloqueado${hechos.length > 1 ? ` · ${esc(h.usuario.nombre)}` : ""}</small><b>${esc(l.nombre)}</b><span>${esc(l.desc)}</span></div>`, "logro")));
   }
@@ -84,15 +88,19 @@ const Toast = {
 /* ---------- Editor de avatar ---------- */
 function editorLook(b) {
   const look = { color: b.color, acc: [b.cabeza, b.cara].filter(Boolean) };
+  const u = BD.sesion(), inv = u && UI.editLook ? u.inv || [] : [];
+  const comprado = tipo => inv.map(id => CATALOGO[id]).filter(it => it && it.tipo === tipo).map(it => it.valor);
+  const colores = [...COLORES, ...comprado("color")], cabezas = [...CABEZAS, ...comprado("cabeza")], caras = [...CARAS, ...comprado("cara")];
+  const nombreAcc = a => NOMBRE_ACC[a] || (Object.values(CATALOGO).find(it => it.valor === a) || {}).nombre || a;
   return `<div class="editor-look">
     <div class="look-prev">${personaje(look.color, "civ", 120, look.acc)}</div>
     <div class="look-ops">
       <span class="label">Color</span>
-      <div class="swatches">${COLORES.map(c => `<button class="sw" style="--c:${c}" data-col="${c}" aria-pressed="${b.color === c}" aria-label="Color ${c}"></button>`).join("")}</div>
+      <div class="swatches">${colores.map(c => `<button class="sw" style="--c:${c}" data-col="${c}" aria-pressed="${b.color === c}" aria-label="Color ${c}"></button>`).join("")}</div>
       <span class="label">Cabeza</span>
-      <div class="acc-ops">${CABEZAS.map(a => `<button class="acc-op" data-cab="${a}" aria-pressed="${b.cabeza === a}">${personaje(b.color, "civ", 38, a ? [a] : [])}<small>${NOMBRE_ACC[a]}</small></button>`).join("")}</div>
+      <div class="acc-ops">${cabezas.map(a => `<button class="acc-op" data-cab="${a}" aria-pressed="${b.cabeza === a}">${personaje(b.color, "civ", 38, a ? [a] : [])}<small>${nombreAcc(a)}</small></button>`).join("")}</div>
       <span class="label">Cara</span>
-      <div class="acc-ops">${CARAS.map(a => `<button class="acc-op" data-car="${a}" aria-pressed="${b.cara === a}">${personaje(b.color, "civ", 38, a ? [a] : [])}<small>${NOMBRE_ACC[a]}</small></button>`).join("")}</div>
+      <div class="acc-ops">${caras.map(a => `<button class="acc-op" data-car="${a}" aria-pressed="${b.cara === a}">${personaje(b.color, "civ", 38, a ? [a] : [])}<small>${nombreAcc(a)}</small></button>`).join("")}</div>
     </div></div>`;
 }
 function conectarEditor(b) {
@@ -100,7 +108,7 @@ function conectarEditor(b) {
   app.querySelectorAll("[data-cab]").forEach(x => x.onclick = () => { b.cabeza = x.dataset.cab; render(); });
   app.querySelectorAll("[data-car]").forEach(x => x.onclick = () => { b.cara = x.dataset.car; render(); });
 }
-const lookABorrador = l => ({ color: l.color, cabeza: l.acc.find(a => CABEZAS.includes(a)) || "", cara: l.acc.find(a => CARAS.includes(a)) || "" });
+const lookABorrador = l => ({ color: l.color, cabeza: l.acc.find(a => Eco.esCabeza(a)) || "", cara: l.acc.find(a => Eco.esCara(a)) || "" });
 
 /* ---------- Iniciar sesión ---------- */
 PANTALLAS.cuenta = () => {
@@ -219,15 +227,15 @@ PANTALLAS.perfil = () => {
       <div class="row"><button class="btn ghost" id="cancel">Cancelar</button><button class="btn" id="ok">Guardar</button></div></section>`;
     conectarEditor(b);
     on("cancel", () => { UI.editLook = null; render(); });
-    on("ok", () => { BD.editarLook(u.id, { color: b.color, acc: [b.cabeza, b.cara].filter(Boolean) }); if (u.nube) Nube.subir(u); UI.editLook = null; render(); });
+    on("ok", () => { BD.editarLook(u.id, { ...u.look, color: b.color, acc: [b.cabeza, b.cara].filter(Boolean) }); if (u.nube) Nube.subir(u); UI.editLook = null; render(); });
     return;
   }
   app.innerHTML = `${head(0)}
   <section class="screen">
     <div class="perfil-head">
-      <button class="perfil-art" id="editar" aria-label="Editar personaje">${personaje(u.look.color, "civ", 120, u.look.acc)}<span>Editar</span></button>
+      <button class="perfil-art" id="editar" aria-label="Editar personaje">${retrato(u.look, 120)}<span class="editar-tag">Editar</span></button>
       <div class="perfil-info">
-        <h2>${esc(u.nombre)}</h2>
+        <h2>${esc(u.nombre)}</h2>${u.look.titulo ? `<span class="titulo-perfil">«${esc(u.look.titulo)}»</span>` : ""}
         <span class="nivel">Nivel ${nv.n} · ${nv.titulo}</span>
         <small class="cuenta-tipo">${u.nube ? `☁️ Cuenta en la nube${Nube.user && Nube.user.email ? ` · ${esc(Nube.user.email)}` : ""}${u.pendiente ? " · ⏳ cambios por subir" : ""}` : "📱 Perfil local de este teléfono"}</small>
         <div class="xp"><i style="width:${nv.pct}%"></i></div>
@@ -316,9 +324,9 @@ PANTALLAS.ranking = () => {
     <div class="tabs scroll">${tabs.map(([k, n]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
     ${aviso ? `<div class="panel center"><p class="empty">${esc(aviso)}</p></div>` : filas.length ? `
       <div class="podio">${orden.map(i => { const f = podio[i]; return `<div class="podio-p p${i + 1}">
-        ${i === 0 ? `<span class="corona">👑</span>` : ""}${personaje(f.u.look.color, "civ", i === 0 ? 86 : 66, f.u.look.acc)}
+        ${i === 0 ? `<span class="corona">👑</span>` : ""}${retrato(f.u.look, i === 0 ? 86 : 66)}
         <b>${esc(f.u.nombre)}</b><small>${f.puntos} pts</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
-      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${personaje(f.u.look.color, "civ", 34, f.u.look.acc)}<span class="nm"><b>${esc(f.u.nombre)}</b><small>Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas</small></span><strong>${f.puntos}</strong></li>`).join("")}</ol>`
+      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas</small></span><strong>${f.puntos}</strong></li>`).join("")}</ol>`
       : `<div class="panel center"><p class="empty">Todavía no hay nadie en este ranking. Crea tu perfil y jueguen para aparecer acá.</p><button class="btn" id="crear">Crear perfil</button></div>`}
     <details class="panel"><summary class="label">¿Cómo se ganan puntos?</summary>
       <ul class="reglas-pts">${Puntos.REGLAS.map(([t, p]) => `<li><span>${esc(t)}</span><b>${esc(p)}</b></li>`).join("")}</ul>

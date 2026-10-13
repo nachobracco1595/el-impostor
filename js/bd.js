@@ -70,7 +70,7 @@ const BD = {
   locales() { return Object.values(this.cargar().usuarios).filter(u => !u.nube); },
   usuario(id) { return this.cargar().usuarios[id] || null; },
   porNombre(nombre) { const n = String(nombre).trim().toLowerCase(); return this.usuarios().find(u => u.nombre.toLowerCase() === n) || null; },
-  sesion() { return this.usuario(this.cargar().sesion); },
+  sesion() { const u = this.usuario(this.cargar().sesion); if (u && typeof Eco !== "undefined") Eco.completar(u); return u; },
 
   async hash(pin, id) {
     const txt = `${id}:${pin}:el-impostor`;
@@ -115,7 +115,7 @@ const BD = {
     nube.stats = nube.stats || {};
     for (const j in base) nube.stats[j] = Object.assign(base[j], nube.stats[j] || {});
     let u = nube;
-    if (local && local.nube && total(local, "j") > total(nube, "j")) { u = local; u.pendiente = true; }
+    if (local && local.nube && (total(local, "j") > total(nube, "j") || (local.monedas || 0) !== (nube.monedas || 0) && total(local, "j") === total(nube, "j") && (local.diario || {}).ultimo > ((nube.diario || {}).ultimo || ""))) { u = local; u.pendiente = true; }
     else u.pendiente = false;
     this.datos.usuarios[uid] = u;
     this.datos.sesion = uid;
@@ -130,7 +130,7 @@ const BD = {
     return u;
   },
   salir() { this.cargar().sesion = null; this.guardar(); },
-  editarLook(id, look) { const u = this.usuario(id); if (u) { u.look = look; this.guardar(); } },
+  editarLook(id, look) { const u = this.usuario(id); if (u) { u.look = Object.assign({ marco: "", titulo: "", mascota: "" }, look); this.guardar(); } },
   borrar(id) { delete this.cargar().usuarios[id]; if (this.datos.sesion === id) this.datos.sesion = null; this.guardar(); },
 
   /* Registra el resultado de una partida. Devuelve {puntos, detalle, gano, logros} o null si ya se contó. */
@@ -162,6 +162,9 @@ const BD = {
       if (res.soplon && calc.gano) st.soplonG++;
     }
     u.puntos += calc.puntos;
+    // Monedas: una cada 4 puntos (mínimo 2 por partida)
+    const monedas = Math.max(2, Math.round(calc.puntos / 4));
+    if (typeof Eco !== "undefined") { Eco.completar(u); u.monedas += monedas; Eco.sumarPartida(u); }
     u.racha = calc.gano ? u.racha + 1 : 0;
     u.mejorRacha = Math.max(u.mejorRacha, u.racha);
     u.historial.unshift({ f: Date.now(), juego: res.juego, gano: calc.gano, puntos: calc.puntos, txt: calc.resumen });
@@ -171,7 +174,7 @@ const BD = {
     nuevos.forEach(l => u.logros[l.id] = Date.now());
     this.guardar();
     if (u.nube && typeof Nube !== "undefined") Nube.subir(u);
-    return { ...calc, logros: nuevos, usuario: u };
+    return { ...calc, monedas, logros: nuevos, usuario: u };
   },
 
   /* Exporta solo los perfiles locales: los de la nube ya están guardados allá */

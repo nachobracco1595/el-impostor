@@ -1,0 +1,503 @@
+<title>El Impostor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Figtree:wght@400;600;800&display=swap">
+<style>
+/* Layout: una sola columna tipo "carta" centrada, pensada para pasar el teléfono de mano en mano. Estética nocturna fija. */
+:root {
+  --ink: #13111d;
+  --card: #1f1b2e;
+  --card-2: #2a2540;
+  --line: #3a3354;
+  --fg: #f3effa;
+  --muted: #a69fbd;
+  --spot: #ffc53d;
+  --spot-ink: #241a00;
+  --red: #ff4d63;
+  --teal: #3ddcb1;
+  --violet: #b48cff;
+  --display: "Dela Gothic One", "Arial Black", Impact, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(120% 70% at 50% -10%, #2b2347 0%, var(--ink) 60%) fixed, var(--ink);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+.app { max-width: 520px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 40px; min-height: 100%; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { font-family: var(--display); font-size: 22px; letter-spacing: .02em; margin: 0; }
+.logo span { color: var(--red); }
+.steps { display: flex; gap: 6px; }
+.steps i { width: 26px; height: 6px; border-radius: 3px; background: var(--line); }
+.steps i.on { background: var(--spot); }
+h2 { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; }
+.label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+section.screen { display: flex; flex-direction: column; gap: 18px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--spot); outline-offset: 2px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 0 20px; border-radius: 16px; font-weight: 800; font-size: 18px; background: var(--spot); color: var(--spot-ink); width: 100%; transition: transform .08s ease, opacity .2s; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.ghost { background: var(--card-2); color: var(--fg); border: 1px solid var(--line); }
+.btn.danger { background: var(--red); color: #fff; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; min-width: 0; }
+
+.add { display: flex; gap: 8px; }
+.add input { flex: 1; min-width: 0; height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--ink); color: var(--fg); padding: 0 14px; font: inherit; font-size: 17px; }
+.add button { width: 52px; height: 52px; border-radius: 14px; background: var(--spot); color: var(--spot-ink); font-size: 28px; font-weight: 800; flex: none; }
+.players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.players li { display: flex; align-items: center; gap: 12px; background: var(--card-2); border-radius: 12px; padding: 8px 8px 8px 12px; }
+.players .n { width: 28px; height: 28px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: none; font-variant-numeric: tabular-nums; }
+.players .name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.players .x { width: 40px; height: 40px; border-radius: 10px; color: var(--muted); font-size: 22px; }
+.empty { color: var(--muted); font-size: 15px; margin: 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card-2); font-weight: 600; font-size: 15px; }
+.chip .c { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--spot); color: var(--spot-ink); border-color: var(--spot); }
+.chip[aria-pressed="true"] .c { color: var(--spot-ink); opacity: .7; }
+.linkish { color: var(--spot); font-weight: 700; font-size: 14px; padding: 4px 0; }
+.headrow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stepper .ctl { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 44px; height: 44px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); font-size: 22px; font-weight: 800; }
+.stepper button:disabled { opacity: .3; }
+.stepper output { min-width: 34px; text-align: center; font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.opt { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.opt .txt { flex: 1; min-width: 0; }
+.opt .txt b { display: block; }
+.opt .txt small { color: var(--muted); font-size: 14px; display: block; }
+.switch { position: relative; width: 54px; height: 32px; border-radius: 16px; background: var(--line); flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--fg); transition: transform .2s; }
+.switch[aria-checked="true"] { background: var(--teal); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.seg button { height: 44px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); font-weight: 700; font-size: 15px; }
+.seg button[aria-pressed="true"] { background: var(--spot); color: var(--spot-ink); border-color: var(--spot); }
+.warn { color: var(--red); font-weight: 600; font-size: 14px; margin: 0; }
+.summary { color: var(--muted); font-size: 14px; margin: 0; }
+.summary b { color: var(--fg); }
+
+/* Pantalla de pasar el teléfono / revelar */
+.stage { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; text-align: center; }
+.passto .who { font-family: var(--display); font-size: clamp(34px, 11vw, 54px); line-height: 1.05; overflow-wrap: anywhere; color: var(--spot); }
+.counter { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.role-card { border-radius: 24px; padding: 28px 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; border: 2px solid var(--line); background: var(--card); animation: flip .35s ease; }
+@keyframes flip { from { transform: rotateY(80deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.role-card .tag { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.role-card .big { font-family: var(--display); font-size: clamp(30px, 10vw, 46px); line-height: 1.05; overflow-wrap: anywhere; }
+.role-card .note { color: var(--muted); font-size: 15px; max-width: 34ch; }
+.role-card .hint { background: var(--card-2); border-radius: 12px; padding: 10px 14px; font-weight: 700; }
+.role-card.imp { border-color: var(--red); background: color-mix(in srgb, var(--red) 12%, var(--card)); }
+.role-card.imp .tag, .role-card.imp .big { color: var(--red); }
+.role-card.civ .tag { color: var(--teal); }
+.role-card.spc { border-color: var(--violet); }
+.role-card.spc .tag { color: var(--violet); }
+
+/* Juego */
+.starter { font-family: var(--display); font-size: clamp(30px, 10vw, 46px); color: var(--spot); line-height: 1.05; overflow-wrap: anywhere; }
+.clock { font-family: var(--display); font-size: clamp(64px, 24vw, 112px); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.clock.low { color: var(--red); animation: pulse 1s infinite; }
+.clock.done { color: var(--red); }
+@keyframes pulse { 50% { opacity: .45; } }
+.bar { height: 8px; border-radius: 4px; background: var(--card-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--spot); transition: width 1s linear; }
+.vote { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.vote button { width: 100%; min-height: 56px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--line); font-weight: 700; padding: 8px; overflow-wrap: anywhere; }
+.vote button.out { opacity: .4; text-decoration: line-through; cursor: default; }
+.verdict { border-radius: 18px; padding: 18px; text-align: center; display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--line); background: var(--card); }
+.verdict .big { font-family: var(--display); font-size: 26px; line-height: 1.1; overflow-wrap: anywhere; }
+.verdict.bad { border-color: var(--red); } .verdict.bad .big { color: var(--red); }
+.verdict.good { border-color: var(--teal); } .verdict.good .big { color: var(--teal); }
+.verdict.spc { border-color: var(--violet); } .verdict.spc .big { color: var(--violet); }
+.reveal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.reveal-list li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--card-2); }
+.reveal-list li span:first-child { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.r-imp { color: var(--red); font-weight: 800; } .r-civ { color: var(--teal); font-weight: 700; } .r-spc { color: var(--violet); font-weight: 800; }
+.secret { font-family: var(--display); font-size: 30px; color: var(--spot); overflow-wrap: anywhere; }
+.confirm { display: flex; flex-direction: column; gap: 10px; }
+.rules { color: var(--muted); font-size: 15px; margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.rules b { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="app" id="app"></div>
+
+<script>
+/* ---------- Palabras: "palabra|pista" ---------- */
+const TEMAS = {
+  "Vehículos": "Avión|cielo,Helicóptero|hélice,Bicicleta|pedales,Moto|casco,Tren|vías,Barco|puerto,Submarino|profundidad,Camión|carga,Ambulancia|sirena,Taxi|amarillo,Tractor|campo,Autobús|parada,Patineta|trucos,Globo aerostático|fuego,Cohete|espacio,Limusina|lujo,Tranvía|ciudad,Yate|millonario,Carro de bomberos|escalera,Monopatín eléctrico|batería,Grúa|remolque,Kayak|remo,Teleférico|montaña,Motonieve|frío,Patrulla|ley",
+  "Cine": "Titanic|iceberg,Harry Potter|varita,Star Wars|galaxia,El Padrino|familia,Jurassic Park|isla,Avatar|azul,Matrix|pastilla,El Rey León|sabana,Shrek|pantano,Toy Story|juguete,Volver al Futuro|reloj,Rápidos y Furiosos|carreras,Piratas del Caribe|barco,Frozen|hielo,Tiburón|playa,E.T.|bicicleta,Rocky|escaleras,Gladiador|arena,Barbie|rosa,Batman|noche,Titanes del Pacífico|robots,Coco|guitarra,Avengers|equipo,Mi pobre angelito|trampa,Forrest Gump|correr,Indiana Jones|sombrero,El Señor de los Anillos|joya,Interestelar|tiempo",
+  "Series": "Friends|café,La Casa de Papel|máscara,Breaking Bad|química,Stranger Things|bicicleta,Game of Thrones|trono,Los Simpson|amarillo,The Office|papel,Merlina|danza,El Juego del Calamar|muñeca,Peaky Blinders|gorra,The Walking Dead|apocalipsis,Dark|cueva,La Reina del Flow|micrófono,Elite|uniforme,Chernóbil|radiación,Lost|avión,Prison Break|tatuaje,The Crown|corona,Dr. House|bastón,Bridgerton|baile,Narcos|Colombia,Grey's Anatomy|hospital,The Mandalorian|casco,Black Mirror|pantalla,Vikingos|hacha",
+  "Dibujos animados": "Bob Esponja|piña,Pikachu|rayo,Mickey Mouse|orejas,Los Picapiedra|piedra,Scooby-Doo|furgoneta,Tom y Jerry|persecución,Dragon Ball|esferas,Naruto|zorro,Pokémon|entrenador,Hora de Aventura|perro,Las Chicas Superpoderosas|laboratorio,Pato Donald|marinero,Bugs Bunny|zanahoria,Los Pitufos|azul,Peppa Pig|charco,Bluey|perrita,Gravity Falls|bosque,Rick y Morty|portal,Phineas y Ferb|verano,Doraemon|bolsillo,Heidi|montaña,Popeye|espinaca,Garfield|lasaña,Los Increíbles|traje,Snoopy|caseta",
+  "Animales": "Elefante|trompa,Jirafa|cuello,León|melena,Pingüino|frío,Delfín|inteligente,Canguro|bolsa,Murciélago|cueva,Tortuga|lenta,Camaleón|colores,Pulpo|tinta,Oso panda|bambú,Cocodrilo|río,Búho|noche,Abeja|miel,Tiburón|aleta,Caracol|baba,Loro|habla,Cebra|rayas,Hormiga|colonia,Flamenco|rosa,Camello|desierto,Zorro|astuto,Ballena|gigante,Gallina|huevo,Araña|red",
+  "Comida": "Pizza|horno,Hamburguesa|pan,Sushi|palillos,Tacos|tortilla,Empanada|repulgue,Asado|parrilla,Helado|frío,Paella|arroz,Churros|azúcar,Lasaña|capas,Ensalada|verde,Palomitas|cine,Chocolate|cacao,Tortilla de papas|huevo,Ramen|caldo,Milanesa|empanado,Hot dog|salchicha,Pancakes|desayuno,Ceviche|limón,Arepa|maíz,Alfajor|dulce de leche,Flan|caramelo,Nachos|queso,Sopa|cuchara,Croissant|Francia",
+  "Deportes": "Fútbol|gol,Básquet|aro,Tenis|raqueta,Natación|piscina,Boxeo|guantes,Ciclismo|pedalear,Golf|hoyo,Vóley|red,Rugby|ovalada,Esquí|nieve,Surf|ola,Ajedrez|rey,Béisbol|bate,Atletismo|pista,Karate|cinturón,Pádel|pared,Hockey|palo,Escalada|cuerda,Fórmula 1|velocidad,Gimnasia|flexible,Esgrima|espada,Bolos|pinos,Equitación|caballo,Remo|bote,Ping pong|mesa",
+  "Profesiones": "Médico|bata,Bombero|manguera,Policía|placa,Chef|cuchillo,Profesor|pizarra,Astronauta|cohete,Piloto|cabina,Abogado|juicio,Dentista|sonrisa,Peluquero|tijeras,Carpintero|madera,Veterinario|mascotas,Cartero|cartas,Mecánico|herramientas,Fotógrafo|cámara,Periodista|noticia,Panadero|madrugada,Electricista|cables,Arquitecto|planos,Payaso|nariz,Jardinero|plantas,Mago|sombrero,Detective|lupa,DJ|fiesta,Enfermera|jeringa",
+  "Lugares": "Playa|arena,Hospital|camilla,Aeropuerto|maleta,Escuela|recreo,Cine|butaca,Supermercado|carrito,Biblioteca|silencio,Gimnasio|pesas,Zoológico|jaulas,Museo|cuadros,Iglesia|campana,Cárcel|rejas,Estadio|tribuna,Discoteca|baile,Banco|dinero,Farmacia|receta,Circo|carpa,Castillo|torre,Selva|lianas,Desierto|dunas,Montaña|cima,Parque de diversiones|montaña rusa,Restaurante|mesero,Hotel|recepción,Cementerio|tumbas",
+  "Objetos de casa": "Heladera|frío,Microondas|calentar,Sofá|siesta,Espejo|reflejo,Lámpara|luz,Almohada|dormir,Tostadora|pan,Lavarropas|ropa,Paraguas|lluvia,Escoba|barrer,Reloj|hora,Control remoto|botones,Cepillo de dientes|baño,Plancha|arrugas,Ventilador|aire,Cortina|ventana,Tijeras|cortar,Llave|puerta,Vela|cera,Licuadora|jugo,Toalla|secar,Cuchara|sopa,Percha|ropero,Alfombra|piso,Despertador|mañana",
+  "Países y ciudades": "Argentina|tango,España|flamenco,México|mariachi,Japón|sushi,Italia|pasta,Francia|torre,Brasil|samba,Egipto|pirámides,Estados Unidos|estrellas,China|muralla,Rusia|frío,Australia|canguro,Inglaterra|té,Grecia|dioses,India|especias,Nueva York|estatua,París|amor,Londres|reloj,Roma|coliseo,Río de Janeiro|carnaval,Las Vegas|casino,Tokio|neón,Cancún|caribe,Perú|Machu Picchu,Canadá|arce",
+  "Superhéroes y villanos": "Superman|capa,Batman|murciélago,Spider-Man|telaraña,Iron Man|armadura,Hulk|verde,Thor|martillo,Wonder Woman|lazo,Capitán América|escudo,Joker|sonrisa,Thanos|guantelete,Wolverine|garras,Flash|rayo,Aquaman|mar,Black Panther|Wakanda,Deadpool|chistes,Darth Vader|respiración,Catwoman|gato,Doctor Strange|magia,Harley Quinn|bate,Loki|engaño,Groot|árbol,Venom|negro,Robin|compañero,Magneto|metal,Ant-Man|pequeño",
+  "Música": "Guitarra|cuerdas,Piano|teclas,Batería|palillos,Violín|arco,Trompeta|soplar,Micrófono|cantar,Reggaetón|perreo,Rock|eléctrico,Tango|bandoneón,Salsa|bailar,Karaoke|letra,Concierto|escenario,Ópera|soprano,Flauta|agujeros,Auriculares|oídos,Rap|rimas,Cumbia|fiesta,Saxofón|jazz,Arpa|ángel,Vinilo|tocadiscos,Coro|voces,Acordeón|fuelle,Orquesta|director,Tambor|ritmo,Ukelele|Hawái",
+  "Videojuegos": "Mario Bros|bigote,Minecraft|bloques,Fortnite|baile,Tetris|piezas,Pac-Man|fantasmas,Sonic|velocidad,Zelda|espada,GTA|ciudad,FIFA|fútbol,Call of Duty|guerra,Among Us|nave,Roblox|mundos,Free Fire|isla,Candy Crush|dulces,Angry Birds|cerdos,Pokémon GO|calle,Street Fighter|pelea,Mortal Kombat|fatality,Halo|casco,Clash Royale|torres,The Sims|vida,Crash Bandicoot|frutas,Donkey Kong|barriles,League of Legends|campeones,Animal Crossing|isla",
+  "Famosos": "Messi|pelota,Shakira|caderas,Cristiano Ronaldo|siuu,Taylor Swift|gira,Bad Bunny|conejo,Michael Jackson|guante,Elon Musk|cohetes,Einstein|relatividad,Maradona|mano,Frida Kahlo|cejas,Beyoncé|reina,Usain Bolt|rayo,Charles Chaplin|bastón,Leonardo DiCaprio|Oscar,Karol G|bichota,Steve Jobs|manzana,Mr. Bean|osito,Picasso|cubos,Freddie Mercury|bigote,Elvis Presley|caderas,Luis Miguel|sol,Will Smith|cachetada,Pelé|corona"
+};
+const DB = Object.fromEntries(Object.entries(TEMAS).map(([k, s]) => [k, [...new Set(s.split(","))].map(x => { const [w, h] = x.split("|"); return { w: w.trim(), h: h.trim() }; })]));
+
+/* ---------- Estado ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("impostor:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("impostor:" + k, JSON.stringify(v)); } catch {} }
+};
+const S = {
+  screen: "players",
+  players: store.get("players", ["Ana", "Bruno", "Carla", "Diego"]),
+  themes: store.get("themes", ["Cine", "Series", "Dibujos animados", "Vehículos"]),
+  cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, minutes: 3 }, store.get("cfg", {})),
+  game: null,
+  used: store.get("used", [])
+};
+const save = () => { store.set("players", S.players); store.set("themes", S.themes); store.set("cfg", S.cfg); };
+
+const ROLE = {
+  impostor:   { tag: "Impostor",   cls: "imp", side: "imp" },
+  civil:      { tag: "Inocente",   cls: "civ", side: "civ" },
+  complice:   { tag: "Cómplice",   cls: "spc", side: "imp" },
+  infiltrado: { tag: "Infiltrado", cls: "spc", side: "civ" },
+  bufon:      { tag: "Bufón",      cls: "spc", side: "bufon" }
+};
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const maxImp = () => Math.max(1, Math.floor((S.players.length - 1) / 2));
+const extras = () => ["complice", "infiltrado", "bufon"].filter(k => S.cfg[k]).length;
+const civCount = () => S.players.length - S.cfg.impostors - extras();
+
+const app = document.getElementById("app");
+const head = step => `<header class="top"><h1 class="logo">El <span>Impostor</span></h1>${step ? `<div class="steps" aria-label="Paso ${step} de 3">${[1,2,3].map(i => `<i class="${i <= step ? "on" : ""}"></i>`).join("")}</div>` : ""}</header>`;
+
+/* ---------- Pantallas ---------- */
+function render() {
+  stopTick();
+  ({ players: vPlayers, themes: vThemes, config: vConfig, pass: vPass, reveal: vReveal, play: vPlay, vote: vVote, end: vEnd })[S.screen]();
+}
+function go(s) { S.screen = s; render(); window.scrollTo(0, 0); }
+
+function vPlayers() {
+  const n = S.players.length;
+  app.innerHTML = `${head(1)}
+  <section class="screen">
+    <div><h2>¿Quiénes juegan?</h2><p class="sub">Mínimo 3 jugadores. El orden de la lista es el orden en que se pasan el teléfono.</p></div>
+    <form class="add" id="addf"><input id="pname" maxlength="20" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
+    <div class="panel">
+      <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>
+      ${n ? `<ul class="players">${S.players.map((p, i) => `<li><span class="n">${i + 1}</span><span class="name">${esc(p)}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
+    </div>
+    <button class="btn" id="next" ${n < 3 ? "disabled" : ""}>Elegir temas</button>
+  </section>`;
+  const inp = document.getElementById("pname");
+  document.getElementById("addf").onsubmit = e => {
+    e.preventDefault();
+    const v = inp.value.trim();
+    if (!v) return;
+    if (S.players.some(p => p.toLowerCase() === v.toLowerCase())) { inp.value = ""; inp.placeholder = "Ese nombre ya está"; return; }
+    S.players.push(v); save(); render(); document.getElementById("pname").focus();
+  };
+  app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { S.players.splice(+b.dataset.del, 1); save(); render(); });
+  const clr = document.getElementById("clr"); if (clr) clr.onclick = () => { S.players = []; save(); render(); };
+  document.getElementById("next").onclick = () => go("themes");
+}
+
+function vThemes() {
+  const all = Object.keys(DB);
+  const allOn = S.themes.length === all.length;
+  app.innerHTML = `${head(2)}
+  <section class="screen">
+    <div><h2>Elige los temas</h2><p class="sub">La palabra secreta sale al azar de los temas marcados.</p></div>
+    <div class="panel">
+      <div class="headrow"><span class="label">${S.themes.length} de ${all.length} temas</span><button class="linkish" id="all">${allOn ? "Quitar todos" : "Marcar todos"}</button></div>
+      <div class="chips">${all.map(t => `<button class="chip" aria-pressed="${S.themes.includes(t)}" data-t="${esc(t)}">${esc(t)} <span class="c">${DB[t].length}</span></button>`).join("")}</div>
+    </div>
+    <div class="row"><button class="btn ghost" id="back">Atrás</button><button class="btn" id="next" ${S.themes.length ? "" : "disabled"}>Siguiente</button></div>
+  </section>`;
+  app.querySelectorAll("[data-t]").forEach(b => b.onclick = () => {
+    const t = b.dataset.t;
+    S.themes = S.themes.includes(t) ? S.themes.filter(x => x !== t) : [...S.themes, t];
+    save(); render();
+  });
+  document.getElementById("all").onclick = () => { S.themes = allOn ? [] : all.slice(); save(); render(); };
+  document.getElementById("back").onclick = () => go("players");
+  document.getElementById("next").onclick = () => go("config");
+}
+
+function vConfig() {
+  S.cfg.impostors = Math.min(S.cfg.impostors, maxImp());
+  const c = S.cfg, civ = civCount(), ok = civ >= 2;
+  const sw = (k, title, desc) => `<div class="opt"><div class="txt"><b>${title}</b><small>${desc}</small></div><button class="switch" role="switch" aria-checked="${!!c[k]}" data-sw="${k}" aria-label="${title}"></button></div>`;
+  app.innerHTML = `${head(3)}
+  <section class="screen">
+    <div><h2>Reglas de la partida</h2><p class="sub">${S.players.length} jugadores · ${S.themes.length} tema${S.themes.length === 1 ? "" : "s"}</p></div>
+    <div class="panel">
+      <div class="stepper"><div><b>Impostores</b><small class="sub" style="display:block;margin:0;font-size:14px">Máximo ${maxImp()} con ${S.players.length} jugadores</small></div>
+        <div class="ctl"><button id="minus" aria-label="Menos impostores" ${c.impostors <= 1 ? "disabled" : ""}>−</button><output>${c.impostors}</output><button id="plus" aria-label="Más impostores" ${c.impostors >= maxImp() ? "disabled" : ""}>+</button></div></div>
+      ${sw("hint", "Pista para el impostor", "El impostor ve una palabra relacionada para poder disimular.")}
+    </div>
+    <div class="panel">
+      <span class="label">Roles extra (opcionales)</span>
+      ${sw("complice", "Cómplice", "Conoce la palabra y sabe quién es el impostor. Gana si gana el impostor.")}
+      ${sw("infiltrado", "Infiltrado", "Recibe otra palabra del mismo tema y no sabe que es distinta. Juega con los inocentes.")}
+      ${sw("bufon", "Bufón", "Conoce la palabra. Gana solo si el grupo lo expulsa a él.")}
+    </div>
+    <div class="panel">
+      <span class="label">Cronómetro de debate</span>
+      <div class="seg">${[0, 1, 2, 3, 5].map(m => `<button aria-pressed="${c.minutes === m}" data-min="${m}">${m ? m + " min" : "Sin"}</button>`).join("")}</div>
+    </div>
+    ${ok ? `<p class="summary">Habrá <b>${civ} inocente${civ === 1 ? "" : "s"}</b>, <b>${c.impostors} impostor${c.impostors > 1 ? "es" : ""}</b>${extras() ? ` y <b>${extras()} rol${extras() > 1 ? "es" : ""} extra</b>` : ""}.</p>` : `<p class="warn">Faltan jugadores: con estos roles quedan menos de 2 inocentes. Quita un rol extra o un impostor, o agrega jugadores.</p>`}
+    <div class="row"><button class="btn ghost" id="back">Atrás</button><button class="btn" id="start" ${ok ? "" : "disabled"}>¡Repartir!</button></div>
+  </section>`;
+  document.getElementById("minus").onclick = () => { c.impostors--; save(); render(); };
+  document.getElementById("plus").onclick = () => { c.impostors++; save(); render(); };
+  app.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { c[b.dataset.sw] = !c[b.dataset.sw]; save(); render(); });
+  app.querySelectorAll("[data-min]").forEach(b => b.onclick = () => { c.minutes = +b.dataset.min; save(); render(); });
+  document.getElementById("back").onclick = () => go("themes");
+  document.getElementById("start").onclick = newGame;
+}
+
+function newGame() {
+  const c = S.cfg;
+  const theme = pick(S.themes);
+  let pool = DB[theme].filter(x => !S.used.includes(x.w));
+  if (!pool.length) { S.used = S.used.filter(w => !DB[theme].some(x => x.w === w)); pool = DB[theme]; }
+  const secret = pick(pool);
+  S.used = [...S.used, secret.w].slice(-150); store.set("used", S.used);
+  const other = pick(DB[theme].filter(x => x.w !== secret.w));
+
+  const roles = [...Array(c.impostors).fill("impostor")];
+  if (c.complice) roles.push("complice");
+  if (c.infiltrado) roles.push("infiltrado");
+  if (c.bufon) roles.push("bufon");
+  while (roles.length < S.players.length) roles.push("civil");
+  const dealt = shuffle(roles);
+  S.game = {
+    theme, word: secret.w, hint: secret.h, otherWord: other.w,
+    players: S.players.map((name, i) => ({ name, role: dealt[i], out: false })),
+    idx: 0, starter: null, endsAt: null, remaining: c.minutes * 60, running: false, verdict: null, pending: null, winner: null
+  };
+  const elig = S.game.players.filter(p => p.role !== "impostor");
+  S.game.starter = pick(Math.random() < 0.5 ? S.game.players : elig).name;
+  go("pass");
+}
+
+function vPass() {
+  const g = S.game, p = g.players[g.idx];
+  app.innerHTML = `${head(0)}
+  <section class="stage passto">
+    <span class="counter">Jugador ${g.idx + 1} de ${g.players.length}</span>
+    <p class="label" style="margin:0">Pásale el teléfono a</p>
+    <div class="who">${esc(p.name)}</div>
+    <p class="sub">Que nadie más mire la pantalla.</p>
+    <button class="btn" id="see">Soy ${esc(p.name)}, ver mi rol</button>
+  </section>
+  <button class="linkish" id="quit" style="align-self:center">Cancelar partida</button>`;
+  document.getElementById("see").onclick = () => go("reveal");
+  document.getElementById("quit").onclick = () => go("config");
+}
+
+function roleCard(p) {
+  const g = S.game, r = ROLE[p.role];
+  const imps = g.players.filter(x => x.role === "impostor").map(x => esc(x.name));
+  const others = g.players.filter(x => x.role === "impostor" && x.name !== p.name).map(x => esc(x.name));
+  let body = "";
+  if (p.role === "impostor") {
+    body = `<div class="tag">Tu rol</div><div class="big">Eres el impostor</div>
+      ${S.cfg.hint ? `<div class="note">Tu pista</div><div class="hint">${esc(g.hint)}</div>` : `<div class="note">Juegas sin pista. Escucha bien a los demás.</div>`}
+      <div class="note">Tema: <b>${esc(g.theme)}</b></div>
+      ${others.length ? `<div class="note">Tus compañeros impostores: <b>${others.join(", ")}</b></div>` : ""}
+      <div class="note">Disimula. Si te descubren, puedes adivinar la palabra para salvarte.</div>`;
+  } else if (p.role === "civil") {
+    body = `<div class="tag">${r.tag}</div><div class="note">La palabra secreta es</div><div class="big">${esc(g.word)}</div><div class="note">Tema: <b>${esc(g.theme)}</b>. Da pistas sin decirla y descubre al impostor.</div>`;
+  } else if (p.role === "infiltrado") {
+    body = `<div class="tag">Inocente</div><div class="note">La palabra secreta es</div><div class="big">${esc(g.otherWord)}</div><div class="note">Tema: <b>${esc(g.theme)}</b>. Da pistas sin decirla y descubre al impostor.</div>`;
+  } else if (p.role === "complice") {
+    body = `<div class="tag">${r.tag}</div><div class="note">La palabra secreta es</div><div class="big">${esc(g.word)}</div><div class="note">${imps.length > 1 ? "Los impostores son" : "El impostor es"} <b>${imps.join(", ")}</b>. Ayúdale sin que se note: ganas si gana el impostor.</div>`;
+  } else {
+    body = `<div class="tag">${r.tag}</div><div class="note">La palabra secreta es</div><div class="big">${esc(g.word)}</div><div class="note">Tu misión: actuar sospechoso para que el grupo te expulse. Si te expulsan, ganas tú solo.</div>`;
+  }
+  const cls = p.role === "infiltrado" ? "civ" : r.cls;
+  return `<div class="role-card ${cls}">${body}</div>`;
+}
+
+function vReveal() {
+  const g = S.game, p = g.players[g.idx], last = g.idx === g.players.length - 1;
+  app.innerHTML = `${head(0)}
+  <section class="stage">
+    <span class="counter">${esc(p.name)}</span>
+    ${roleCard(p)}
+    <button class="btn" id="hide">${last ? "Ocultar y empezar" : "Ocultar y pasar"}</button>
+  </section>`;
+  document.getElementById("hide").onclick = () => {
+    if (last) { g.remaining = S.cfg.minutes * 60; go("play"); }
+    else { g.idx++; go("pass"); }
+  };
+}
+
+/* ---------- Cronómetro ---------- */
+let tick = null, audioCtx = null;
+function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
+function beep(times = 3) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < times; i++) {
+      const o = audioCtx.createOscillator(), gn = audioCtx.createGain(), t = audioCtx.currentTime + i * 0.35;
+      o.frequency.value = 880; o.type = "square"; gn.gain.setValueAtTime(0.15, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.connect(gn).connect(audioCtx.destination); o.start(t); o.stop(t + 0.3);
+    }
+  } catch {}
+  try { navigator.vibrate && navigator.vibrate([300, 150, 300, 150, 300]); } catch {}
+}
+const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+let wake = null;
+async function keepAwake() { try { wake = await navigator.wakeLock.request("screen"); } catch {} }
+
+function vPlay() {
+  const g = S.game, total = S.cfg.minutes * 60, timed = total > 0;
+  const alive = g.players.filter(p => !p.out).length;
+  app.innerHTML = `${head(0)}
+  <section class="stage">
+    <div><p class="label" style="margin:0">Empieza a hablar</p><div class="starter">${esc(g.starter)}</div><p class="sub">Cada uno dice una palabra relacionada, en orden. Luego debatan y voten. Quedan ${alive} en juego.</p></div>
+    ${timed ? `<div><div class="clock" id="clock">${fmt(g.remaining)}</div><div class="bar" style="margin-top:12px"><i id="bar" style="width:${(g.remaining / total) * 100}%"></i></div></div>
+    <div class="row"><button class="btn ${g.running ? "ghost" : ""}" id="toggle">${g.running ? "Pausar" : g.remaining === total ? "Iniciar cronómetro" : g.remaining ? "Seguir" : "Reiniciar"}</button>${g.remaining !== total ? `<button class="btn ghost" id="reset">Reiniciar</button>` : ""}</div>` : ""}
+    <button class="btn ${timed ? "ghost" : ""}" id="vote">Votar a quién expulsar</button>
+    <button class="btn ghost" id="end">Revelar todo y terminar</button>
+  </section>`;
+  const clock = document.getElementById("clock"), bar = document.getElementById("bar");
+  const paint = () => {
+    if (!clock) return;
+    clock.textContent = fmt(g.remaining);
+    clock.className = "clock" + (g.remaining === 0 ? " done" : g.remaining <= 10 ? " low" : "");
+    bar.style.width = (g.remaining / total) * 100 + "%";
+  };
+  const run = () => {
+    stopTick();
+    tick = setInterval(() => {
+      g.remaining = Math.max(0, Math.round((g.endsAt - Date.now()) / 1000));
+      paint();
+      if (g.remaining === 0) { stopTick(); g.running = false; beep(); render(); }
+    }, 250);
+  };
+  if (timed) {
+    paint();
+    if (g.running) run();
+    document.getElementById("toggle").onclick = () => {
+      if (g.running) { g.running = false; stopTick(); }
+      else { if (!g.remaining) g.remaining = total; g.running = true; g.endsAt = Date.now() + g.remaining * 1000; keepAwake(); beep(1); }
+      render();
+    };
+    const rs = document.getElementById("reset");
+    if (rs) rs.onclick = () => { g.running = false; g.remaining = total; render(); };
+  }
+  document.getElementById("vote").onclick = () => { g.running = false; g.pending = null; g.verdict = null; go("vote"); };
+  document.getElementById("end").onclick = () => { g.running = false; g.winner = null; go("end"); };
+}
+
+function checkWinner() {
+  const g = S.game, alive = g.players.filter(p => !p.out);
+  const imps = alive.filter(p => p.role === "impostor").length;
+  const good = alive.filter(p => ROLE[p.role].side !== "imp").length;
+  if (imps === 0) return "civ";
+  if (imps >= good) return "imp";
+  return null;
+}
+
+function vVote() {
+  const g = S.game;
+  let extra = "";
+  if (g.pending != null) {
+    const p = g.players[g.pending];
+    extra = `<div class="panel confirm"><b>¿Expulsar a ${esc(p.name)}?</b><div class="row"><button class="btn ghost" id="no">No</button><button class="btn danger" id="yes">Sí, expulsar</button></div></div>`;
+  } else if (g.verdict) {
+    const v = g.verdict, p = g.players[v.i];
+    const isImp = p.role === "impostor";
+    const cls = isImp ? "good" : p.role === "bufon" ? "spc" : "bad";
+    const msg = isImp ? `¡${esc(p.name)} era impostor!` : p.role === "bufon" ? `${esc(p.name)} era el Bufón` : `${esc(p.name)} era ${p.role === "complice" ? "el Cómplice" : "inocente"}`;
+    const next = p.role === "bufon" ? `<div class="note">¡El Bufón consiguió que lo expulsaran y gana la partida!</div>`
+      : isImp ? `<div class="note">Antes de irse, ${esc(p.name)} puede intentar adivinar la palabra. Si acierta, ganan los impostores.</div>`
+      : `<div class="note">El impostor sigue entre ustedes.</div>`;
+    extra = `<div class="verdict ${cls}"><div class="big">${msg}</div>${next}</div>`;
+    if (isImp) extra += `<div class="row"><button class="btn ghost" id="guessOk">Adivinó la palabra</button><button class="btn" id="cont">No adivinó</button></div>`;
+    else extra += `<button class="btn" id="cont">Continuar</button>`;
+  }
+  app.innerHTML = `${head(0)}
+  <section class="screen">
+    <div><h2>¿A quién expulsan?</h2><p class="sub">Voten en voz alta y toquen el nombre del más votado.</p></div>
+    <ul class="vote">${g.players.map((p, i) => `<li><button data-v="${i}" class="${p.out ? "out" : ""}" ${p.out || g.verdict || g.pending != null ? "disabled" : ""}>${esc(p.name)}</button></li>`).join("")}</ul>
+    ${extra}
+    ${!g.verdict && g.pending == null ? `<button class="btn ghost" id="back">Volver al debate</button>` : ""}
+  </section>`;
+  app.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { g.pending = +b.dataset.v; render(); });
+  const $ = id => document.getElementById(id);
+  if ($("no")) $("no").onclick = () => { g.pending = null; render(); };
+  if ($("yes")) $("yes").onclick = () => { const i = g.pending; g.players[i].out = true; g.pending = null; g.verdict = { i }; render(); };
+  if ($("back")) $("back").onclick = () => go("play");
+  if ($("guessOk")) $("guessOk").onclick = () => { g.winner = "imp-guess"; go("end"); };
+  if ($("cont")) $("cont").onclick = () => {
+    const p = g.players[g.verdict.i];
+    if (p.role === "bufon") { g.winner = "bufon"; return go("end"); }
+    const w = checkWinner();
+    if (w) { g.winner = w; return go("end"); }
+    g.verdict = null; g.remaining = S.cfg.minutes * 60; g.running = false;
+    const alive = g.players.filter(x => !x.out);
+    g.starter = pick(alive).name;
+    go("play");
+  };
+}
+
+function vEnd() {
+  const g = S.game;
+  const W = {
+    civ: ["Ganan los inocentes", "good", "Descubrieron a todos los impostores."],
+    imp: ["Ganan los impostores", "bad", "Quedan tantos impostores como inocentes."],
+    "imp-guess": ["Ganan los impostores", "bad", "El impostor adivinó la palabra secreta."],
+    bufon: ["Gana el Bufón", "spc", "Logró que lo expulsaran."]
+  }[g.winner];
+  const label = p => {
+    if (p.role === "impostor") return `<span class="r-imp">Impostor</span>`;
+    if (p.role === "civil") return `<span class="r-civ">Inocente</span>`;
+    if (p.role === "infiltrado") return `<span class="r-spc">Infiltrado · ${esc(g.otherWord)}</span>`;
+    return `<span class="r-spc">${ROLE[p.role].tag}</span>`;
+  };
+  app.innerHTML = `${head(0)}
+  <section class="screen">
+    ${W ? `<div class="verdict ${W[1]}"><div class="big">${W[0]}</div><div class="note">${W[2]}</div></div>` : ""}
+    <div class="panel" style="text-align:center">
+      <span class="label">La palabra era</span>
+      <div class="secret">${esc(g.word)}</div>
+      <span class="sub" style="margin:0">Tema: ${esc(g.theme)}${S.cfg.hint ? ` · Pista del impostor: ${esc(g.hint)}` : ""}</span>
+    </div>
+    <div class="panel"><span class="label">Roles</span>
+      <ul class="reveal-list">${g.players.map(p => `<li><span>${esc(p.name)}${p.out ? " (expulsado)" : ""}</span>${label(p)}</li>`).join("")}</ul>
+    </div>
+    <button class="btn" id="again">Otra ronda, mismos ajustes</button>
+    <button class="btn ghost" id="cfg">Cambiar jugadores o temas</button>
+  </section>`;
+  document.getElementById("again").onclick = newGame;
+  document.getElementById("cfg").onclick = () => go("players");
+}
+
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.game && S.game.running) keepAwake(); });
+render();
+</script>

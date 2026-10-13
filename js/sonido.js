@@ -288,12 +288,15 @@ function escenaMusical() {
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
   if (sc === "chinchon") return "bar";
   if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
+  if (sc === "arena") return "tension";
+  if (sc === "arenaIntro") return "naval";
   if (sc === "nave" || sc === "naveIntro") return S.nave && S.nave.fase === "reunion" ? "tension" : "espacio";
   if (sc === "online" && UI.v) {
     const v = UI.v;
     if (v.game === "liars") return "bar";
     if (v.game === "casos") return "noir";
     if (v.game === "ajedrez") return "ajedrez";
+    if (v.game === "arena") return "tension";
     if (v.game === "naval") return "naval";
     if (v.game === "chinchon") return "bar";
     if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";

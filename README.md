@@ -48,6 +48,14 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Gana la tripulación al terminar las tareas o echar a los impostores; ganan los impostores si igualan a la tripulación.
 - Práctica contra 5 compus en un teléfono, u online de 3 a 10 jugadores (2 impostores desde 7).
 
+### Arena (peleas con clases, equipo y ELO)
+- Peleas en tiempo real: te mueves con el joystick (o flechas), atacas con el botón grande (o espacio) y usas la habilidad especial con el chico (o E). El ataque apunta solo al rival más cercano.
+- Clases: **Guerrero** (gratis; espada en abanico y Giro), **Arquero** (300 🪙; flechas y Lluvia de flechas), **Mago** (400 🪙; bolas de fuego en área y Nova de hielo que congela) y **Asesino** (500 🪙; golpes críticos y Paso sombra).
+- Equipo: casco, armadura, botas y arma, cada uno con los 9 niveles (madera → de los creadores), comprados con monedas (120 a 3600). Dan vida, defensa, velocidad y daño, y se ven puestos en el personaje.
+- Escenarios: Ring, Coliseo (columnas), Volcán (lava que quema) y Nave espacial (cajas y rayos que se prenden). Hay pociones de vida y, a los 90 s, muerte súbita.
+- Contra la compu (1 contra 1 o todos contra todos, fácil, normal o difícil) u online de 2 a 8 en una sala (el anfitrión elige el escenario).
+- Cada pelea cambia tu **ELO** (sube más si le ganas a alguien con más ELO) y da monedas. Hay ranking de la Arena por ELO.
+
 ### Trabajos diarios: Tala, Mina y Pesca
 - Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.
 - Con cuenta en la nube te cruzas en vivo con los demás que están en el mismo trabajo (Supabase Realtime, canal por trabajo y día).
@@ -116,6 +124,15 @@ en `cobrar_anuncio`). En "modo prueba" se muestra un anuncio de mentira de 10 s.
 API de anuncios para juegos web de Google (`adBreak` con `type: "reward"`, de AdSense): al agregar ese script con tu
 cuenta y apagar el modo prueba, el botón de la tienda muestra anuncios de verdad.
 
+## Eventos de temporada (Halloween, Navidad, Pascuas)
+Desde el panel (sección **Eventos de temporada**) eliges un evento y lo guardas. Mientras está prendido:
+- Cartel en el inicio con tu mensaje, y los colores de la temporada.
+- Pestaña del evento en la tienda con cosas especiales (accesorios, color y título). Desde el panel decides cuáles están a la venta y a qué precio. Lo que se compra queda para siempre, aunque se apague el evento.
+- Un trabajo especial (Cosecha embrujada, Taller de regalos o Búsqueda de huevos), que se juega una vez por día como los otros.
+- Opcional: más monedas en trabajos y Arena (×1,5, ×2 o ×3).
+
+Para agregar otro evento (por ejemplo, Carnaval) alcanza con sumarlo a `EVENTOS` en `js/eventos.js`.
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
@@ -137,5 +154,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel; `trabajos.js` los trabajos diarios. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena y `eventos.js` los eventos de temporada. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

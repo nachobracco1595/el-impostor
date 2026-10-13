@@ -4,7 +4,7 @@ const CFG = EMU ? { url: "http://127.0.0.1:54321", anonKey: "anon-key" } : windo
 const app = document.getElementById("app"), tip = document.getElementById("tip");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = n => new Intl.NumberFormat("es").format(n || 0);
-const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca" };
+const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
 const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };
@@ -27,7 +27,8 @@ async function cambiar(user) {
 
 async function cargar() {
   P.cargando = true; pintar();
-  const [r, u] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q })]);
+  const [r, u, ev] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle()]);
+  P.evento = Object.assign({ id: null, trabajo: true, multi: 1, mensaje: "", items: {} }, (ev.data && ev.data.valor) || {});
   P.cargando = false;
   if (r.error) { P.msg = "No se pudieron cargar los datos: " + r.error.message; return pintar(); }
   P.datos = r.data; P.usuarios = u.data || [];
@@ -68,6 +69,12 @@ function pintar() {
     <article class="tarjeta"><h2>Partidas por juego</h2><p class="sub">Últimos ${P.dias} días.</p>${horizontales(d.porJuego || {})}</article>
     <article class="tarjeta"><h2>Monedas repartidas por día</h2><p class="sub">En ${P.dias} días se repartieron <b>${num(repartido)}</b> y se gastaron <b>${num(gastado)}</b> en la tienda.</p>
       ${apiladas(s, [["mPartidas", "Por partidas"], ["mPremios", "Premios y regalos"], ["mAnuncios", "Anuncios"]])}</article>
+  </section>
+
+  <section class="tarjeta">
+    <h2>Eventos de temporada</h2>
+    <p class="sub">Prende un evento y los jugadores ven el cartel en el inicio, los colores de la temporada, la pestaña especial en la tienda y el trabajo del evento.</p>
+    ${pantallaEvento()}
   </section>
 
   <section class="dos-col">
@@ -126,6 +133,7 @@ function pintar() {
     document.getElementById("adMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado. Los jugadores lo ven la próxima vez que abran el juego.";
     if (!error) P.datos.config = valor;
   };
+  conectarEvento();
   conectarTips();
   // Si el gráfico quedó de otro ancho que el calculado, se redibuja una vez con el ancho real
   const svg = app.querySelector(".graf svg");
@@ -263,3 +271,45 @@ let redim = null;
 addEventListener("resize", () => { clearTimeout(redim); redim = setTimeout(() => { if (P.datos) pintar(); }, 250); });
 
 iniciar();
+
+/* ---------- Eventos de temporada (config "evento") ---------- */
+function pantallaEvento() {
+  const e = P.evento || { id: null, items: {} }, E = EVENTOS[e.id];
+  const prev = (tipo, valor) => tipo === "color" ? personaje(valor, "civ", 44) : tipo === "titulo" ? `<span class="tit-prev">«${esc(valor)}»</span>` : personaje("#748ffc", "civ", 44, [valor]);
+  return `<form id="fEv" class="ads-form">
+    <div class="ev-elige">${[["", "Ninguno", "⭕"], ...Object.entries(EVENTOS).map(([k, x]) => [k, x.nombre, x.ic])].map(([k, n, ic]) => `<label class="ev-op ${(e.id || "") === k ? "on" : ""}"><input type="radio" name="ev" value="${k}" ${(e.id || "") === k ? "checked" : ""}><span>${ic}</span><b>${n}</b></label>`).join("")}</div>
+    ${E ? `
+    <label class="opt"><span class="txt"><b>Trabajo especial: ${E.trabajo.ic} ${esc(E.trabajo.nombre)}</b><small>${esc(E.trabajo.desc)}</small></span><input type="checkbox" id="evTrab" ${e.trabajo !== false ? "checked" : ""}></label>
+    <div class="row"><label class="campo-l">Monedas extra en trabajos y Arena<select class="campo" id="evMulti">${[1, 1.5, 2, 3].map(m => `<option value="${m}" ${+e.multi === m ? "selected" : ""}>×${m}${m === 1 ? " (normal)" : ""}</option>`).join("")}</select></label>
+      <label class="campo-l">Mensaje del cartel (opcional)<input class="campo" id="evMsg" maxlength="120" value="${esc(e.mensaje || "")}" placeholder="${esc(E.desc)}"></label></div>
+    <span class="label">Cosas en la tienda</span>
+    <div class="ev-items">${E.items.map(([id, tipo, nombre, precio, valor]) => { const o = (e.items || {})[id] || {}; return `<div class="ev-item"><span class="ev-prev">${prev(tipo, valor)}</span><div><b>${esc(nombre)}</b><small>${tipo}</small></div>
+      <label class="campo-l">Precio<input class="campo" type="number" min="1" max="5000" data-precio="${id}" value="${o.precio || precio}"></label><label class="ev-on"><input type="checkbox" data-on="${id}" ${o.on === false ? "" : "checked"}> En venta</label></div>`; }).join("")}</div>` : `<p class="sub">Sin evento: el juego se ve normal.</p>`}
+    <button class="btn" type="submit">Guardar evento</button>
+    <p class="summary" id="evMsgOk"></p>
+  </form>`;
+}
+function conectarEvento() {
+  const f = document.getElementById("fEv"); if (!f) return;
+  f.querySelectorAll("input[name=ev]").forEach(r => r.onchange = () => { if ((P.evento.id || "") !== r.value) P.evento.mensaje = ""; P.evento.id = r.value || null; pintar(); });
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    const e = P.evento, E = EVENTOS[e.id];
+    const valor = { id: e.id || null, trabajo: true, multi: 1, mensaje: "", items: e.items || {} };
+    if (E) {
+      valor.trabajo = document.getElementById("evTrab").checked;
+      valor.multi = +document.getElementById("evMulti").value || 1;
+      valor.mensaje = document.getElementById("evMsg").value.trim().slice(0, 120);
+      valor.items = { ...valor.items };
+      E.items.forEach(([id, , , precio]) => { valor.items[id] = { on: f.querySelector(`[data-on="${id}"]`).checked, precio: Math.max(1, Math.min(5000, Math.round(+f.querySelector(`[data-precio="${id}"]`).value || precio))) }; });
+    }
+    // Actualiza la fila; si todavía no existe (esquema viejo), la crea
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "evento").select("clave");
+    if (!error && (!data || !data.length)) {
+      const r = await P.sb.from("config").insert({ clave: "evento", valor });
+      error = r.error && r.error.code !== "23505" ? r.error : null;   // 23505: ya existía (y se actualizó)
+    }
+    document.getElementById("evMsgOk").textContent = error ? "No se pudo guardar: " + error.message : E ? `Evento de ${E.nombre} prendido. Los jugadores lo ven al abrir el juego.` : "Evento apagado.";
+    if (!error) P.evento = valor;
+  };
+}

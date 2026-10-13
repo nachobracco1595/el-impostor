@@ -59,7 +59,7 @@ const Nube = {
   cfg: {},
   async cargarConfig() {
     const { data, error } = await this.sb.from("config").select("clave,valor");
-    if (!error && data) { this.cfg = Object.fromEntries(data.map(r => [r.clave, r.valor])); if (S.screen === "tienda") render(); }
+    if (!error && data) { this.cfg = Object.fromEntries(data.map(r => [r.clave, r.valor])); if (["home", "tienda", "trabajos"].includes(S.screen)) render(); }
   },
 
   /* Anota la actividad para el panel (partidas, premios, compras). No bloquea el juego si falla. */
@@ -172,7 +172,7 @@ const Nube = {
     if (r && (r.cargando || Date.now() - r.t < 30000)) return;
     this.ranking[juego] = { filas: r ? r.filas : null, cargando: true, error: "", t: Date.now() };
     const { data, error } = await this.sb.from("perfiles").select("id,nombre,look,puntos,stats")
-      .order(juego ? "pts_" + juego : "puntos", { ascending: false }).limit(50);
+      .order(juego === "arena" ? "elo_arena" : juego ? "pts_" + juego : "puntos", { ascending: false }).limit(50);
     if (error) {
       console.error(error);
       this.ranking[juego] = { filas: null, cargando: false, error: "No se pudo cargar el ranking de la nube.", t: Date.now() };
@@ -181,7 +181,7 @@ const Nube = {
         const u = { id: row.id, nombre: row.nombre, look: row.look, puntos: row.puntos, stats: statsVacias() };
         for (const j in u.stats) Object.assign(u.stats[j], (row.stats || {})[j] || {});
         const s = juego ? u.stats[juego] : null;
-        return { u, puntos: s ? s.p : u.puntos, j: s ? s.j : total(u, "j"), g: s ? s.g : total(u, "g") };
+        return { u, puntos: s ? (juego === "arena" ? s.elo : s.p) : u.puntos, j: s ? s.j : total(u, "j"), g: s ? s.g : total(u, "g") };
       }).filter(f => Cuenta.lookValido(f.u.look));
       this.ranking[juego] = { filas, cargando: false, error: "", t: Date.now() };
     }

@@ -75,6 +75,7 @@ const Net = {
       }
       p.on = true;
       p.look = Cuenta.lookValido(m.look);
+      p.arena = Arena.validar(m.arena);
       this.conns[cid] = c; c.cid = cid;
       this.broadcast();
       if (R.chat && R.chat.length) c.send({ t: "chat", lista: R.chat });
@@ -102,11 +103,12 @@ const Net = {
       this.enviarChat();
       return;
     }
+    if (a.t === "arenaPerfil") { const quien = R.players.find(x => x.id === pid); if (quien) quien.arena = Arena.validar(a.p); return; }
     try {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -115,15 +117,16 @@ const Net = {
       else if (R.game === "naval") Naval.actOn(R, pid, a);
       else if (R.game === "chinchon") Chin.actOn(R, pid, a);
       else if (R.game === "nave") Nave.actOn(R, pid, a);
+      else if (R.game === "arena") Arena.actOn(R, pid, a);
     } catch (e) { console.error(e); }
     // En La Nave las posiciones se reparten con el reloj (10 por segundo), no con cada movimiento
-    if (!(R.game === "nave" && a.t === "pos")) this.broadcast();
+    if (!((R.game === "nave" || R.game === "arena") && a.t === "pos")) this.broadcast();
   },
 
   viewFor(pid) {
     const v = this.vistaJuego(pid), R = this.R;
     v.looks = Object.fromEntries(R.players.filter(p => p.look).map(p => [p.name, p.look]));
-    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : null;
+    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : R.game === "arena" ? Arena.resultado(R.arena, pid) : null;
     return v;
   },
 
@@ -136,8 +139,9 @@ const Net = {
     if (R.game === "naval") return { ...Naval.view(R.nav, pid), isHost: pid === "H" };
     if (R.game === "chinchon") return { ...Chin.view(R.chi, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
+    if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -173,7 +177,7 @@ const Net = {
 
   conectar() {
     const c = this.conn = this.peer.connect(PREFIJO + this.code, { reliable: true });
-    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look() }); keepAwake(); });
+    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil() }); keepAwake(); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
       if (m.t === "chat") Chat.recibir(m.lista || []);
@@ -306,6 +310,8 @@ PANTALLAS.online = () => {
   if (v.game === "naval") return Naval.render(v, enviar, op);
   if (v.game === "chinchon") return Chin.render(v, enviar, op);
   if (v.game === "nave") return Nave.render(v, enviar, op);
+  if (v.game === "arena") return Arena.render(v, enviar, op);
+  if (UI.arena) Arena.parar();
   if (document.body.classList.contains("en-nave")) Nave.parar();
   if (v.game === "casos") { if (v.phase === "intro") UI.vistas = new Set(); marcarResuelto(v); return Casos.render(v, a => Net.send(a), { local: false, isHost: v.isHost }); }
   renderLobby(v);
@@ -320,6 +326,7 @@ function renderLobby(v) {
     chinchon: ["Chinchón", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "2 a 5"],
     naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
+    arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
     ajedrez: ["Ajedrez", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "2 jugadores"]
   };
   app.innerHTML = `${Net.cabecera()}
@@ -342,6 +349,8 @@ function renderLobby(v) {
       ${v.sel === "impostor" ? `<p class="summary">${esc(v.resumen)}</p>${H ? `<button class="btn ghost" id="ajustes">Ajustar temas y reglas</button>` : ""}`
         : v.sel === "casos" ? `<p class="summary">Caso: <b>${esc(v.caso)}</b> · ${v.casoCfg.min ? v.casoCfg.min + " min por acto" : "sin cronómetro"}${v.casoCfg.soplon ? " · con soplón" : ""}</p>${H ? `<button class="btn ghost" id="ajCaso">Elegir caso</button>` : ""}`
         : v.sel === "chinchon" ? `<p class="summary">De 2 a 5 jugadores · ${v.chCom ? "con 2 comodines" : "sin comodines"} · ${v.ch89 ? "baraja de 48 (con 8 y 9)" : "baraja de 40 (sin 8 ni 9)"} · se pierde al pasar de 100.</p>${H ? `<div class="opt"><div class="txt"><b>Con comodines</b></div><button class="switch" role="switch" aria-checked="${v.chCom}" id="chComOn" aria-label="Con comodines"></button></div><div class="opt"><div class="txt"><b>Con 8 y 9</b></div><button class="switch" role="switch" aria-checked="${v.ch89}" id="ch89On" aria-label="Con 8 y 9"></button></div>` : ""}`
+        : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su clase y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
+          <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
         : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
         : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
@@ -362,5 +371,7 @@ function renderLobby(v) {
   on("chComOn", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("ch89On", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("empezar", () => Net.send({ t: "start" }));
+  app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
+  if (!H && v.sel === "arena" && UI.arenaPerfil !== v.code) { UI.arenaPerfil = v.code; Net.send({ t: "arenaPerfil", p: Arena.miPerfil() }); }
   on("invitar", () => invitarAmigos());
 }

@@ -770,3 +770,67 @@ body.en-nave .toasts { z-index: 40; }
 .md-pesca small { font-size: 12px; font-weight: 800; }
 .mundo .nv-salir { top: calc(66px + env(safe-area-inset-top, 0px)); }
 .mundo canvas#mdCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+/* ---------- Arena ---------- */
+.t-arena { background: linear-gradient(150deg, #3d1f24, var(--card) 70%); border-color: #6b2f38; }
+.arena canvas#arCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.ar-top { position: absolute; left: 8px; right: 54px; top: calc(8px + env(safe-area-inset-top, 0px)); display: flex; flex-wrap: wrap; gap: 6px; }
+.ar-chip { position: relative; display: flex; align-items: center; gap: 4px; padding: 4px 8px 7px; border-radius: 10px; background: rgba(15, 13, 24, .82); border: 1px solid var(--line); font-size: 12px; overflow: hidden; max-width: 46%; }
+.ar-chip b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ar-chip i { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--teal); }
+.ar-chip.yo { border-color: var(--teal); }
+.ar-chip.fuera { opacity: .4; }
+.ar-feed { position: absolute; left: 10px; top: calc(70px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 700; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.ar-feed .sub { color: var(--red); }
+.ar-centro { position: absolute; left: 50%; top: 40%; translate: -50% -50%; font-family: var(--display); font-size: 72px; color: #fff; text-shadow: 0 6px 0 #0008; pointer-events: none; }
+.ar-atk { font-size: 40px; }
+.ar-esp { position: absolute; right: 122px; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); width: 66px; height: 66px; border-radius: 50%; background: #3b2a55; border: 3px solid #6b4fa0; font-size: 28px; overflow: hidden; touch-action: none; }
+.ar-esp span { position: relative; z-index: 1; }
+.ar-esp i { position: absolute; left: 0; right: 0; top: 0; background: rgba(0, 0, 0, .6); pointer-events: none; }
+.ar-esp.listo { border-color: var(--spot); box-shadow: 0 0 16px rgba(255, 197, 61, .6); }
+.arena .nv-salir { top: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); right: 34px; }
+.ar-fin { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(5, 4, 10, .7); z-index: 5; }
+.ar-fin-caja { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 20px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); }
+.ar-fin-caja h2 { margin: 0; }
+.ar-tabla { list-style: none; padding: 0; margin: 0; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.ar-tabla li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--card-2); }
+.ar-tabla li.yo { outline: 2px solid var(--teal); }
+.ar-tabla small { color: var(--muted); }
+.ar-perfil { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 20px; background: linear-gradient(150deg, #3d1f24, var(--card)); border: 1px solid var(--line); }
+.ar-retrato canvas { width: 120px; height: 128px; }
+.ar-datos { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ar-elo { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1; color: var(--spot); }
+.ar-datos small { color: var(--muted); }
+.ar-st { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ar-st span { padding: 3px 8px; border-radius: 8px; background: var(--card-2); font-size: 13px; font-weight: 700; }
+.ar-clases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ar-clase { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px; border-radius: 14px; background: var(--card-2); border: 2px solid var(--line); text-align: left; }
+.ar-clase.on { border-color: var(--spot); }
+.ar-clase .ic { font-size: 28px; }
+.ar-clase small { color: var(--muted); font-size: 12px; }
+.ar-clase .esp { color: var(--violet); }
+.ar-clase .precio { margin-top: 4px; font-weight: 800; color: var(--spot); }
+.ar-pieza { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ar-pieza:last-child { border-bottom: 0; }
+.ar-pieza .ic { font-size: 26px; }
+.ar-pieza b { font-size: 14px; }
+.ar-pieza .tr-pasos { margin-top: 4px; }
+.chip-j.on { border-color: var(--spot); background: var(--card-2); }
+
+/* ---------- Eventos de temporada ---------- */
+.evento-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: linear-gradient(120deg, color-mix(in srgb, var(--ev) 45%, var(--card)), var(--card) 75%); border: 2px solid var(--ev); flex-wrap: wrap; }
+.evento-banner .ev-ic { font-size: 40px; animation: latido 1.6s infinite; }
+.evento-banner > div:not(.ev-acc) { display: flex; flex-direction: column; flex: 1; min-width: 160px; }
+.evento-banner small { color: var(--fg); opacity: .85; }
+.evento-banner .ev-acc { display: flex; gap: 6px; flex-wrap: wrap; }
+.evento-banner.chico { padding: 8px 12px; }
+.evento-banner.chico .ev-ic { font-size: 28px; }
+.tr-card[style*="--ev"] { border-color: var(--ev); background: linear-gradient(160deg, color-mix(in srgb, var(--ev) 30%, var(--card)), var(--card) 60%); }
+body[data-evento="halloween"] { background-color: #140d1c; background-image: radial-gradient(70% 50% at 50% -10%, rgba(255, 123, 0, .22), transparent 70%); }
+body[data-evento="navidad"] { background-color: #0d1a14; background-image: radial-gradient(70% 50% at 50% -10%, rgba(47, 158, 68, .25), transparent 70%); }
+body[data-evento="pascuas"] { background-color: #1a1220; background-image: radial-gradient(70% 50% at 50% -10%, rgba(247, 131, 172, .25), transparent 70%); }
+.ar-fin-caja .tr-premio { width: 100%; }
+.ar-fin-caja .tr-premio div { flex: 1; min-width: 0; padding: 10px 6px; }
+.ar-fin-caja .tr-premio b { font-size: 28px; }
+.ar-fin-caja .tr-premio small { font-size: 11px; text-align: center; }
+.ar-tabla b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

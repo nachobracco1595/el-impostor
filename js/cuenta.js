@@ -53,6 +53,7 @@ const Cuenta = {
     else if (S.screen === "ajedrez" && S.aj) deLocal(S.aj.jug.filter(j => !j.cpu), p => Ajedrez.resultado(S.aj, p.id));
     else if (S.screen === "naval" && S.nav) deLocal(S.nav.jug.filter(j => !j.cpu), p => Naval.resultado(S.nav, p.id));
     else if (S.screen === "nave" && S.nave) deLocal(S.nave.jug.filter(j => !j.bot), p => Nave.resultado(S.nave, p.id));
+    else if (S.screen === "arena" && S.arena) deLocal(S.arena.jug.filter(j => !j.cpu), p => Arena.resultado(S.arena, p.id));
     else if (S.screen === "chinchon" && S.chi) deLocal(S.chi.jug.filter(j => !j.cpu), p => Chin.resultado(S.chi, p.id));
     const hechos = pend.map(([u, r]) => r && BD.registrar(u.id, r)).filter(Boolean);
     if (!hechos.length) return;
@@ -316,7 +317,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}
@@ -327,7 +328,7 @@ PANTALLAS.ranking = () => {
     ${aviso ? `<div class="panel center"><p class="empty">${esc(aviso)}</p></div>` : filas.length ? `
       <div class="podio">${orden.map(i => { const f = podio[i]; return `<div class="podio-p p${i + 1}">
         ${i === 0 ? `<span class="corona">👑</span>` : ""}${retrato(f.u.look, i === 0 ? 86 : 66)}
-        <b>${esc(f.u.nombre)}</b><small>${f.puntos} pts</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
+        <b>${esc(f.u.nombre)}</b><small>${f.puntos} ${tab === "arena" ? "ELO" : "pts"}</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
       <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas</small></span><strong>${f.puntos}</strong></li>`).join("")}</ol>`
       : `<div class="panel center"><p class="empty">Todavía no hay nadie en este ranking. Crea tu perfil y jueguen para aparecer acá.</p><button class="btn" id="crear">Crear perfil</button></div>`}
     <details class="panel"><summary class="label">¿Cómo se ganan puntos?</summary>

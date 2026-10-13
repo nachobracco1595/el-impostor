@@ -39,7 +39,7 @@ const Trabajos = {
     const d = u.diario;
     d.herr = Object.assign({ tala: 0, mina: 0, pesca: 0 }, d.herr || {});
     if (!d.trab || d.trab.dia !== hoyStr()) d.trab = { dia: hoyStr(), abiertos: [], hechos: [] };
-    d.trabRecord = Object.assign({ tala: 0, mina: 0, pesca: 0 }, d.trabRecord || {});
+    d.trabRecord = Object.assign({ tala: 0, mina: 0, pesca: 0, evento: 0 }, d.trabRecord || {});
     return d;
   },
   estado(u, j) {
@@ -50,6 +50,7 @@ const Trabajos = {
 
   /* Dibujo de la herramienta: el color de la cabeza cambia con el nivel */
   icono(j, nivel, size = 56) {
+    j = (TR.JUEGOS[j] && TR.JUEGOS[j].herrDe) || (j === "evento" ? "tala" : j);
     const N = TR.NIVELES[nivel], c = N.color, m = N.mango, brillo = nivel >= 6 ? ` class="herr-brilla n${nivel}"` : "";
     const g = j === "tala"
       ? `<rect x="29" y="14" width="6" height="44" rx="3" fill="${m}" transform="rotate(20 32 36)"/><path d="M30 10 C44 6 52 14 50 26 C46 24 40 24 34 26 Z" fill="${c}" stroke="#0006" stroke-width="1.5" transform="rotate(20 32 36)"/>`
@@ -98,18 +99,20 @@ const Trabajos = {
   /* ---------- Jornada ---------- */
   empezar(j) {
     const u = BD.sesion(); if (!u || this.estado(u, j) !== "abierto") return;
-    const nivel = this.datos(u).herr[j];
-    this.s = { j, nivel, uid: u.id, fin: Date.now() + TR.DURACION, valor: 0, items: {}, terminado: null };
+    const nivel = this.datos(u).herr[TR.JUEGOS[j].herrDe || j];
+    this.s = { j, nivel, uid: u.id, fin: Date.now() + TR.DURACION, valor: 0, items: {}, terminado: null, factor: TR.JUEGOS[j].factor, tema: j === "evento" ? Evento.trabajo() : null };
     Mundo.iniciar(this.s);
     clearInterval(this.reloj);
     this.reloj = setInterval(() => this.tic(), 250);
     go("trabajo");
   },
-  monedas(s) { return Math.min(TR.TOPE, Math.floor(s.valor * TR.JUEGOS[s.j].factor)); },
+  /* Tope por jornada: con el multiplicador de un evento sube, pero nunca pasa de 480 (el servidor no deja sumar más de 500 de una vez) */
+  tope() { return Math.min(480, Math.round(TR.TOPE * Evento.multiplicador())); },
+  monedas(s) { return Math.min(this.tope(), Math.floor(s.valor * (s.factor || TR.JUEGOS[s.j].factor) * Evento.multiplicador())); },
   sumar(s, item, cant, valor) {
     s.items[item] = (s.items[item] || 0) + cant;
     s.valor += valor;
-    if (this.monedas(s) >= TR.TOPE) setTimeout(() => this.terminar("tope"), 600);
+    if (this.monedas(s) >= this.tope()) setTimeout(() => this.terminar("tope"), 600);
   },
   tic() {
     const s = this.s;
@@ -170,8 +173,8 @@ const Mundo = {
     return this.img[clave];
   },
   muneco(look) { const l = look || { color: "#748ffc", acc: [] }; return this.imagen("p" + l.color + (l.acc || []).join(), personaje(l.color, "civ", 60, l.acc || [])); },
-  herramienta(j, n) { return this.imagen("h" + j + n, Trabajos.icono(j, n, 64).replace(/ class="[^"]*"/, "")); },
-  motor: j => ({ tala: Tala, mina: Mina, pesca: Pesca })[j],
+  herramienta(j, n) { j = j === "evento" ? "tala" : j; return this.imagen("h" + j + n, Trabajos.icono(j, n, 64).replace(/ class="[^"]*"/, "")); },
+  motor: j => ({ tala: Tala, mina: Mina, pesca: Pesca, evento: Tala })[j],
 
   iniciar(s) {
     const u = BD.usuario(s.uid);
@@ -188,7 +191,7 @@ const Mundo = {
       <div class="md-hud">
         <span class="tr-reloj" id="trReloj">10:00</span>
         <span class="md-herr">${Trabajos.icono(s.j, s.nivel, 26)}<small>${esc(Trabajos.nombreHerr(s.j, s.nivel))}</small></span>
-        <span class="tr-mon">🪙 <b id="trMon">0</b><small>/${TR.TOPE}</small></span>
+        <span class="tr-mon">🪙 <b id="trMon">0</b><small>/${Trabajos.tope()}</small></span>
       </div>
       <div class="md-gente" id="mdGente"></div>
       <div class="md-msg" id="mdMsg" hidden></div>
@@ -288,7 +291,7 @@ const Mundo = {
     const fx = m.x + m.dir.x * 36, fy = m.y - 14 + m.dir.y * 36;
     const radio = this.radio(s);
     const pego = M.golpear(s, fx, fy, radio, TR.DANO[s.nivel], now);
-    if (typeof Sonido !== "undefined") Sonido.sfx(pego ? (s.j === "tala" ? "hacha" : "pico") : "tap");
+    if (typeof Sonido !== "undefined") Sonido.sfx(pego ? (s.j === "mina" ? "pico" : "hacha") : "tap");
     m.ultGolpe = { x: fx, y: fy, r: radio, t: now };
   },
   radio: s => 46 + s.nivel * 12,
@@ -410,29 +413,33 @@ const ARBOLES = {
   roble: { ic: "🌳", hp: 10, madera: 2.2, peso: 30, r: 26 },
   dorado: { ic: "🌳", hp: 9, madera: 6, peso: 6, r: 26, oro: true }
 };
+const arbolesDe = s => (s.tema && s.tema.arboles) || ARBOLES;
 const Tala = {
   generar(s, r) {
+    const AR_ = arbolesDe(s);
     const m = s.m; m.W = 2400; m.H = 1800; m.x = 1200; m.y = 900;
     m.arboles = []; m.rocas = []; m.flores = []; m.manchas = [];
     for (let k = 0; k < 900 && m.arboles.length < 170; k++) {
       const x = 60 + r() * (m.W - 120), y = 60 + r() * (m.H - 120);
       if (Math.hypot(x - 1200, y - 900) < 160 || m.arboles.some(a => Math.hypot(a.x - x, a.y - y) < 78)) continue;
-      const tipo = pesoAzar(r, Object.keys(ARBOLES), k => ARBOLES[k].peso);
-      m.arboles.push({ x, y, tipo, hp: ARBOLES[tipo].hp, caido: 0, tiembla: 0 });
+      const tipo = pesoAzar(r, Object.keys(AR_), k => AR_[k].peso);
+      m.arboles.push({ x, y, tipo, hp: AR_[tipo].hp, caido: 0, tiembla: 0 });
     }
     for (let k = 0; k < 200 && m.rocas.length < 22; k++) {
       const x = 80 + r() * (m.W - 160), y = 80 + r() * (m.H - 160);
       if (Math.hypot(x - 1200, y - 900) < 160 || m.arboles.some(a => Math.hypot(a.x - x, a.y - y) < 70)) continue;
       m.rocas.push({ x, y });
     }
-    for (let k = 0; k < 160; k++) m.flores.push({ x: r() * m.W, y: r() * m.H, c: ["#ffd43b", "#ff8fab", "#ffffff", "#b197fc"][Math.floor(r() * 4)] });
+    const colores = s.tema ? s.tema.flores : ["#ffd43b", "#ff8fab", "#ffffff", "#b197fc"];
+    for (let k = 0; k < 160; k++) m.flores.push({ x: r() * m.W, y: r() * m.H, c: colores[Math.floor(r() * colores.length)] });
     for (let k = 0; k < 40; k++) m.manchas.push({ x: r() * m.W, y: r() * m.H, rad: 80 + r() * 160 });
     m.abejas = Array.from({ length: 6 }, () => ({ x: 200 + r() * (m.W - 400), y: 200 + r() * (m.H - 400), vx: 0, vy: 0, cambio: 0 }));
   },
   libre(s, x, y) {
     const m = s.m;
     if (x < 20 || y < 20 || x > m.W - 20 || y > m.H - 20) return false;
-    for (const a of m.arboles) if (!a.caido && Math.abs(a.x - x) < 40 && Math.hypot(a.x - x, a.y - y) < ARBOLES[a.tipo].r) return false;
+    const AR_ = arbolesDe(s);
+    for (const a of m.arboles) if (!a.caido && Math.abs(a.x - x) < 40 && Math.hypot(a.x - x, a.y - y) < AR_[a.tipo].r) return false;
     for (const k of m.rocas) if (Math.abs(k.x - x) < 40 && Math.hypot(k.x - x, k.y - y) < 30) return false;
     return true;
   },
@@ -440,14 +447,14 @@ const Tala = {
     const m = s.m; let pego = 0;
     for (const a of m.arboles) {
       if (a.caido || Math.abs(a.x - fx) > radio + 30 || Math.hypot(a.x - fx, a.y - 20 - fy) > radio + 20) continue;
-      const A = ARBOLES[a.tipo];
+      const A = arbolesDe(s)[a.tipo];
       a.hp -= dano; a.tiembla = now; pego++;
       Mundo.chispas(s, a.x, a.y - 20, "#c08a4a", 5);
       if (a.hp <= 0) {
         a.caido = now;
         const madera = Math.round(A.madera * TR.RINDE[s.nivel] * 10) / 10;
-        Trabajos.sumar(s, A.oro ? "Madera dorada" : "Madera", madera, madera);
-        Mundo.texto(s, a.x, a.y - 60, `+${madera} 🪵`, A.oro ? "#ffd43b" : "#fff", A.oro);
+        Trabajos.sumar(s, A.nombre || (A.oro ? "Madera dorada" : "Madera"), madera, madera);
+        Mundo.texto(s, a.x, a.y - 60, `+${madera} ${s.tema ? A.ic : "🪵"}`, A.oro ? "#ffd43b" : "#fff", A.oro);
         Mundo.chispas(s, a.x, a.y - 40, A.oro ? "#ffd43b" : "#3f8f3a", 14);
         if (typeof Sonido !== "undefined") Sonido.sfx("cae");
       }
@@ -456,7 +463,7 @@ const Tala = {
   },
   tic(s, dt, now) {
     const m = s.m;
-    for (const a of m.arboles) if (a.caido && now - a.caido > 25000 && Math.hypot(a.x - m.x, a.y - m.y) > 80) { a.caido = 0; a.hp = ARBOLES[a.tipo].hp; }
+    for (const a of m.arboles) if (a.caido && now - a.caido > 25000 && Math.hypot(a.x - m.x, a.y - m.y) > 80) { a.caido = 0; a.hp = arbolesDe(s)[a.tipo].hp; }
     for (const b of m.abejas) {
       if (now > b.cambio) { const ang = Math.random() * 7, v = 40 + Math.random() * 50; b.vx = Math.cos(ang) * v; b.vy = Math.sin(ang) * v; b.cambio = now + 1500 + Math.random() * 2500; }
       // Si estás cerca, te persiguen un poco
@@ -464,7 +471,8 @@ const Tala = {
       if (d < 260 && d > 1) { b.vx += dx / d * 60 * dt; b.vy += dy / d * 60 * dt; }
       b.x = Math.max(40, Math.min(m.W - 40, b.x + b.vx * dt)); b.y = Math.max(40, Math.min(m.H - 40, b.y + b.vy * dt));
       if (d < 34 && now > m.aturdido + 1000) {
-        m.aturdido = now + 2200; Mundo.texto(s, m.x, m.y - 70, "🐝 ¡Picadura!", "#ff6b7d"); Mundo.aviso(s, "¡Te picaron las abejas! Quedas lento un momento.");
+        const en = s.tema ? s.tema.enemigo : "🐝";
+        m.aturdido = now + 2200; Mundo.texto(s, m.x, m.y - 70, `${en} ¡Ay!`, "#ff6b7d"); Mundo.aviso(s, en === "🐝" ? "¡Te picaron las abejas! Quedas lento un momento." : `¡${en} te atrapó! Quedas lento un momento.`);
         if (typeof Sonido !== "undefined") Sonido.sfx("mal"); try { navigator.vibrate && navigator.vibrate(200); } catch {}
         b.vx = -b.vx * 3; b.vy = -b.vy * 3;
       }
@@ -472,29 +480,29 @@ const Tala = {
   },
   suelo(s, ctx, v) {
     const m = s.m;
-    ctx.fillStyle = "#2f6b33"; ctx.fillRect(0, 0, m.W, m.H);
-    ctx.fillStyle = "#2a6230"; m.manchas.forEach(p => { if (p.x > v.x0 - p.rad && p.x < v.x1 + p.rad && p.y > v.y0 - p.rad && p.y < v.y1 + p.rad) { ctx.beginPath(); ctx.arc(p.x, p.y, p.rad, 0, 7); ctx.fill(); } });
+    ctx.fillStyle = s.tema ? s.tema.suelo : "#2f6b33"; ctx.fillRect(0, 0, m.W, m.H);
+    ctx.fillStyle = s.tema ? s.tema.manchas : "#2a6230"; m.manchas.forEach(p => { if (p.x > v.x0 - p.rad && p.x < v.x1 + p.rad && p.y > v.y0 - p.rad && p.y < v.y1 + p.rad) { ctx.beginPath(); ctx.arc(p.x, p.y, p.rad, 0, 7); ctx.fill(); } });
     m.flores.forEach(f => { if (f.x > v.x0 && f.x < v.x1 && f.y > v.y0 && f.y < v.y1) { ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(f.x, f.y, 3, 0, 7); ctx.fill(); } });
-    ctx.strokeStyle = "#1b3d1d"; ctx.lineWidth = 14; ctx.strokeRect(0, 0, m.W, m.H);
+    ctx.strokeStyle = s.tema ? s.tema.borde : "#1b3d1d"; ctx.lineWidth = 14; ctx.strokeRect(0, 0, m.W, m.H);
   },
   objetos(s, v, t) {
     const m = s.m, out = [], now = performance.now();
     for (const a of m.arboles) {
       if (a.x < v.x0 || a.x > v.x1 || a.y < v.y0 || a.y > v.y1) continue;
       out.push({ y: a.y, d: ctx => {
-        const A = ARBOLES[a.tipo];
+        const A = arbolesDe(s)[a.tipo];
         ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
         if (a.caido) { ctx.font = "26px sans-serif"; ctx.fillText("🪵", a.x, a.y + 10); return; }
         ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(a.x, a.y + 8, 30, 10, 0, 0, 7); ctx.fill();
         if (A.oro) { ctx.fillStyle = `rgba(255,212,59,${0.25 + Math.sin(t * 3) * 0.1})`; ctx.beginPath(); ctx.arc(a.x, a.y - 30, 48, 0, 7); ctx.fill(); }
         const sh = now - a.tiembla < 200 ? Math.sin((now - a.tiembla) / 15) * 4 : 0;
-        ctx.font = (a.tipo === "pino" ? 74 : 82) + "px sans-serif"; ctx.fillText(A.ic, a.x + sh, a.y + 12);
+        ctx.font = (A.tam || (a.tipo === "pino" ? 74 : 82)) + "px sans-serif"; ctx.fillText(A.ic, a.x + sh, a.y + 12);
         if (A.oro) { ctx.font = "18px sans-serif"; ctx.fillText("✨", a.x + 24, a.y - 60 + Math.sin(t * 4) * 4); }
         if (a.hp < A.hp) { ctx.fillStyle = "#0008"; ctx.fillRect(a.x - 26, a.y - 86, 52, 7); ctx.fillStyle = "#3ddcb1"; ctx.fillRect(a.x - 26, a.y - 86, 52 * Math.max(0, a.hp / A.hp), 7); }
       } });
     }
     for (const k of m.rocas) if (k.x > v.x0 && k.x < v.x1 && k.y > v.y0 && k.y < v.y1) out.push({ y: k.y, d: ctx => { ctx.textAlign = "center"; ctx.font = "54px sans-serif"; ctx.fillText("🪨", k.x, k.y + 16); } });
-    for (const b of m.abejas) if (b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1) out.push({ y: b.y + 200, d: ctx => { ctx.textAlign = "center"; ctx.font = "26px sans-serif"; for (let i = 0; i < 3; i++) ctx.fillText("🐝", b.x + Math.sin(t * 9 + i * 2) * 14, b.y + Math.cos(t * 7 + i * 2) * 10 - 20); } });
+    for (const b of m.abejas) if (b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1) out.push({ y: b.y + 200, d: ctx => { ctx.textAlign = "center"; ctx.font = "26px sans-serif"; const en = s.tema ? s.tema.enemigo : "🐝"; for (let i = 0; i < (en === "🐝" ? 3 : 1); i++) ctx.fillText(en, b.x + Math.sin(t * 9 + i * 2) * 14, b.y + Math.cos(t * 7 + i * 2) * 10 - 20); } });
     return out;
   }
 };
@@ -799,11 +807,11 @@ PANTALLAS.trabajos = () => {
   const hechos = d.trab.hechos.length;
   app.innerHTML = `${Cuenta.barra()}<section class="screen">
     <div class="headrow"><h1 class="titulo chico">Trabajos <span>diarios</span></h1><span class="chip-mon">🪙 ${u.monedas}</span></div>
-    <p class="sub">3 trabajos por día, ${conAnuncio ? "cada uno se desbloquea mirando un anuncio" : "uno de cada uno"}. Tienes <b>10 minutos</b>: lo que juntas se vuelve monedas (hasta ${TR.TOPE} por trabajo). Mejora tus herramientas para ganar más.</p>
-    <div class="tr-dia">${Object.keys(TR.JUEGOS).map(j => `<i class="${d.trab.hechos.includes(j) ? "on" : ""}"></i>`).join("")}<small>${hechos}/3 hechos hoy</small></div>
+    <p class="sub">3 trabajos por día, ${conAnuncio ? "cada uno se desbloquea mirando un anuncio" : "uno de cada uno"}. Tienes <b>10 minutos</b>: lo que juntas se vuelve monedas (hasta ${Trabajos.tope()} por trabajo). Mejora tus herramientas para ganar más.</p>
+    <div class="tr-dia">${Object.keys(TR.JUEGOS).map(j => `<i class="${d.trab.hechos.includes(j) ? "on" : ""}"></i>`).join("")}<small>${hechos}/${Object.keys(TR.JUEGOS).length} hechos hoy</small></div>
     ${Object.entries(TR.JUEGOS).map(([j, J]) => {
-      const n = d.herr[j], est = Trabajos.estado(u, j), max = n >= TR.NIVELES.length - 1, costo = TR.COSTO[n + 1];
-      return `<article class="tr-card t-${j}">
+      const n = d.herr[J.herrDe || j], est = Trabajos.estado(u, j), max = n >= TR.NIVELES.length - 1, costo = TR.COSTO[n + 1];
+      return `<article class="tr-card t-${j}" ${j === "evento" && Evento.actual() ? `style="--ev:${Evento.actual().color}"` : ""}>
         <div class="tr-card-top"><span class="tr-herr">${Trabajos.icono(j, n, 64)}</span>
           <div><h2>${J.ic} ${J.nombre}</h2><p class="sub">${J.desc}</p>${d.trabRecord[j] ? `<small class="sub">Récord: ${d.trabRecord[j]} 🪙</small>` : ""}</div></div>
         <div class="tr-nivel"><b>${esc(Trabajos.nombreHerr(j, n))}</b><span class="tr-pasos">${TR.NIVELES.map((N, k) => `<i style="--c:${N.color}" class="${k <= n ? "on" : ""}" title="${esc(Trabajos.nombreHerr(j, k))}"></i>`).join("")}</span></div>
@@ -811,7 +819,7 @@ PANTALLAS.trabajos = () => {
           ${est === "hecho" ? `<button class="btn ghost" disabled>✓ Hecho hoy</button>`
             : est === "abierto" ? `<button class="btn" data-jugar="${j}">▶ Jugar</button>`
             : `<button class="btn" data-abrir="${j}">${conAnuncio ? "📺 Mirar anuncio y jugar" : "▶ Jugar"}</button>`}
-          ${max ? `<button class="btn ghost" disabled>👑 Tope tope</button>` : `<button class="btn ghost" data-mejorar="${j}" ${u.monedas < costo ? "disabled" : ""}>⬆️ ${esc(Trabajos.nombreHerr(j, n + 1))} · ${costo} 🪙</button>`}
+          ${J.herrDe ? `<span class="sub">Usa tu ${esc(Trabajos.nombreHerr("tala", n).toLowerCase())}</span>` : max ? `<button class="btn ghost" disabled>👑 Tope tope</button>` : `<button class="btn ghost" data-mejorar="${j}" ${u.monedas < costo ? "disabled" : ""}>⬆️ ${esc(Trabajos.nombreHerr(j, n + 1))} · ${costo} 🪙</button>`}
         </div></article>`;
     }).join("")}
     <button class="btn ghost" id="trVolver">Volver al inicio</button>

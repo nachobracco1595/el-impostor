@@ -32,6 +32,7 @@ const PANTALLAS = {};
 function render() {
   if (typeof Cuenta !== "undefined") Cuenta.prepararLooks();
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
+  if (typeof Evento !== "undefined") Evento.decorar();
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender();
@@ -117,6 +118,7 @@ function juegosMenu() {
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
     ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "t-aj"],
+    ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
   ];
 }
@@ -128,6 +130,7 @@ PANTALLAS.home = () => {
     <h1 class="titulo">El <span>Impostor</span></h1>
     <p class="sub center">Juegos para la previa con amigos. En un solo teléfono o cada uno en el suyo.</p>
   </section>
+  ${typeof Evento !== "undefined" ? Evento.cartel() : ""}
   <section class="juegos-grid">${juegosMenu().map(([m, n, d, art, cls]) => `<button class="tile ${cls}" data-modo="${m}">
       <span class="tile-art">${art}</span><b>${n}</b><small>${d}</small><span class="tile-cta">Jugar</span></button>`).join("")}</section>
   <article class="juego online">
@@ -138,9 +141,11 @@ PANTALLAS.home = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");
     if (S.mode === "trabajos") return go("trabajos");
+    if (S.mode === "arena") return go("arenaIntro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });
   Cuenta.conectarBarra();
+  if (typeof Evento !== "undefined") Evento.conectarCartel();
   on("crear", () => go("onCrear"));
   on("unirme", () => go("onUnirme"));
 };

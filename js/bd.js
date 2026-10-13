@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -31,6 +31,8 @@ const LOGROS = [
   { id: "maestro", ic: "🧠", nombre: "Gran maestro", desc: "Gánale a la compu difícil al ajedrez.", ok: u => u.stats.ajedrez.dificilG >= 1 },
   { id: "abordo", ic: "🚀", nombre: "A bordo", desc: "Gana una partida de La Nave.", ok: u => u.stats.nave.g >= 1 },
   { id: "cazador", ic: "🔪", nombre: "Cazador espacial", desc: "Elimina a 3 en una sola partida de La Nave.", ok: u => u.stats.nave.triple >= 1 },
+  { id: "gladiador", ic: "🛡️", nombre: "Gladiador", desc: "Gana 10 peleas en la Arena.", ok: u => u.stats.arena.g >= 10 },
+  { id: "elo1500", ic: "🏟️", nombre: "Leyenda de la Arena", desc: "Llega a 1500 de ELO en la Arena.", ok: u => u.stats.arena.mejorElo >= 1500 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
   { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
@@ -46,7 +48,8 @@ function statsVacias() {
     chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
     naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
     ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
-    nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 }
+    nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
+    arena: { j: 0, g: 0, p: 0, elo: 1000, mejorElo: 1000, kills: 0 }
   };
 }
 
@@ -162,13 +165,17 @@ const BD = {
       st.kills += res.kills; st.tareas += res.tareas; if (calc.gano && res.imp) st.impG++; if (res.kills >= 3) st.triple++;
     } else if (res.juego === "ajedrez") {
       if (res.tablas) st.tablas++; if (res.mate) st.mates++; if (calc.gano && res.nivel === "dificil") st.dificilG++;
+    } else if (res.juego === "arena") {
+      st.kills += res.kills | 0;
+      st.elo = Math.max(0, (st.elo || 1000) + Math.max(-60, Math.min(60, res.dElo | 0)));
+      st.mejorElo = Math.max(st.mejorElo || 1000, st.elo);
     } else if (res.juego === "casos") {
       if (res.resuelto && !res.soplon && !st.resueltos.includes(res.casoId)) st.resueltos.push(res.casoId);
       if (res.soplon && calc.gano) st.soplonG++;
     }
     u.puntos += calc.puntos;
     // Monedas: una cada 4 puntos (mínimo 2 por partida)
-    const monedas = Math.max(2, Math.round(calc.puntos / 4));
+    const monedas = res.juego === "arena" ? Math.max(0, Math.min(120, res.monedas | 0)) : Math.max(2, Math.round(calc.puntos / 4));
     if (typeof Eco !== "undefined") { Eco.completar(u); u.monedas += monedas; Eco.sumarPartida(u); }
     u.racha = calc.gano ? u.racha + 1 : 0;
     u.mejorRacha = Math.max(u.mejorRacha, u.racha);
@@ -208,7 +215,7 @@ const BD = {
   ranking(juego) {
     return this.usuarios().map(u => {
       const s = juego ? u.stats[juego] : null;
-      return { u, puntos: s ? s.p : u.puntos, j: s ? s.j : total(u, "j"), g: s ? s.g : total(u, "g") };
+      return { u, puntos: s ? (juego === "arena" ? s.elo : s.p) : u.puntos, j: s ? s.j : total(u, "j"), g: s ? s.g : total(u, "g") };
     }).sort((a, b) => b.puntos - a.puntos || b.g - a.g);
   }
 };
@@ -237,6 +244,8 @@ const Puntos = {
     ["Detectives: votar al culpable", "+10"],
     ["Detectives: ganar como soplón", "+35"],
     ["Chinchón: ganar la partida", "+20, +5 por rival"],
+    ["Arena: ganar la pelea", "+25 (contra la compu +10)"],
+    ["Arena: cada eliminación", "+5"],
     ["Chinchón: hacer chinchón", "+40"],
     ["Chinchón: cortar / cortar con −10", "+3 / +8 cada vez"],
     ["Batalla naval: hundir un barco", "+2 cada uno"],
@@ -283,6 +292,10 @@ const Puntos = {
     } else if (r.juego === "ajedrez") {
       if (r.gano) { gano = true; d.push([r.vsCompu ? (r.nivel === "dificil" ? "Le ganaste a la compu difícil" : "Le ganaste a la compu fácil") : "Ganaste la partida", r.vsCompu ? (r.nivel === "dificil" ? 25 : 10) : 30]); if (r.mate) d.push(["Por jaque mate", 5]); }
       else if (r.tablas) d.push(["Tablas", 10]);
+    } else if (r.juego === "arena") {
+      if (r.kills) d.push([`Eliminaste a ${r.kills}`, 5 * r.kills]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Ganaste la pelea contra la compu" : "Ganaste la pelea", r.vsCompu ? 10 : 25]); }
+      else if (r.lugar === 2 && r.n > 2) d.push(["Segundo puesto", 8]);
     } else if (r.juego === "casos") {
       if (r.soplon) { if (!r.resuelto) { gano = true; d.push(["Ganaste como soplón", 35]); } }
       else {

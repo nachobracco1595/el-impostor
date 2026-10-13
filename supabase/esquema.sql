@@ -30,6 +30,9 @@ alter table public.perfiles add column if not exists pts_chinchon integer genera
 alter table public.perfiles add column if not exists pts_naval    integer generated always as (coalesce((stats -> 'naval' ->> 'p')::integer, 0)) stored;
 alter table public.perfiles add column if not exists pts_nave     integer generated always as (coalesce((stats -> 'nave' ->> 'p')::integer, 0)) stored;
 alter table public.perfiles add column if not exists pts_ajedrez  integer generated always as (coalesce((stats -> 'ajedrez' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists pts_arena    integer generated always as (coalesce((stats -> 'arena' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists elo_arena    integer generated always as (coalesce((stats -> 'arena' ->> 'elo')::integer, 1000)) stored;
+create index if not exists perfiles_elo_arena_idx on public.perfiles (elo_arena desc);
 
 create index if not exists perfiles_puntos_idx on public.perfiles (puntos desc);
 create index if not exists perfiles_impostor_idx on public.perfiles (pts_impostor desc);
@@ -199,6 +202,8 @@ create policy "leer config" on public.config for select using (true);
 drop policy if exists "admins cambian config" on public.config;
 create policy "admins cambian config" on public.config for all to authenticated using (public.es_admin()) with check (public.es_admin());
 insert into public.config (clave, valor) values ('anuncios', '{"activos": false, "monedas": 20, "porDia": 5, "prueba": true}') on conflict do nothing;
+-- Evento de temporada: { id: 'halloween' | 'navidad' | 'pascuas' | null, trabajo, multi, mensaje, items: { id: { on, precio } } }
+insert into public.config (clave, valor) values ('evento', '{"id": null, "trabajo": true, "multi": 1, "items": {}}') on conflict do nothing;
 
 -- Cobrar un anuncio visto: respeta el máximo por día y devuelve cuántas monedas sumar
 create or replace function public.cobrar_anuncio() returns jsonb
@@ -226,7 +231,10 @@ language plpgsql security definer set search_path = public as $$
 declare hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
 begin
   if auth.uid() is null then return jsonb_build_object('ok', false, 'motivo', 'sin sesion'); end if;
-  if juego not in ('tala', 'mina', 'pesca') then raise exception 'Trabajo desconocido' using errcode = '22023'; end if;
+  if juego not in ('tala', 'mina', 'pesca', 'evento') then raise exception 'Trabajo desconocido' using errcode = '22023'; end if;
+  if juego = 'evento' and not exists (select 1 from public.config where clave = 'evento' and coalesce(valor ->> 'id', '') <> '' and coalesce((valor ->> 'trabajo')::boolean, true)) then
+    return jsonb_build_object('ok', false, 'motivo', 'sin evento');
+  end if;
   if exists (select 1 from public.actividad a where a.usuario = auth.uid() and a.tipo = 'trabajo' and a.juego = desbloquear_trabajo.juego
              and (a.creado at time zone 'America/Argentina/Buenos_Aires')::date = hoy) then
     return jsonb_build_object('ok', false, 'motivo', 'hecho');

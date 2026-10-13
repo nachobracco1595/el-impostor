@@ -93,10 +93,10 @@ const Eco = {
   },
 
   comprar(u, id) {
-    const it = CATALOGO[id];
-    if (!it || u.inv.includes(id) || u.monedas < it.precio) return false;
-    u.monedas -= it.precio; u.inv.push(id);
-    if (u.nube) Nube.actividad("compra", it.tipo, 0, -it.precio);
+    const it = CATALOGO[id], precio = typeof Evento !== "undefined" ? Evento.precio(id) : it && it.precio;
+    if (!it || u.inv.includes(id) || u.monedas < precio || (typeof Evento !== "undefined" && !Evento.itemDisponible(id))) return false;
+    u.monedas -= precio; u.inv.push(id);
+    if (u.nube) Nube.actividad("compra", it.evento ? "evento" : it.tipo, 0, -precio);
     Eco.guardar(u); return true;
   },
   tiene: (u, id) => u.inv.includes(id),
@@ -217,9 +217,12 @@ PANTALLAS.tienda = () => {
   const u = BD.sesion();
   if (!u) return go("cuenta");
   Eco.completar(u);
-  const tab = UI.tabTienda || "cabeza";
+  const ev = Evento.actual();
+  let tab = UI.tabTienda || (ev ? "evento" : "cabeza");
+  if (tab === "evento" && !ev) tab = "cabeza";
   const m = Eco.mision(u), e = Eco.diario(u);
-  const items = Object.entries(CATALOGO).filter(([, it]) => it.tipo === tab);
+  // Las cosas de un evento se ven solo mientras está prendido (o si ya las tienes)
+  const items = Object.entries(CATALOGO).filter(([id, it]) => tab === "evento" ? it.evento === ev.id && Evento.itemDisponible(id) : it.tipo === tab && (!it.evento || Eco.tiene(u, id) || Evento.itemDisponible(id)));
   const prev = (id, it) => {
     const l = { ...u.look, acc: u.look.acc.slice() };
     if (it.tipo === "color") l.color = it.valor;
@@ -238,12 +241,13 @@ PANTALLAS.tienda = () => {
       ${Anuncios.activos(u) ? `<div class="mision"><span class="m-ic">📺</span><div class="txt"><b>Mirar un anuncio</b><small>+${Anuncios.cfg().monedas} 🪙 cada uno · hasta ${Anuncios.cfg().porDia} por día</small></div><button class="btn chico" id="verAnuncio">Mirar</button></div>` : ""}
       <div class="mision"><span class="m-ic">🎯</span><div class="txt"><b>Misión semanal: ${m.meta} partidas</b><small>${m.hechas} de ${m.meta} · premio ${m.premio} 🪙</small><div class="xp"><i style="width:${(m.hechas / m.meta) * 100}%"></i></div></div>${m.cobrada ? `<span class="ok">✓ Cobrada</span>` : `<button class="btn chico" id="mision" ${m.hechas < m.meta ? "disabled" : ""}>Cobrar</button>`}</div>
     </div>
-    <div class="tabs scroll">${TIPOS_TIENDA.map(([k, n]) => `<button data-tt="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
+    ${ev ? `<div class="evento-banner chico" style="--ev:${ev.color}"><span class="ev-ic">${ev.ic}</span><div><b>Evento de ${esc(ev.nombre)}</b><small>Cosas especiales por tiempo limitado.</small></div></div>` : ""}
+    <div class="tabs scroll">${[...(ev ? [["evento", ev.ic + " " + ev.nombre]] : []), ...TIPOS_TIENDA].map(([k, n]) => `<button data-tt="${k}" aria-pressed="${tab === k}">${esc(n)}</button>`).join("")}</div>
     <div class="items">${items.map(([id, it]) => {
       const tengo = Eco.tiene(u, id), eq = tengo && Eco.equipado(u, id);
       return `<div class="item ${tengo ? "mio" : ""}"><div class="item-prev">${prev(id, it)}</div><b>${esc(it.nombre)}</b>
         ${tengo ? `<button class="btn chico ${eq ? "" : "ghost"}" data-eq="${id}">${eq ? (["color", "cabeza", "cara"].includes(it.tipo) ? "Puesto" : "Quitar") : "Usar"}</button>`
-          : `<button class="btn chico" data-buy="${id}" ${u.monedas < it.precio ? "disabled" : ""}>🪙 ${it.precio}</button>`}</div>`;
+          : `<button class="btn chico" data-buy="${id}" ${u.monedas < Evento.precio(id) ? "disabled" : ""}>🪙 ${Evento.precio(id)}</button>`}</div>`;
     }).join("")}</div>
     <button class="btn ghost" id="volver">Volver</button>
   </section>`;

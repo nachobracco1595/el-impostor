@@ -26,6 +26,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { min-height: 100%; }
 body {
   margin: 0;
@@ -626,5 +627,25 @@ label.btn { cursor: pointer; }
 .item-prev { height: 84px; display: grid; place-items: center; }
 .item .btn.chico { width: 100%; }
 .tit-prev { font-family: var(--typewriter); color: var(--violet); font-size: 15px; }
+
+/* ---------- Chat ---------- */
+.chat-flot { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 21; width: 52px; height: 52px; border-radius: 50%; background: var(--violet); color: #1b1726; font-size: 24px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); display: grid; place-items: center; }
+.burbuja { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--red); color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--ink); }
+.players li .burbuja { position: static; box-shadow: none; }
+.chat-panel { position: fixed; left: 8px; right: 8px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 22; max-width: 520px; margin: 0 auto; max-height: 62vh; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 20px; background: rgba(31, 27, 46, .97); border: 2px solid var(--violet); box-shadow: 0 20px 50px rgba(0, 0, 0, .6); animation: aparece .25s ease; }
+.chat-cab { display: flex; justify-content: space-between; align-items: center; }
+.chat-msgs, .msgs { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.msgs { max-height: 55vh; min-height: 260px; padding: 10px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.msg { align-self: flex-start; max-width: 82%; display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 16px 16px 16px 4px; background: var(--card-2); }
+.msg.mio { align-self: flex-end; border-radius: 16px 16px 4px 16px; background: color-mix(in srgb, var(--violet) 35%, var(--card-2)); }
+.msg b { font-size: 12px; color: var(--spot); }
+.msg p { margin: 0; overflow-wrap: anywhere; }
+.msg small { font-size: 10px; color: var(--muted); align-self: flex-end; }
+.rapidos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.rapidos .chip-j { flex: none; padding: 6px 12px; }
+.charla-head { display: flex; align-items: center; gap: 10px; font-size: 18px; }
+.charla-head .linkish { font-size: 24px; padding: 0 6px; }
+.players li.amigo { cursor: pointer; }
+.players .ir { font-size: 18px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

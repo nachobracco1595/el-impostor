@@ -76,3 +76,78 @@ end $$;
 drop trigger if exists perfiles_controlar on public.perfiles;
 create trigger perfiles_controlar before update on public.perfiles
   for each row execute function public.perfiles_controlar();
+
+-- ============ Amigos y mensajes ============
+create table if not exists public.amistades (
+  de      uuid not null references public.perfiles (id) on delete cascade,
+  para    uuid not null references public.perfiles (id) on delete cascade,
+  estado  text not null default 'pendiente' check (estado in ('pendiente', 'aceptada')),
+  creado  timestamptz not null default now(),
+  primary key (de, para),
+  check (de <> para)
+);
+alter table public.amistades enable row level security;
+
+drop policy if exists "ver mis amistades" on public.amistades;
+create policy "ver mis amistades" on public.amistades for select to authenticated
+  using (auth.uid() = de or auth.uid() = para);
+drop policy if exists "pedir amistad" on public.amistades;
+create policy "pedir amistad" on public.amistades for insert to authenticated
+  with check (auth.uid() = de and estado = 'pendiente');
+drop policy if exists "aceptar amistad" on public.amistades;
+create policy "aceptar amistad" on public.amistades for update to authenticated
+  using (auth.uid() = para) with check (auth.uid() = para and estado = 'aceptada');
+drop policy if exists "borrar amistad" on public.amistades;
+create policy "borrar amistad" on public.amistades for delete to authenticated
+  using (auth.uid() = de or auth.uid() = para);
+
+create table if not exists public.mensajes (
+  id      bigint generated always as identity primary key,
+  de      uuid not null references public.perfiles (id) on delete cascade,
+  para    uuid not null references public.perfiles (id) on delete cascade,
+  texto   text not null check (char_length(texto) between 1 and 500),
+  sala    text check (sala ~ '^[A-Z]{4}$'),
+  leido   boolean not null default false,
+  creado  timestamptz not null default now()
+);
+create index if not exists mensajes_para_idx on public.mensajes (para, leido);
+create index if not exists mensajes_charla_idx on public.mensajes (de, para, creado desc);
+alter table public.mensajes enable row level security;
+
+drop policy if exists "ver mis mensajes" on public.mensajes;
+create policy "ver mis mensajes" on public.mensajes for select to authenticated
+  using (auth.uid() = de or auth.uid() = para);
+-- Solo se le puede escribir a un amigo (amistad aceptada)
+drop policy if exists "escribir a amigos" on public.mensajes;
+create policy "escribir a amigos" on public.mensajes for insert to authenticated
+  with check (
+    auth.uid() = de and leido = false and exists (
+      select 1 from public.amistades a
+      where a.estado = 'aceptada'
+        and ((a.de = mensajes.de and a.para = mensajes.para) or (a.de = mensajes.para and a.para = mensajes.de))
+    )
+  );
+drop policy if exists "marcar leidos" on public.mensajes;
+create policy "marcar leidos" on public.mensajes for update to authenticated
+  using (auth.uid() = para) with check (auth.uid() = para);
+
+-- Al marcar como leído no se puede cambiar nada más del mensaje
+create or replace function public.mensajes_solo_leido() returns trigger
+language plpgsql as $$
+begin
+  if new.de <> old.de or new.para <> old.para or new.texto <> old.texto or new.sala is distinct from old.sala or new.creado <> old.creado then
+    raise exception 'Solo se puede marcar como leído' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+drop trigger if exists mensajes_solo_leido on public.mensajes;
+create trigger mensajes_solo_leido before update on public.mensajes
+  for each row execute function public.mensajes_solo_leido();
+
+-- Mensajes en tiempo real (si la publicación de Supabase existe)
+do $$ begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'mensajes') then
+    alter publication supabase_realtime add table public.mensajes;
+  end if;
+end $$;

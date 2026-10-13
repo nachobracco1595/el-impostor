@@ -35,7 +35,9 @@ function render() {
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender();
-  if (typeof revisarDiario !== "undefined") revisarDiario(); }
+  if (typeof revisarDiario !== "undefined") revisarDiario();
+  if (typeof Chat !== "undefined") Chat.pintar();
+  if (typeof Social !== "undefined" && Social.disponible()) Social.arrancar(); }
 let animT = null;
 function go(s) {
   S.screen = s;

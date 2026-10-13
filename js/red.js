@@ -77,6 +77,7 @@ const Net = {
       p.look = Cuenta.lookValido(m.look);
       this.conns[cid] = c; c.cid = cid;
       this.broadcast();
+      if (R.chat && R.chat.length) c.send({ t: "chat", lista: R.chat });
     } else if (m.t === "act" && c.cid) {
       this.hostAct(c.cid, m.a || {});
     }
@@ -94,6 +95,13 @@ const Net = {
 
   hostAct(pid, a) {
     const R = this.R;
+    if (a.t === "chat") {
+      const txt = String(a.txt || "").trim().slice(0, 200), quien = R.players.find(x => x.id === pid);
+      if (!txt || !quien) return;
+      R.chat = [...(R.chat || []), { id: (R.chatN = (R.chatN || 0) + 1), de: quien.name, txt, t: Date.now() }].slice(-60);
+      this.enviarChat();
+      return;
+    }
     try {
       if (!R.game) {
         if (pid !== "H") return;
@@ -132,6 +140,11 @@ const Net = {
     };
   },
 
+  enviarChat() {
+    for (const c of Object.values(this.conns)) { try { if (c.open) c.send({ t: "chat", lista: this.R.chat }); } catch {} }
+    Chat.recibir(this.R.chat);
+  },
+
   broadcast() {
     if (this.rol !== "host") return;
     for (const [cid, c] of Object.entries(this.conns)) {
@@ -160,6 +173,7 @@ const Net = {
     c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look() }); keepAwake(); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
+      if (m.t === "chat") Chat.recibir(m.lista || []);
       if (m.t === "error") { this.estado = "error"; this.error = m.msg; render(); }
     });
     c.on("close", () => { if (this.rol === "guest" && this.estado !== "error") { this.estado = "perdida"; render(); } });
@@ -181,6 +195,7 @@ const Net = {
   salir(silencio) {
     try { this.peer && this.peer.destroy(); } catch {}
     Object.assign(this, { rol: null, peer: null, conn: null, view: null, R: null, conns: {}, estado: "", error: "" });
+    if (typeof Chat !== "undefined") Chat.pintar();
     S.online = false;
     if (!silencio) go("home");
   },
@@ -307,6 +322,7 @@ function renderLobby(v) {
       <span class="label">Código de la sala</span>
       <div class="codigo-big">${esc(v.code)}</div>
       <p class="sub" style="margin:0">Los demás entran con este código en "Jugar online → Unirme".</p>
+      ${Social.disponible() ? `<button class="btn" id="invitar">📨 Invitar amigos</button>` : ""}
       <div class="row"><button class="btn ghost" id="copiar">Copiar enlace</button>${navigator.share ? `<button class="btn ghost" id="compartir">Compartir</button>` : ""}</div>
       <input class="campo enlace" id="lnk" readonly value="${esc(Net.enlace())}" aria-label="Enlace de la sala">
     </div>
@@ -338,4 +354,5 @@ function renderLobby(v) {
   on("ajCaso", () => { S.online = true; go("casoSel"); });
   on("chComOn", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("empezar", () => Net.send({ t: "start" }));
+  on("invitar", () => invitarAmigos());
 }

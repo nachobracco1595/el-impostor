@@ -193,6 +193,8 @@ const Sonido = {
       redoble: () => { for (let i = 0; i < 16; i++) this.ruido(t + i * 0.04, 0.05, 0.08 + i * 0.012, B, "bandpass", 1600, 0.8); },
       bang: () => { this.ruido(t, 0.8, 0.9, B, "lowpass", 3500, 0.7, { fTo: 300, rev: 0.6 }); this.osc("sine", 90, t, 0.4, 0.9, B, { glide: 30 }); },
       clic: () => { this.ruido(t, 0.03, 0.4, B, "bandpass", 3500, 4); this.ruido(t + 0.05, 0.02, 0.2, B, "bandpass", 2500, 4); },
+      monedas: () => [84, 88, 91, 96].forEach((m, i) => this.osc("square", n(m), t + i * 0.06, 0.12, 0.06, B, { lp: 5000, rev: 0.3 })),
+      logro: () => { [72, 76, 79, 84, 88].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.07, 0.6, 0.1, B, { rev: 0.7 })); this.ruido(t + 0.3, 0.8, 0.08, B, "highpass", 7000, 1, { rev: 0.8 }); },
       empieza: () => [67, 72].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.1, 0.35, 0.14, B, { rev: 0.4 }))
     };
     (E[nombre] || (() => {}))();

@@ -3,11 +3,18 @@ const COLORES = ["#ff6b6b", "#4dabf7", "#51cf66", "#fcc419", "#cc5de8", "#ff922b
 
 /* Cada jugador de la lista actual recibe un color distinto; fuera de la lista, uno según su nombre */
 const COLOR_FIJO = new Map();
+/* Aspecto elegido por cada jugador con perfil: nombre -> { color, acc } */
+const LOOKS = new Map();
 function fijarColores(nombres) {
   COLOR_FIJO.clear();
-  nombres.forEach((n, i) => COLOR_FIJO.set(String(n), COLORES[i % COLORES.length]));
+  // Los colores elegidos en perfiles no se repiten en los jugadores sin perfil
+  const usados = new Set([...LOOKS.values()].map(l => l.color));
+  const libres = COLORES.filter(c => !usados.has(c));
+  let k = 0;
+  nombres.forEach(n => { if (!LOOKS.has(String(n))) COLOR_FIJO.set(String(n), (libres.length ? libres : COLORES)[k++ % (libres.length || COLORES.length)]); });
 }
 function colorDe(nombre) {
+  if (LOOKS.has(String(nombre))) return LOOKS.get(String(nombre)).color;
   if (COLOR_FIJO.has(String(nombre))) return COLOR_FIJO.get(String(nombre));
   let h = 0;
   for (const c of String(nombre)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -88,8 +95,10 @@ function grupoPortada() {
   return `<div class="grupo">${c.map((col, i) => `<span style="--i:${i}">${personaje(col, t[i], 64)}</span>`).join("")}</div>`;
 }
 
+function accDe(nombre, def = []) { const l = LOOKS.get(String(nombre)); return l && l.acc.length ? l.acc : def; }
+
 function avatar(nombre, size = 36, tipo = "civ", acc = []) {
-  return `<span class="av" style="width:${size}px;height:${size}px">${personaje(colorDe(nombre), tipo, size * 0.9, acc)}</span>`;
+  return `<span class="av" style="width:${size}px;height:${size}px">${personaje(colorDe(nombre), tipo, size * 0.9, accDe(nombre, acc))}</span>`;
 }
 
 /* Cartas del Mentiroso: Q, K, A y J (comodín) */

@@ -34,6 +34,7 @@ const Imp = {
       roles = shuffle(roles);
     }
     const g = {
+      id: "imp-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       theme, word: secret.w, hint: secret.h, emoji: secret.e, other: { w: other.w, e: other.e }, special,
       cfg: { ...cfg },
       players: players.map((p, i) => ({ ...p, role: roles[i], out: false })),
@@ -126,6 +127,13 @@ const Imp = {
     if (imps === 0) return "civ";
     if (imps >= buenos) return "imp";
     return null;
+  },
+
+  /* Resultado del jugador i para sumar puntos (null si la partida no terminó con ganador) */
+  resultado(g, i) {
+    if (!g || !g.winner || i < 0) return null;
+    const p = g.players[i];
+    return { juego: "impostor", id: g.id, rol: p.role, winner: g.winner };
   },
 
   reclamar(g, kind) { return kind === g.special ? kind + "-hit" : "claim-miss"; },
@@ -320,6 +328,11 @@ const ImpOn = {
     const w = Imp.despues(g);
     if (w) { g.winner = w; g.phase = "end"; return; }
     Imp.siguienteRonda(g); g.tally = null; g.phase = "play";
+  },
+
+  resultado(R, pid) {
+    const g = R.imp;
+    return g.phase === "end" ? Imp.resultado(g, g.players.findIndex(p => p.id === pid)) : null;
   },
 
   view(R, pid) {

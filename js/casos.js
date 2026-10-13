@@ -18,7 +18,8 @@ const Casos = {
       casoId, players: players.map(p => ({ id: p.id, name: p.name })), cfg: { ...cfg },
       soplon: cfg.soplon && players.length >= 4 ? pick(players).id : null,
       acto: 0, phase: "intro", mias: {}, elegidas: [null, null, null], listos: {}, votos: {},
-      timer: Reloj.nuevo(cfg.min), acusado: null, tie: [], leerIdx: 0
+      timer: Reloj.nuevo(cfg.min), acusado: null, tie: [], leerIdx: 0,
+      id: "caso-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
     };
     s.players.forEach(p => s.mias[p.id] = []);
     return s;
@@ -63,6 +64,17 @@ const Casos = {
       }
       case "arrestar": if (jefe && (s.phase === "acusar" || s.phase === "desempate")) { s.acusado = a.sid; s.phase = "final"; } break;
     }
+  },
+
+  /* local: en un teléfono no hay voto individual, cuenta el arresto del grupo */
+  resultado(s, pid, local) {
+    if (!s || s.phase !== "final" || !s.players.some(p => p.id === pid)) return null;
+    const caso = Casos.caso(s.casoId);
+    return {
+      juego: "casos", id: s.id, casoId: s.casoId, dificultad: caso.dificultad,
+      resuelto: s.acusado === caso.culpable, soplon: s.soplon === pid,
+      votoCorrecto: (local ? s.acusado : s.votos[pid]) === caso.culpable
+    };
   },
 
   view(s, pid) {

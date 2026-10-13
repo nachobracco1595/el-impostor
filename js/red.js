@@ -42,7 +42,7 @@ const Net = {
     this.salir(true);
     this.rol = "host"; this.name = name; this.estado = "conectando"; this.error = "";
     this.code = Array(4).fill(0).map(() => pick(LETRAS.split(""))).join("");
-    this.R = { code: this.code, players: [{ id: "H", name, on: true }], game: null, sel: "impostor", err: "" };
+    this.R = { code: this.code, players: [{ id: "H", name, on: true, look: Cuenta.look() }], game: null, sel: "impostor", err: "" };
     const peer = this.peer = new Peer(PREFIJO + this.code, this.opciones());
     peer.on("open", () => { this.estado = "ok"; keepAwake(); this.broadcast(); });
     peer.on("error", e => {
@@ -74,6 +74,7 @@ const Net = {
         R.players.push(p);
       }
       p.on = true;
+      p.look = Cuenta.lookValido(m.look);
       this.conns[cid] = c; c.cid = cid;
       this.broadcast();
     } else if (m.t === "act" && c.cid) {
@@ -107,6 +108,13 @@ const Net = {
   },
 
   viewFor(pid) {
+    const v = this.vistaJuego(pid), R = this.R;
+    v.looks = Object.fromEntries(R.players.filter(p => p.look).map(p => [p.name, p.look]));
+    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : null;
+    return v;
+  },
+
+  vistaJuego(pid) {
     const R = this.R;
     if (R.game === "impostor") return ImpOn.view(R, pid);
     if (R.game === "liars") return { ...Lie.view(R.lie, pid), isHost: pid === "H" };
@@ -143,7 +151,7 @@ const Net = {
 
   conectar() {
     const c = this.conn = this.peer.connect(PREFIJO + this.code, { reliable: true });
-    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid() }); keepAwake(); });
+    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look() }); keepAwake(); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
       if (m.t === "error") { this.estado = "error"; this.error = m.msg; render(); }
@@ -198,7 +206,7 @@ PANTALLAS.onCrear = () => {
     <div><h2>Crear sala</h2><p class="sub">Tu teléfono será el anfitrión: guarda la partida y elige el juego. No lo bloquees ni cierres la página mientras juegan.</p></div>
     <form class="panel" id="f">
       <label class="label" for="nm">Tu nombre</label>
-      <input class="campo" id="nm" maxlength="16" autocomplete="off" value="${esc(store.get("nombre", ""))}" placeholder="Cómo te verán los demás">
+      <input class="campo" id="nm" maxlength="16" autocomplete="off" value="${esc(BD.sesion() ? BD.sesion().nombre : store.get("nombre", ""))}" placeholder="Cómo te verán los demás">
       <button class="btn" type="submit">Crear sala</button>
     </form>
     <button class="btn ghost" id="back">Atrás</button>
@@ -215,7 +223,7 @@ PANTALLAS.onUnirme = () => {
       <label class="label" for="cd">Código de la sala</label>
       <input class="campo codigo" id="cd" maxlength="4" autocomplete="off" autocapitalize="characters" value="${esc(codigoUrl())}" placeholder="ABCD">
       <label class="label" for="nm">Tu nombre</label>
-      <input class="campo" id="nm" maxlength="16" autocomplete="off" value="${esc(store.get("nombre", ""))}" placeholder="Cómo te verán los demás">
+      <input class="campo" id="nm" maxlength="16" autocomplete="off" value="${esc(BD.sesion() ? BD.sesion().nombre : store.get("nombre", ""))}" placeholder="Cómo te verán los demás">
       <p class="warn" id="msg" hidden></p>
       <button class="btn" type="submit">Entrar</button>
     </form>
@@ -262,6 +270,7 @@ PANTALLAS.online = () => {
     return;
   }
   UI.v = v;
+  Cuenta.prepararLooks();
   const lista = v.players || [];
   fijarColores(lista.map(p => p.name));
   const key = `${v.game}-${v.phase || ""}-${v.ronda || ""}`;

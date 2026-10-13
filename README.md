@@ -26,6 +26,18 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Opcional (4 o más jugadores): un **soplón** sabe quién es el culpable y gana si arrestan a otra persona.
 - Los casos están en `js/casos-data.js`; para agregar uno nuevo se copia la estructura de un caso existente.
 
+## Perfiles, puntos y ranking
+- **Iniciar sesión:** cada jugador crea un perfil con su personaje (color, sombrero, lentes…) y un PIN de 4 números.
+- **Puntos:** se suman al terminar cada partida, según el rol y el resultado (las reglas están en el Ranking → "¿Cómo se ganan puntos?").
+- **Niveles, rachas, 16 logros e historial** en la pantalla de perfil.
+- **Ranking** general y por juego, con podio.
+- En un teléfono, suman puntos los jugadores cuyo nombre coincide con un perfil de ese teléfono. Online, cada uno suma en su propio teléfono.
+
+**Base de datos:** por ahora es local (`localStorage`, clave `impostor:bd`). Desde el perfil se puede exportar a un
+archivo `.json` e importarlo en otro teléfono. Todo el acceso pasa por el objeto `BD` en `js/bd.js`, así que para
+pasar a una base de datos en la nube (Firebase, Supabase) alcanza con reescribir ese archivo.
+El PIN es solo para que nadie use tu perfil en el mismo teléfono: no es seguridad real.
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
@@ -47,5 +59,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

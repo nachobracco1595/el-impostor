@@ -29,8 +29,10 @@ const save = () => { store.set("players", S.players); store.set("themes", S.them
 
 const PANTALLAS = {};
 function render() {
+  if (typeof Cuenta !== "undefined") Cuenta.prepararLooks();
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   (PANTALLAS[S.screen] || PANTALLAS.home)();
+  if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender(); }
 let animT = null;
 function go(s) {
@@ -102,7 +104,7 @@ setInterval(() => {
 
 /* ---------- Inicio ---------- */
 PANTALLAS.home = () => {
-  app.innerHTML = `
+  app.innerHTML = `${Cuenta.barra()}
   <section class="screen hero">
     ${grupoPortada()}
     <h1 class="titulo">El <span>Impostor</span></h1>
@@ -132,6 +134,7 @@ PANTALLAS.home = () => {
   on("localImp", () => { S.mode = "impostor"; S.online = false; go("players"); });
   on("localLie", () => { S.mode = "liars"; S.online = false; go("players"); });
   on("localCas", () => { S.mode = "casos"; S.online = false; go("players"); });
+  Cuenta.conectarBarra();
   on("crear", () => go("onCrear"));
   on("unirme", () => go("onUnirme"));
 };
@@ -146,8 +149,9 @@ PANTALLAS.players = () => {
     <form class="add" id="addf"><input id="pname" maxlength="16" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
     <div class="panel">
       <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>
-      ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38, "civ", S.mode === "casos" ? ["sombrero"] : [])}<span class="name">${esc(p)}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
+      ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38, "civ", S.mode === "casos" ? ["sombrero"] : [])}<span class="name">${esc(p)}${BD.porNombre(p) ? `<small class="suma">⭐ Suma puntos</small>` : ""}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
     </div>
+    ${(() => { const libres = BD.usuarios().filter(u => !S.players.some(x => x.toLowerCase() === u.nombre.toLowerCase())); return libres.length ? `<div class="panel"><span class="label">Perfiles de este teléfono · toca para sumarlos</span><div class="chips-j">${libres.map(u => `<button class="chip-j" data-perfil="${esc(u.nombre)}">${personaje(u.look.color, "civ", 26, u.look.acc)}${esc(u.nombre)}</button>`).join("")}</div></div>` : ""; })()}
     <div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${n < min || (S.mode !== "impostor" && n > 8) ? "disabled" : ""}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : "Elegir temas"}</button></div>
   </section>`;
   const inp = byId("pname");
@@ -160,6 +164,7 @@ PANTALLAS.players = () => {
   };
   app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { S.players.splice(+b.dataset.del, 1); save(); render(); });
   on("clr", () => { S.players = []; save(); render(); });
+  app.querySelectorAll("[data-perfil]").forEach(b => b.onclick = () => { S.players.push(b.dataset.perfil); save(); render(); });
   on("back", () => go("home"));
   on("next", () => S.mode === "liars" ? Lie.empezarLocal() : S.mode === "casos" ? go("casoSel") : go("themes"));
 };

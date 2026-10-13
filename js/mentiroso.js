@@ -16,7 +16,8 @@ const Lie = {
   setup(players) {
     const s = {
       players: players.map(p => ({ id: p.id, name: p.name, alive: true, hand: [], bullet: Math.floor(Math.random() * 6), pulls: 0 })),
-      ronda: 0, phase: "turn", table: null, turn: 0, last: null, rev: null, winner: null
+      ronda: 0, phase: "turn", table: null, turn: 0, last: null, rev: null, winner: null, winnerId: null,
+      id: "lie-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), stats: Object.fromEntries(players.map(p => [p.id, { aciertos: 0, clics: 0 }]))
     };
     Lie.ronda(s, Math.floor(Math.random() * s.players.length));
     return s;
@@ -61,6 +62,7 @@ const Lie = {
     } else if (a.t === "call" && s.phase === "turn" && esTurno && s.last && s.last.i !== s.turn) {
       const liar = s.last.cards.some(c => c !== s.table && c !== "J");
       s.rev = { caller: s.turn, accused: s.last.i, cards: s.last.cards, liar, shooter: liar ? s.last.i : s.turn };
+      if (liar) s.stats[yo.id].aciertos++;
       s.phase = "reveal";
     } else if (a.t === "shoot" && s.phase === "reveal") {
       const p = s.players[s.rev.shooter];
@@ -68,13 +70,18 @@ const Lie = {
       s.rev.pullsAntes = p.pulls;
       s.rev.died = p.pulls === p.bullet;
       p.pulls++;
-      if (s.rev.died) p.alive = false;
+      if (s.rev.died) p.alive = false; else s.stats[p.id].clics++;
       s.phase = "shot";
     } else if (a.t === "next" && s.phase === "shot") {
       const vivos = s.players.filter(p => p.alive);
-      if (vivos.length <= 1) { s.phase = "end"; s.winner = vivos[0] ? vivos[0].name : null; return; }
+      if (vivos.length <= 1) { s.phase = "end"; s.winner = vivos[0] ? vivos[0].name : null; s.winnerId = vivos[0] ? vivos[0].id : null; return; }
       Lie.ronda(s, s.rev.shooter);
     }
+  },
+
+  resultado(s, pid) {
+    if (!s || s.phase !== "end" || !s.stats[pid]) return null;
+    return { juego: "liars", id: s.id, gano: s.winnerId === pid, ...s.stats[pid] };
   },
 
   view(s, pid) {

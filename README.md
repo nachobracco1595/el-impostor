@@ -1,6 +1,13 @@
-# El Impostor
+# Mesa Loca
 
-Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/logo-horizontal.png">
+  <img alt="Mesa Loca" src="img/logo-horizontal-oscuro.png" width="420">
+</picture>
+
+Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
+
+Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `logo-horizontal-oscuro.png`, `logo-vertical.png`).
 
 **Jugar:** https://nachobracco1595.github.io/el-impostor/ (requiere activar GitHub Pages, ver abajo).
 

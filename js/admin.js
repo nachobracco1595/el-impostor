@@ -45,7 +45,7 @@ function pintar() {
   const repartido = s.reduce((t, x) => t + x.mPartidas + x.mPremios + x.mAnuncios, 0), gastado = s.reduce((t, x) => t + x.gastado, 0);
   app.innerHTML = `
   <header class="p-cab">
-    <div><span class="label">Panel de administración</span><h1>El <span>Impostor</span></h1></div>
+    <div><span class="label">Panel de administración</span><h1><img src="img/icono.svg" alt="" width="40" height="40" style="vertical-align:-6px;margin-right:8px">Mesa <span>Loca</span></h1></div>
     <div class="p-acc">
       <div class="seg corto">${[7, 30, 90].map(n => `<button data-dias="${n}" aria-pressed="${P.dias === n}">${n} días</button>`).join("")}</div>
       <button class="btn ghost chico" id="recargar">${P.cargando ? "Actualizando…" : "↻ Actualizar"}</button>
@@ -141,7 +141,7 @@ function pintar() {
 }
 
 function pantallaLogin() {
-  app.innerHTML = `<section class="caja"><span class="label">Panel de administración</span><h1>El <span>Impostor</span></h1>
+  app.innerHTML = `<section class="caja"><span class="label">Panel de administración</span><h1><img src="img/icono.svg" alt="" width="40" height="40" style="vertical-align:-6px;margin-right:8px">Mesa <span>Loca</span></h1>
     <p class="sub">Entra con el mismo correo que usas en el juego. Te llega un enlace para entrar.</p>
     <form id="fLogin" class="add"><input class="campo" id="mail" type="email" placeholder="tu@correo.com" autocomplete="email" aria-label="Correo"><button class="btn chico" type="submit">Enviar</button></form>
     <p class="summary" id="lMsg">${esc(P.msg)}</p>

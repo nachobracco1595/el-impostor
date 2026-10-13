@@ -48,7 +48,7 @@ function go(s) {
 }
 
 const head = (step, back = true) => `<header class="top">
-  <button class="logo" id="home" aria-label="Volver al inicio">El <span>Impostor</span></button>
+  <button class="logo" id="home" aria-label="Volver al inicio"><img src="img/icono.svg" alt="" width="30" height="30">Mesa <span>Loca</span></button>
   ${step ? `<div class="steps" aria-label="Paso ${step} de 3">${[1, 2, 3].map(i => `<i class="${i <= step ? "on" : ""}"></i>`).join("")}</div>` : ""}
 </header>`;
 document.addEventListener("click", e => {
@@ -126,9 +126,9 @@ function juegosMenu() {
 PANTALLAS.home = () => {
   app.innerHTML = `${Cuenta.barra()}
   <section class="screen hero">
-    ${grupoPortada()}
-    <h1 class="titulo">El <span>Impostor</span></h1>
-    <p class="sub center">Juegos para la previa con amigos. En un solo teléfono o cada uno en el suyo.</p>
+    <img class="hero-logo" src="img/icono.svg" alt="" width="132" height="132">
+    <h1 class="titulo">Mesa <span>Loca</span></h1>
+    <p class="sub center">Juegos para jugar con amigos: el Impostor, la Arena, el Chinchón, La Nave y muchos más. En un solo teléfono o cada uno en el suyo.</p>
   </section>
   ${typeof Evento !== "undefined" ? Evento.cartel() : ""}
   <section class="juegos-grid">${juegosMenu().map(([m, n, d, art, cls]) => `<button class="tile ${cls}" data-modo="${m}">

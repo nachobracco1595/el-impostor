@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="fondo" cx="50%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#2f2650"/>
+      <stop offset="1" stop-color="#13111d"/>
+    </radialGradient>
+    <linearGradient id="tabla" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd76a"/>
+      <stop offset="1" stop-color="#ffc53d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#fondo)"/>
+  <!-- Estrellitas de movimiento -->
+  <g fill="#ffc53d">
+    <path d="M96 120 l10 22 22 10 -22 10 -10 22 -10 -22 -22 -10 22 -10z"/>
+    <path d="M410 110 l8 17 17 8 -17 8 -8 17 -8 -17 -17 -8 17 -8z" fill="#3ddcb1"/>
+    <path d="M440 300 l5 11 11 5 -11 5 -5 11 -5 -11 -11 -5 11 -5z" fill="#ff4d63"/>
+  </g>
+  <!-- La mesa loca: inclinada y con las patas bailando -->
+  <g transform="rotate(-8 256 330)">
+    <path d="M150 352 Q128 398 104 432" stroke="#c7901b" stroke-width="22" stroke-linecap="round" fill="none"/>
+    <path d="M204 360 Q210 404 190 444" stroke="#a87412" stroke-width="22" stroke-linecap="round" fill="none"/>
+    <path d="M308 360 Q300 404 326 444" stroke="#a87412" stroke-width="22" stroke-linecap="round" fill="none"/>
+    <path d="M362 352 Q392 392 412 430" stroke="#c7901b" stroke-width="22" stroke-linecap="round" fill="none"/>
+    <!-- Zapatitos -->
+    <ellipse cx="98" cy="438" rx="22" ry="12" fill="#ff4d63"/>
+    <ellipse cx="184" cy="450" rx="22" ry="12" fill="#3ddcb1"/>
+    <ellipse cx="332" cy="450" rx="22" ry="12" fill="#b48cff"/>
+    <ellipse cx="418" cy="436" rx="22" ry="12" fill="#ffc53d" stroke="#c7901b" stroke-width="3"/>
+    <!-- Tablero -->
+    <rect x="96" y="318" width="320" height="46" rx="23" fill="#c7901b"/>
+    <rect x="96" y="304" width="320" height="44" rx="22" fill="url(#tabla)"/>
+    <path d="M124 318 H260" stroke="#fff" stroke-opacity=".45" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <!-- Carta -->
+  <g transform="rotate(-18 150 250)">
+    <rect x="104" y="186" width="92" height="128" rx="14" fill="#fff" stroke="#1b1726" stroke-width="6"/>
+    <path d="M150 226 C138 208 114 222 128 242 L150 266 L172 242 C186 222 162 208 150 226Z" fill="#ff4d63"/>
+    <text x="118" y="216" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="28" fill="#1b1726">A</text>
+  </g>
+  <!-- Dado -->
+  <g transform="rotate(16 374 258)">
+    <rect x="322" y="206" width="104" height="104" rx="22" fill="#3ddcb1" stroke="#1b1726" stroke-width="6"/>
+    <circle cx="350" cy="234" r="10" fill="#1b1726"/><circle cx="398" cy="234" r="10" fill="#1b1726"/>
+    <circle cx="374" cy="258" r="10" fill="#1b1726"/>
+    <circle cx="350" cy="282" r="10" fill="#1b1726"/><circle cx="398" cy="282" r="10" fill="#1b1726"/>
+  </g>
+  <!-- El personaje saltando arriba de la mesa -->
+  <g transform="translate(186 146) scale(1.4)">
+    <ellipse cx="50" cy="106" rx="30" ry="5" fill="#000" opacity=".2"/>
+    <rect x="26" y="80" width="18" height="26" rx="8" fill="#b8374a"/>
+    <rect x="56" y="80" width="18" height="26" rx="8" fill="#b8374a"/>
+    <rect x="18" y="16" width="64" height="80" rx="32" fill="#ff4d63" stroke="#1b1726" stroke-width="4"/>
+    <path d="M70 26 Q82 40 80 70" stroke="#fff" stroke-width="5" fill="none" opacity=".3" stroke-linecap="round"/>
+    <!-- Ojos locos -->
+    <ellipse cx="38" cy="46" rx="10" ry="12" fill="#fff"/><ellipse cx="62" cy="48" rx="8" ry="10" fill="#fff"/>
+    <circle cx="42" cy="42" r="5" fill="#1b1726"/><circle cx="59" cy="52" r="4.5" fill="#1b1726"/>
+    <!-- Sonrisa grande -->
+    <path d="M34 64 Q50 82 68 62" stroke="#1b1726" stroke-width="4" fill="#fff" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Brazos para arriba -->
+    <path d="M20 50 Q4 36 8 18" stroke="#ff4d63" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M80 50 Q96 36 92 18" stroke="#ff4d63" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <!-- Gorrito de fiesta -->
+    <path d="M38 20 L52 -14 L64 18 Z" fill="#b48cff" stroke="#1b1726" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="52" cy="-14" r="6" fill="#ffc53d" stroke="#1b1726" stroke-width="2"/>
+  </g>
+</svg>

@@ -198,7 +198,7 @@ const BD = {
   /* Suma perfiles de otro archivo. Si un perfil ya existe, se queda la versión con más partidas. */
   importar(texto) {
     const d = JSON.parse(texto);
-    if (!d || typeof d.usuarios !== "object") throw new Error("El archivo no es una base de datos de El Impostor.");
+    if (!d || typeof d.usuarios !== "object") throw new Error("El archivo no es una base de datos de Mesa Loca.");
     let nuevos = 0, actualizados = 0;
     for (const u of Object.values(d.usuarios)) {
       if (!u || !u.id || !u.nombre || !u.stats || u.nube) continue;

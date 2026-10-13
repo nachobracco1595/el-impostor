@@ -209,7 +209,7 @@ const Net = {
 
   cabecera() {
     const n = this.rol === "host" ? this.cantidad() : (this.view && this.view.players ? this.view.players.length : 0);
-    return `<header class="top"><button class="logo" id="home" aria-label="Volver a la sala">El <span>Impostor</span></button>
+    return `<header class="top"><button class="logo" id="home" aria-label="Volver a la sala"><img src="img/icono.svg" alt="" width="30" height="30">Mesa <span>Loca</span></button>
       <div class="sala-chip"><span>Sala <b>${esc(this.code || "")}</b></span><span>${n} 👥</span><button id="salirSala" class="linkish">Salir</button></div></header>`;
   },
 
@@ -363,7 +363,7 @@ function renderLobby(v) {
     try { await navigator.clipboard.writeText(inp.value); byId("copiar").textContent = "Enlace copiado"; }
     catch { inp.focus(); inp.select(); byId("copiar").textContent = "Cópialo de abajo"; }
   });
-  on("compartir", () => { navigator.share({ title: "El Impostor", text: `Únete a mi sala: ${v.code}`, url: Net.enlace() }).catch(() => {}); });
+  on("compartir", () => { navigator.share({ title: "Mesa Loca", text: `Únete a mi sala de Mesa Loca: ${v.code}`, url: Net.enlace() }).catch(() => {}); });
   app.querySelectorAll("[data-g]").forEach(b => b.onclick = () => Net.send({ t: "sel", game: b.dataset.g }));
   app.querySelectorAll("[data-kick]").forEach(b => b.onclick = () => Net.send({ t: "kick", id: b.dataset.kick }));
   on("ajustes", () => { S.online = true; go("themes"); });

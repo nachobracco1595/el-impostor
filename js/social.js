@@ -54,6 +54,7 @@ const Social = {
       });
       this.ultimoVisto = Math.max(this.ultimoVisto || 1, ...ms.data.map(m => m.id));
       if (S.screen === "charla") await this.cargarCharla();
+      Nube.revisarRegalos(BD.sesion());
       if (antes !== this.avisos() || ["amigos", "charla", "home"].includes(S.screen)) render();
     } catch (e) { console.error(e); }
     this.cargando = false;

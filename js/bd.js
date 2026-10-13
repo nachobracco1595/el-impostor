@@ -178,7 +178,7 @@ const BD = {
     const nuevos = LOGROS.filter(l => !u.logros[l.id] && l.ok(u));
     nuevos.forEach(l => u.logros[l.id] = Date.now());
     this.guardar();
-    if (u.nube && typeof Nube !== "undefined") Nube.subir(u);
+    if (u.nube && typeof Nube !== "undefined") { Nube.subir(u); Nube.actividad("partida", res.juego, calc.puntos, monedas); }
     return { ...calc, monedas, logros: nuevos, usuario: u };
   },
 

@@ -153,3 +153,143 @@ do $$ begin
     alter publication supabase_realtime add table public.mensajes;
   end if;
 end $$;
+
+-- ============ Panel de administración, actividad, anuncios y regalos ============
+-- Para darte acceso al panel, corre UNA vez (con tu correo):
+--   insert into public.admins (id) select id from auth.users where email = 'TU_CORREO' on conflict do nothing;
+create table if not exists public.admins (id uuid primary key references auth.users (id) on delete cascade);
+alter table public.admins enable row level security;   -- sin políticas: nadie la lee ni la cambia desde la app
+
+create or replace function public.es_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where id = auth.uid())
+$$;
+
+-- Actividad: cada jugador anota lo suyo (partidas, ingresos, compras); solo los admins la leen
+create table if not exists public.actividad (
+  id       bigint generated always as identity primary key,
+  usuario  uuid not null references public.perfiles (id) on delete cascade,
+  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo')),
+  juego    text check (char_length(juego) <= 20),
+  puntos   integer not null default 0,
+  monedas  integer not null default 0,
+  creado   timestamptz not null default now()
+);
+create index if not exists actividad_creado_idx on public.actividad (creado);
+create index if not exists actividad_usuario_idx on public.actividad (usuario, creado);
+alter table public.actividad enable row level security;
+drop policy if exists "anotar mi actividad" on public.actividad;
+create policy "anotar mi actividad" on public.actividad for insert to authenticated
+  with check (auth.uid() = usuario and tipo in ('partida', 'ingreso', 'compra', 'mision') and monedas between -1000 and 500 and puntos between 0 and 500);
+drop policy if exists "admins leen actividad" on public.actividad;
+create policy "admins leen actividad" on public.actividad for select to authenticated using (public.es_admin());
+
+-- Configuración que maneja el panel (todos la leen, solo admins la cambian)
+create table if not exists public.config (clave text primary key, valor jsonb not null);
+alter table public.config enable row level security;
+drop policy if exists "leer config" on public.config;
+create policy "leer config" on public.config for select using (true);
+drop policy if exists "admins cambian config" on public.config;
+create policy "admins cambian config" on public.config for all to authenticated using (public.es_admin()) with check (public.es_admin());
+insert into public.config (clave, valor) values ('anuncios', '{"activos": false, "monedas": 20, "porDia": 5, "prueba": true}') on conflict do nothing;
+
+-- Cobrar un anuncio visto: respeta el máximo por día y devuelve cuántas monedas sumar
+create or replace function public.cobrar_anuncio() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; vistos integer; tope integer; m integer;
+begin
+  if auth.uid() is null or not exists (select 1 from public.perfiles where id = auth.uid()) then
+    raise exception 'Necesitas un perfil en la nube' using errcode = '42501';
+  end if;
+  select valor into cfg from public.config where clave = 'anuncios';
+  if cfg is null or not coalesce((cfg ->> 'activos')::boolean, false) then
+    return jsonb_build_object('ok', false, 'motivo', 'apagados');
+  end if;
+  tope := greatest(coalesce((cfg ->> 'porDia')::integer, 5), 0);
+  select count(*) into vistos from public.actividad where usuario = auth.uid() and tipo = 'anuncio' and creado >= date_trunc('day', now());
+  if vistos >= tope then return jsonb_build_object('ok', false, 'motivo', 'limite', 'quedan', 0); end if;
+  m := least(greatest(coalesce((cfg ->> 'monedas')::integer, 20), 1), 200);
+  insert into public.actividad (usuario, tipo, monedas) values (auth.uid(), 'anuncio', m);
+  return jsonb_build_object('ok', true, 'monedas', m, 'quedan', tope - vistos - 1);
+end $$;
+
+-- Regalos de monedas que manda el admin; el jugador los cobra al entrar
+create table if not exists public.regalos (
+  id       bigint generated always as identity primary key,
+  usuario  uuid not null references public.perfiles (id) on delete cascade,
+  monedas  integer not null check (monedas between 1 and 500),
+  motivo   text check (char_length(motivo) <= 80),
+  cobrado  boolean not null default false,
+  creado   timestamptz not null default now()
+);
+alter table public.regalos enable row level security;   -- solo se usa con las funciones de abajo
+
+create or replace function public.cobrar_regalos() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare total integer; motivos text;
+begin
+  if auth.uid() is null then return jsonb_build_object('monedas', 0); end if;
+  with r as (update public.regalos set cobrado = true where usuario = auth.uid() and not cobrado returning monedas, motivo)
+  select coalesce(sum(monedas), 0), string_agg(motivo, ' · ') into total, motivos from r;
+  if total > 0 then insert into public.actividad (usuario, tipo, monedas) values (auth.uid(), 'regalo', least(total, 500)); end if;
+  return jsonb_build_object('monedas', least(total, 500), 'motivo', motivos);
+end $$;
+
+create or replace function public.admin_regalar(destino uuid, cantidad integer, motivo text default null) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  if cantidad < 1 or cantidad > 500 then raise exception 'Entre 1 y 500 monedas' using errcode = '22023'; end if;
+  insert into public.regalos (usuario, monedas, motivo) values (destino, cantidad, left(motivo, 80));
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- Resumen para el panel (solo admins)
+create or replace function public.panel_resumen(dias integer default 30) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare res jsonb; desde date := current_date - (least(greatest(dias, 7), 90) - 1);
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  with d as (select generate_series(desde, current_date, interval '1 day')::date as dia),
+  a as (select creado::date as dia, usuario, tipo, juego, monedas from public.actividad where creado >= desde)
+  select jsonb_build_object(
+    'usuarios', (select count(*) from public.perfiles),
+    'nuevos7', (select count(*) from public.perfiles where creado >= now() - interval '7 days'),
+    'activosHoy', (select count(distinct usuario) from a where dia = current_date),
+    'activos7', (select count(distinct usuario) from a where dia > current_date - 7),
+    'partidas7', (select count(*) from a where tipo = 'partida' and dia > current_date - 7),
+    'partidasPeriodo', (select count(*) from a where tipo = 'partida'),
+    'monedasCirculacion', (select coalesce(sum(monedas), 0) from public.perfiles),
+    'gastado7', (select coalesce(-sum(monedas), 0) from a where tipo = 'compra' and dia > current_date - 7),
+    'anuncios7', (select count(*) from a where tipo = 'anuncio' and dia > current_date - 7),
+    'amistades', (select count(*) from public.amistades where estado = 'aceptada'),
+    'mensajes7', (select count(*) from public.mensajes where creado >= now() - interval '7 days'),
+    'serie', (select jsonb_agg(jsonb_build_object(
+        'dia', d.dia,
+        'activos', (select count(distinct usuario) from a where a.dia = d.dia),
+        'partidas', (select count(*) from a where a.dia = d.dia and tipo = 'partida'),
+        'nuevos', (select count(*) from public.perfiles p where p.creado::date = d.dia),
+        'mPartidas', (select coalesce(sum(monedas), 0) from a where a.dia = d.dia and tipo = 'partida'),
+        'mPremios', (select coalesce(sum(monedas), 0) from a where a.dia = d.dia and tipo in ('ingreso', 'mision', 'regalo')),
+        'mAnuncios', (select coalesce(sum(monedas), 0) from a where a.dia = d.dia and tipo = 'anuncio'),
+        'gastado', (select coalesce(-sum(monedas), 0) from a where a.dia = d.dia and tipo = 'compra')
+      ) order by d.dia) from d),
+    'porJuego', (select coalesce(jsonb_object_agg(juego, n), '{}'::jsonb) from (select juego, count(*) as n from a where tipo = 'partida' and juego is not null group by juego) x),
+    'top', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (select id, nombre, look, puntos, monedas from public.perfiles order by puntos desc limit 10) t),
+    'config', (select valor from public.config where clave = 'anuncios')
+  ) into res;
+  return res;
+end $$;
+
+create or replace function public.panel_usuarios(buscar text default '') returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return (select coalesce(jsonb_agg(u), '[]'::jsonb) from (
+    select p.id, p.nombre, p.look, p.puntos, p.monedas, p.creado,
+      (select max(creado) from public.actividad a where a.usuario = p.id) as ultima,
+      (select count(*) from public.actividad a where a.usuario = p.id and a.tipo = 'partida') as partidas
+    from public.perfiles p
+    where buscar = '' or p.nombre ilike '%' || buscar || '%'
+    order by ultima desc nulls last, p.puntos desc limit 100) u);
+end $$;

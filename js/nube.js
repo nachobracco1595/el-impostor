@@ -47,10 +47,41 @@ const Nube = {
       // Supabase pide no esperar otras llamadas dentro de este aviso: se procesa aparte
       this.sb.auth.onAuthStateChange((evento, sesion) => setTimeout(() => this.alCambiar(sesion ? sesion.user : null), 0));
       this.estado = "lista";
+      this.cargarConfig();
     } catch (e) {
       console.error(e);
       this.estado = "error"; this.error = "No se pudo conectar con la nube.";
     }
+    render();
+  },
+
+  /* Configuración que maneja el panel de administración (por ejemplo, los anuncios) */
+  cfg: {},
+  async cargarConfig() {
+    const { data, error } = await this.sb.from("config").select("clave,valor");
+    if (!error && data) { this.cfg = Object.fromEntries(data.map(r => [r.clave, r.valor])); if (S.screen === "tienda") render(); }
+  },
+
+  /* Anota la actividad para el panel (partidas, premios, compras). No bloquea el juego si falla. */
+  actividad(tipo, juego, puntos, monedas) {
+    if (!this.user || !this.sb) return;
+    this.sb.from("actividad").insert({ usuario: this.user.id, tipo, juego: juego || null, puntos: Math.max(0, Math.min(500, puntos | 0)), monedas: monedas | 0 })
+      .then(({ error }) => { if (error) console.warn("actividad", error.message); });
+  },
+
+  async cobrarAnuncio() {
+    const { data, error } = await this.sb.rpc("cobrar_anuncio");
+    if (error) throw new Error("No se pudo cobrar el anuncio.");
+    return data;
+  },
+
+  /* Regalos de monedas que mandó el administrador */
+  async revisarRegalos(u) {
+    if (!this.user || !u || !u.nube || this.user.id !== u.id) return;
+    const { data, error } = await this.sb.rpc("cobrar_regalos");
+    if (error || !data || !data.monedas) return;
+    Eco.completar(u); u.monedas += data.monedas; Eco.guardar(u);
+    Toast.mostrar(`<div class="t-ic">🎁</div><div class="t-txt"><small>Regalo</small><b>+${data.monedas} 🪙</b><span>${esc(data.motivo || "¡Que lo disfrutes!")}</span></div>`, "logro");
     render();
   },
 
@@ -83,6 +114,7 @@ const Nube = {
       if (data && data.length) {
         const u = BD.adoptarNube(user.id, this.deFila(data[0]));
         if (u.pendiente) this.subir(u);
+        this.revisarRegalos(u);
         if (this.volvioDeLogin || S.screen === "cuenta" || S.screen === "crearPerfil") { this.volvioDeLogin = false; alIniciar(u); }
         else render();
       } else {

@@ -70,6 +70,7 @@ const Eco = {
     if (!e.puede) return null;
     u.diario.ultimo = hoyStr(); u.diario.racha = e.racha; u.diario.mejor = Math.max(u.diario.mejor, e.racha);
     u.monedas += e.monedas;
+    if (u.nube) Nube.actividad("ingreso", null, 0, e.monedas);
     let item = null;
     if (e.cofre) {
       // Cofre del día 7: una cosa de la tienda que no tenga (hasta 300 monedas)
@@ -87,6 +88,7 @@ const Eco = {
     const m = Eco.mision(u);
     if (m.cobrada || m.hechas < m.meta) return false;
     u.diario.semanaCobrada = u.diario.semana; u.monedas += m.premio;
+    if (u.nube) Nube.actividad("mision", null, 0, m.premio);
     Eco.guardar(u); return true;
   },
 
@@ -94,6 +96,7 @@ const Eco = {
     const it = CATALOGO[id];
     if (!it || u.inv.includes(id) || u.monedas < it.precio) return false;
     u.monedas -= it.precio; u.inv.push(id);
+    if (u.nube) Nube.actividad("compra", it.tipo, 0, -it.precio);
     Eco.guardar(u); return true;
   },
   tiene: (u, id) => u.inv.includes(id),
@@ -117,6 +120,59 @@ const Eco = {
   },
 
   guardar(u) { BD.guardar(); if (u.nube && typeof Nube !== "undefined") Nube.subir(u); }
+};
+
+/* ---------- Anuncios con recompensa ----------
+   Se activan desde el panel de administración (tabla config, clave "anuncios").
+   Con "prueba" se muestra un anuncio de mentira; sin "prueba", se usa la API de anuncios para juegos de Google
+   (window.adBreak, que se agrega con el script de AdSense cuando tengas la cuenta). El servidor decide cuántas
+   monedas da y cuántos anuncios por día se pueden cobrar. */
+const Anuncios = {
+  cfg() { return (typeof Nube !== "undefined" && Nube.cfg && Nube.cfg.anuncios) || null; },
+  activos(u) { const c = this.cfg(); return !!(c && c.activos && u && u.nube && Nube.user); },
+
+  async ver(u) {
+    const c = this.cfg();
+    const visto = await (c.prueba || typeof window.adBreak !== "function" ? this.prueba(c) : this.real());
+    if (!visto) return;
+    try {
+      const r = await Nube.cobrarAnuncio();
+      if (r.ok) {
+        Eco.completar(u); u.monedas += r.monedas; Eco.guardar(u);
+        Toast.mostrar(`<div class="t-pts">+${r.monedas}<small>monedas</small></div><div class="t-txt"><b>¡Gracias por mirar!</b><span>${r.quedan > 0 ? `Puedes mirar ${r.quedan} más hoy.` : "Por hoy no hay más anuncios."}</span></div>`, "puntos");
+      } else Toast.mostrar(`<div class="t-ic">📺</div><div class="t-txt"><b>${r.motivo === "limite" ? "Ya miraste todos los anuncios de hoy" : "Los anuncios no están disponibles"}</b><span>Vuelve mañana.</span></div>`, "info");
+    } catch (e) { Toast.mostrar(`<div class="t-txt"><b>${esc(e.message)}</b></div>`, "info"); }
+    render();
+  },
+
+  real() {
+    return new Promise(res => {
+      let listo = false; const fin = v => { if (!listo) { listo = true; res(v); } };
+      window.adBreak({ type: "reward", name: "monedas", beforeReward: mostrar => mostrar(), adViewed: () => fin(true), adDismissed: () => fin(false), adBreakDone: () => fin(false) });
+    });
+  },
+
+  /* Anuncio de prueba: 10 segundos de espera, como uno de verdad */
+  prueba(c) {
+    return new Promise(res => {
+      const caja = document.createElement("div");
+      caja.className = "modal-fondo";
+      caja.innerHTML = `<div class="modal anuncio"><span class="label">Anuncio de prueba</span>
+        <div class="anuncio-espacio">📺<b>Aquí va la publicidad</b><small>Cuando conectes una red de anuncios, este espacio muestra un video.</small></div>
+        <div class="bar"><i id="adBar" style="width:0%"></i></div>
+        <button class="btn" id="adOk" disabled>Espera <span id="adT">10</span> s…</button>
+        <button class="linkish" id="adNo">Cerrar sin cobrar</button></div>`;
+      document.body.appendChild(caja);
+      let t = 0; const total = 10;
+      const iv = setInterval(() => {
+        t++; caja.querySelector("#adBar").style.width = (t / total) * 100 + "%";
+        if (t >= total) { clearInterval(iv); const b = caja.querySelector("#adOk"); b.disabled = false; b.textContent = `Cobrar ${c.monedas} 🪙`; }
+        else caja.querySelector("#adT").textContent = total - t;
+      }, 1000);
+      caja.querySelector("#adOk").onclick = () => { caja.remove(); res(true); };
+      caja.querySelector("#adNo").onclick = () => { clearInterval(iv); caja.remove(); res(false); };
+    });
+  }
 };
 
 /* Personaje con marco y mascota (para perfil, chip y ranking) */
@@ -179,6 +235,7 @@ PANTALLAS.tienda = () => {
     <div class="tienda-head"><div><h2>Tienda</h2><p class="sub">Gana monedas jugando, entrando cada día y con la misión semanal.</p></div><div class="saldo">🪙 <b>${u.monedas}</b></div></div>
     <div class="panel misiones">
       <div class="mision"><span class="m-ic">🔥</span><div class="txt"><b>Racha de ${e.puede ? Math.max(e.racha - 1, 0) : e.racha} día${(e.puede ? e.racha - 1 : e.racha) === 1 ? "" : "s"}</b><small>${e.puede ? `Hoy te espera el premio del día ${e.dia}.` : `Mañana: ${PREMIO_DIA[e.dia % 7]} 🪙${e.dia === 6 ? " y el cofre 🎁" : ""}.`}</small></div>${e.puede ? `<button class="btn chico" id="diario">Cobrar</button>` : `<span class="ok">✓ Hoy</span>`}</div>
+      ${Anuncios.activos(u) ? `<div class="mision"><span class="m-ic">📺</span><div class="txt"><b>Mirar un anuncio</b><small>+${Anuncios.cfg().monedas} 🪙 cada uno · hasta ${Anuncios.cfg().porDia} por día</small></div><button class="btn chico" id="verAnuncio">Mirar</button></div>` : ""}
       <div class="mision"><span class="m-ic">🎯</span><div class="txt"><b>Misión semanal: ${m.meta} partidas</b><small>${m.hechas} de ${m.meta} · premio ${m.premio} 🪙</small><div class="xp"><i style="width:${(m.hechas / m.meta) * 100}%"></i></div></div>${m.cobrada ? `<span class="ok">✓ Cobrada</span>` : `<button class="btn chico" id="mision" ${m.hechas < m.meta ? "disabled" : ""}>Cobrar</button>`}</div>
     </div>
     <div class="tabs scroll">${TIPOS_TIENDA.map(([k, n]) => `<button data-tt="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
@@ -197,6 +254,7 @@ PANTALLAS.tienda = () => {
   });
   app.querySelectorAll("[data-eq]").forEach(b => b.onclick = () => { Eco.equipar(u, b.dataset.eq); render(); });
   on("diario", () => mostrarDiario(u));
+  on("verAnuncio", () => Anuncios.ver(u));
   on("mision", () => { if (Eco.cobrarMision(u)) Toast.mostrar(`<div class="t-pts">+${MISION_SEMANA.premio}<small>monedas</small></div><div class="t-txt"><b>¡Misión semanal cumplida!</b><span>Jugaste ${MISION_SEMANA.partidas} partidas esta semana.</span></div>`, "logro"); render(); });
   on("volver", () => go("home"));
 };

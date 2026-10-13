@@ -90,6 +90,22 @@ perfil (Row Level Security), y un trigger impide que los puntos bajen o suban m�
   Para mensajes al instante, en Supabase → Database → Publications, la tabla `mensajes` debe estar en `supabase_realtime`
   (el script lo intenta); si no, el juego revisa cada 12 segundos.
 
+## Panel de administración y anuncios
+Panel privado en **`admin.html`** (https://nachobracco1595.github.io/el-impostor/admin.html):
+jugadores, activos por día, partidas por día y por juego, monedas repartidas y gastadas, anuncios vistos,
+top 10, lista de jugadores con opción de regalar monedas, y configuración de los anuncios con recompensa.
+
+Para entrar, corre una vez en Supabase → SQL Editor (con tu correo):
+`insert into public.admins (id) select id from auth.users where email = 'TU_CORREO' on conflict do nothing;`
+
+Los datos salen de funciones (`panel_resumen`, `panel_usuarios`) que verifican que seas admin; nadie más puede leerlos.
+La actividad se anota desde que existe la tabla `actividad`.
+
+**Anuncios con recompensa:** se activan desde el panel (monedas por anuncio y máximo por día; el servidor lo controla
+en `cobrar_anuncio`). En "modo prueba" se muestra un anuncio de mentira de 10 s. Para anuncios reales, el juego usa la
+API de anuncios para juegos web de Google (`adBreak` con `type: "reward"`, de AdSense): al agregar ese script con tu
+cuenta y apagar el modo prueba, el botón de la tienda muestra anuncios de verdad.
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,
@@ -111,5 +127,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

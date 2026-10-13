@@ -5,3 +5,5 @@
    La clave anon es pública a propósito: la seguridad la dan las reglas de supabase/esquema.sql.
    Con null el juego funciona igual, solo con perfiles locales. */
 window.SUPABASE_CONFIG = null;
+url: "https://brvpaoerqcioqxeirxmq.supabase.co/rest/v1/"
+anonKey: "sb_publishable_3hDkgv9xoNNmisflbqyskQ_NJT3lPUS"

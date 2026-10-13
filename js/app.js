@@ -17,7 +17,10 @@ const S = {
   themes: store.get("themes", ["Cine", "Series", "Dibujos animados", "Vehículos"]).filter(t => TEMAS[t]),
   cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, allImp: false, noImp: false, minutes: 3 }, store.get("cfg", {})),
   used: store.get("used", []),
-  mode: "impostor",   // juego elegido para el flujo local: impostor | liars
+  casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
+  casoId: store.get("casoId", "collar"),
+  caso: null,         // partida local de detectives
+  mode: "impostor",   // juego elegido para el flujo local: impostor | liars | casos
   online: false,      // true cuando la configuración se edita para una sala online
   game: null,         // partida local del impostor
   lie: null           // partida local del mentiroso
@@ -28,7 +31,13 @@ const PANTALLAS = {};
 function render() {
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   (PANTALLAS[S.screen] || PANTALLAS.home)(); }
-function go(s) { S.screen = s; render(); window.scrollTo(0, 0); }
+let animT = null;
+function go(s) {
+  S.screen = s;
+  app.classList.remove("entra"); void app.offsetWidth; app.classList.add("entra");
+  clearTimeout(animT); animT = setTimeout(() => app.classList.remove("entra"), 450);
+  render(); window.scrollTo(0, 0);
+}
 
 const head = (step, back = true) => `<header class="top">
   <button class="logo" id="home" aria-label="Volver al inicio">El <span>Impostor</span></button>
@@ -108,6 +117,11 @@ PANTALLAS.home = () => {
       <div class="juego-txt"><h2>Mesa del Mentiroso</h2><p>Tira cartas boca abajo y miente con cara de póker. Al que pillan, gira el tambor del revólver.</p></div>
       <div class="juego-acc"><button class="btn" id="localLie">Jugar en este teléfono</button></div>
     </article>
+    <article class="juego detective">
+      <div class="juego-art">${personaje("#e8e8e8", "civ", 70, ["sombrero", "lupa"])}</div>
+      <div class="juego-txt"><h2>Detectives</h2><p>${CASOS.length} casos con sospechosos, pruebas y testimonios. Cada uno tiene pistas secretas: debatan y arresten al culpable.</p></div>
+      <div class="juego-acc"><button class="btn" id="localCas">Jugar en este teléfono</button></div>
+    </article>
     <article class="juego online">
       <div class="juego-txt"><h2>Jugar online</h2><p>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código a los demás.</p></div>
       <div class="juego-acc row"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
@@ -115,23 +129,24 @@ PANTALLAS.home = () => {
   </section>`;
   on("localImp", () => { S.mode = "impostor"; S.online = false; go("players"); });
   on("localLie", () => { S.mode = "liars"; S.online = false; go("players"); });
+  on("localCas", () => { S.mode = "casos"; S.online = false; go("players"); });
   on("crear", () => go("onCrear"));
   on("unirme", () => go("onUnirme"));
 };
 
 /* ---------- Jugadores (modo local) ---------- */
-const minJug = () => S.mode === "liars" ? 2 : 3;
+const minJug = () => S.mode === "impostor" ? 3 : 2;
 PANTALLAS.players = () => {
   const n = S.players.length, min = minJug();
   app.innerHTML = `${head(1)}
   <section class="screen">
-    <div><h2>¿Quiénes juegan?</h2><p class="sub">Mínimo ${min} jugadores${S.mode === "liars" ? ", máximo 8" : ""}. El orden de la lista es el orden de la ronda.</p></div>
+    <div><h2>¿Quiénes juegan?</h2><p class="sub">Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}. El orden de la lista es el orden de la ronda.</p></div>
     <form class="add" id="addf"><input id="pname" maxlength="16" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
     <div class="panel">
       <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>
-      ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38)}<span class="name">${esc(p)}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
+      ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38, "civ", S.mode === "casos" ? ["sombrero"] : [])}<span class="name">${esc(p)}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
     </div>
-    <div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${n < min || (S.mode === "liars" && n > 8) ? "disabled" : ""}>${S.mode === "liars" ? "¡A la mesa!" : "Elegir temas"}</button></div>
+    <div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${n < min || (S.mode !== "impostor" && n > 8) ? "disabled" : ""}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : "Elegir temas"}</button></div>
   </section>`;
   const inp = byId("pname");
   byId("addf").onsubmit = e => {
@@ -144,7 +159,7 @@ PANTALLAS.players = () => {
   app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { S.players.splice(+b.dataset.del, 1); save(); render(); });
   on("clr", () => { S.players = []; save(); render(); });
   on("back", () => go("home"));
-  on("next", () => S.mode === "liars" ? Lie.empezarLocal() : go("themes"));
+  on("next", () => S.mode === "liars" ? Lie.empezarLocal() : S.mode === "casos" ? go("casoSel") : go("themes"));
 };
 
 /* ---------- Temas ---------- */

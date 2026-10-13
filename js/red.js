@@ -97,10 +97,11 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
+      else if (R.game === "casos") Casos.actOn(R, pid, a);
     } catch (e) { console.error(e); }
     this.broadcast();
   },
@@ -109,8 +110,9 @@ const Net = {
     const R = this.R;
     if (R.game === "impostor") return ImpOn.view(R, pid);
     if (R.game === "liars") return { ...Lie.view(R.lie, pid), isHost: pid === "H" };
+    if (R.game === "casos") return { ...Casos.view(R.casos, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -265,12 +267,13 @@ PANTALLAS.online = () => {
   if (key !== UI.fase) { UI.fase = key; UI.ver = false; UI.sel = []; }
   if (v.game === "impostor") return ImpOn.render(v);
   if (v.game === "liars") return Lie.render(v, a => Net.send(a), { local: false, isHost: v.isHost });
+  if (v.game === "casos") { if (v.phase === "intro") UI.vistas = new Set(); marcarResuelto(v); return Casos.render(v, a => Net.send(a), { local: false, isHost: v.isHost }); }
   renderLobby(v);
 };
 
 function renderLobby(v) {
   const H = v.isHost;
-  const juegos = { impostor: ["El Impostor", personaje("#ff4d63", "imp", 54), "3 o más jugadores"], liars: ["Mesa del Mentiroso", `<span class="cartas-mini">${carta("A")}${carta("J")}</span>`, "2 a 8 jugadores"] };
+  const juegos = { impostor: ["El Impostor", personaje("#ff4d63", "imp", 54), "3 o más jugadores"], liars: ["Mesa del Mentiroso", `<span class="cartas-mini">${carta("A")}${carta("J")}</span>`, "2 a 8 jugadores"], casos: ["Detectives", personaje("#e8e8e8", "civ", 54, ["sombrero", "lupa"]), "2 o más detectives"] };
   app.innerHTML = `${Net.cabecera()}
   <section class="screen">
     <div class="panel center codigo-box">
@@ -287,7 +290,9 @@ function renderLobby(v) {
     <div class="panel">
       <span class="label">Juego</span>
       <div class="elige">${Object.entries(juegos).map(([k, j]) => `<button class="elige-j" data-g="${k}" aria-pressed="${v.sel === k}" ${H ? "" : "disabled"}>${j[1]}<b>${j[0]}</b><small>${j[2]}</small></button>`).join("")}</div>
-      ${v.sel === "impostor" ? `<p class="summary">${esc(v.resumen)}</p>${H ? `<button class="btn ghost" id="ajustes">Ajustar temas y reglas</button>` : ""}` : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
+      ${v.sel === "impostor" ? `<p class="summary">${esc(v.resumen)}</p>${H ? `<button class="btn ghost" id="ajustes">Ajustar temas y reglas</button>` : ""}`
+        : v.sel === "casos" ? `<p class="summary">Caso: <b>${esc(v.caso)}</b> · ${v.casoCfg.min ? v.casoCfg.min + " min por acto" : "sin cronómetro"}${v.casoCfg.soplon ? " · con soplón" : ""}</p>${H ? `<button class="btn ghost" id="ajCaso">Elegir caso</button>` : ""}`
+        : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
     </div>
     ${v.err ? `<p class="warn">${esc(v.err)}</p>` : ""}
     ${H ? `<button class="btn" id="empezar">Empezar partida</button>` : `<p class="sub center">Esperando a que el anfitrión empiece la partida…</p>`}
@@ -301,5 +306,6 @@ function renderLobby(v) {
   app.querySelectorAll("[data-g]").forEach(b => b.onclick = () => Net.send({ t: "sel", game: b.dataset.g }));
   app.querySelectorAll("[data-kick]").forEach(b => b.onclick = () => Net.send({ t: "kick", id: b.dataset.kick }));
   on("ajustes", () => { S.online = true; go("themes"); });
+  on("ajCaso", () => { S.online = true; go("casoSel"); });
   on("empezar", () => Net.send({ t: "start" }));
 }

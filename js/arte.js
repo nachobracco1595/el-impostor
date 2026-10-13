@@ -21,7 +21,28 @@ function oscurecer(hex, f = 0.72) {
 }
 
 /* Personaje "frijol" con variantes: civ, imp, complice, bufon, nadie, todos, muerto */
-function personaje(color, tipo = "civ", size = 120) {
+/* Accesorios para retratos. "bajo" se dibuja antes de la cara; "sobre", encima. */
+const ACCESORIOS = {
+  barba: { bajo: `<path d="M24 56 Q26 92 50 93 Q74 92 76 56 Q66 78 50 78 Q34 78 24 56Z" fill="#5c3b1e"/>` },
+  pelo: { bajo: `<path d="M14 84 Q10 40 22 22 Q50 2 78 22 Q90 40 86 84 L76 84 Q80 44 70 30 Q50 22 30 30 Q20 44 24 84Z" fill="#5c3b1e"/>`,
+          sobre: `<path d="M20 40 Q22 14 50 12 Q78 14 80 40 Q70 24 54 26 Q40 34 20 40Z" fill="#5c3b1e"/>` },
+  bigote: { sobre: `<path d="M34 63 Q42 55 50 60 Q58 55 66 63 Q58 67 50 63 Q42 67 34 63Z" fill="#3b2a1a"/>` },
+  lentes: { sobre: `<circle cx="38" cy="48" r="12" fill="#ffffff22" stroke="#1b1726" stroke-width="3.5"/><circle cx="62" cy="48" r="12" fill="#ffffff22" stroke="#1b1726" stroke-width="3.5"/><path d="M50 47 H50.1" stroke="#1b1726" stroke-width="4"/>` },
+  sombrero: { sobre: `<path d="M8 28 Q50 20 92 28 Q88 34 50 31 Q12 34 8 28Z" fill="#3d3550"/><path d="M26 28 Q24 4 50 4 Q76 4 74 28Z" fill="#3d3550"/><path d="M26 22 Q50 18 74 22 L74 27 Q50 23 26 27Z" fill="#b3263c"/>` },
+  galera: { sobre: `<rect x="31" y="0" width="38" height="24" rx="2" fill="#1b1726"/><rect x="31" y="16" width="38" height="5" fill="#b3263c"/><rect x="20" y="22" width="60" height="6" rx="3" fill="#1b1726"/>` },
+  gorra: { sobre: `<path d="M20 32 Q20 8 50 8 Q80 8 80 32Z" fill="#1c5fb8"/><path d="M50 28 H94 Q92 36 78 35 H50Z" fill="#164a8f"/><circle cx="50" cy="9" r="3" fill="#164a8f"/>` },
+  casco: { sobre: `<path d="M18 32 Q18 4 50 4 Q82 4 82 32Z" fill="#fcc419"/><path d="M46 4 h8 v28 h-8z" fill="#f59f00"/><rect x="12" y="29" width="76" height="6" rx="3" fill="#f59f00"/>` },
+  chef: { sobre: `<path d="M26 28 Q12 22 20 10 Q28 0 40 6 Q50 -3 60 6 Q72 0 80 10 Q88 22 74 28Z" fill="#fff"/><rect x="26" y="20" width="48" height="12" rx="2" fill="#f1f3f5"/>` },
+  cofia: { sobre: `<path d="M28 26 L33 10 H67 L72 26Z" fill="#fff"/><path d="M47 12 h6 v4 h4 v6 h-4 v4 h-6 v-4 h-4 v-6 h4z" fill="#e03131"/>` },
+  auriculares: { sobre: `<path d="M18 48 Q16 10 50 10 Q84 10 82 48" stroke="#1b1726" stroke-width="5" fill="none"/><rect x="12" y="40" width="11" height="18" rx="5" fill="#1b1726"/><rect x="77" y="40" width="11" height="18" rx="5" fill="#1b1726"/><path d="M18 56 Q22 70 38 68" stroke="#1b1726" stroke-width="3" fill="none"/><circle cx="39" cy="68" r="3" fill="#1b1726"/>` },
+  mono: { sobre: `<path d="M50 86 L36 79 V93Z M50 86 L64 79 V93Z" fill="#c92a2a"/><circle cx="50" cy="86" r="4" fill="#8f1d1d"/>` },
+  collar: { sobre: `<path d="M30 80 Q50 94 70 80" stroke="#3ddcb1" stroke-width="3" fill="none"/><circle cx="50" cy="88" r="4.5" fill="#3ddcb1"/>` },
+  lupa: { sobre: `<circle cx="80" cy="74" r="11" fill="#ffffff33" stroke="#c9a227" stroke-width="4"/><path d="M73 82 L62 96" stroke="#5c3b1e" stroke-width="6" stroke-linecap="round"/>` }
+};
+
+function personaje(color, tipo = "civ", size = 120, acc = []) {
+  const bajo = acc.map(a => (ACCESORIOS[a] || {}).bajo || "").join("");
+  const sobre = acc.map(a => (ACCESORIOS[a] || {}).sobre || "").join("");
   const sombra = oscurecer(color);
   let ojos = `<ellipse cx="38" cy="48" rx="9" ry="11" fill="#fff"/><ellipse cx="62" cy="48" rx="9" ry="11" fill="#fff"/>
     <circle cx="40" cy="50" r="4.5" fill="#1b1726"/><circle cx="64" cy="50" r="4.5" fill="#1b1726"/>`;
@@ -56,7 +77,7 @@ function personaje(color, tipo = "civ", size = 120) {
     <rect x="56" y="80" width="18" height="26" rx="8" fill="${sombra}"/>
     <rect x="18" y="16" width="64" height="80" rx="32" fill="${color}"/>
     <path d="M70 26 Q82 40 80 70" stroke="#fff" stroke-width="5" fill="none" opacity=".25" stroke-linecap="round"/>
-    ${ojos}${boca}${extra}
+    ${bajo}${ojos}${boca}${extra}${sobre}
   </svg>`;
 }
 
@@ -67,8 +88,8 @@ function grupoPortada() {
   return `<div class="grupo">${c.map((col, i) => `<span style="--i:${i}">${personaje(col, t[i], 64)}</span>`).join("")}</div>`;
 }
 
-function avatar(nombre, size = 36, tipo = "civ") {
-  return `<span class="av" style="width:${size}px;height:${size}px">${personaje(colorDe(nombre), tipo, size * 0.9)}</span>`;
+function avatar(nombre, size = 36, tipo = "civ", acc = []) {
+  return `<span class="av" style="width:${size}px;height:${size}px">${personaje(colorDe(nombre), tipo, size * 0.9, acc)}</span>`;
 }
 
 /* Cartas del Mentiroso: Q, K, A y J (comodín) */

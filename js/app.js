@@ -17,6 +17,7 @@ const S = {
   themes: store.get("themes", ["Cine", "Series", "Dibujos animados", "Vehículos"]).filter(t => TEMAS[t]),
   cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, allImp: false, noImp: false, minutes: 3 }, store.get("cfg", {})),
   used: store.get("used", []),
+  chCfg: Object.assign({ comodines: true, cpus: 1 }, store.get("chCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
   casoId: store.get("casoId", "collar"),
   caso: null,         // partida local de detectives
@@ -103,6 +104,18 @@ setInterval(() => {
 }, 250);
 
 /* ---------- Inicio ---------- */
+/* Juegos del menú: [modo, nombre, descripción, arte, clase] */
+function juegosMenu() {
+  return [
+    ["impostor", "El Impostor", "Todos saben la palabra menos uno.", personaje("#ff4d63", "imp", 64), "t-imp"],
+    ["liars", "Mesa del Mentiroso", "Miente con las cartas o gatilla.", `<span class="cartas-mini">${carta("K")}${carta("J")}</span>`, "t-lie"],
+    ["casos", "Detectives", `${CASOS.length} casos para resolver en grupo.`, personaje("#e8e8e8", "civ", 64, ["sombrero", "lupa"]), "t-cas"],
+    ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
+    ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
+    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "t-aj"]
+  ];
+}
+
 PANTALLAS.home = () => {
   app.innerHTML = `${Cuenta.barra()}
   <section class="screen hero">
@@ -110,49 +123,71 @@ PANTALLAS.home = () => {
     <h1 class="titulo">El <span>Impostor</span></h1>
     <p class="sub center">Juegos para la previa con amigos. En un solo teléfono o cada uno en el suyo.</p>
   </section>
-  <section class="juegos">
-    <article class="juego">
-      <div class="juego-art">${personaje("#ff4d63", "imp", 70)}</div>
-      <div class="juego-txt"><h2>El Impostor</h2><p>Todos conocen la palabra secreta menos el impostor. Descúbranlo antes de que se escape.</p></div>
-      <div class="juego-acc"><button class="btn" id="localImp">Jugar en este teléfono</button></div>
-    </article>
-    <article class="juego">
-      <div class="juego-art cartas-mini">${carta("K")}${carta("J")}${tambor(0, { size: 54 })}</div>
-      <div class="juego-txt"><h2>Mesa del Mentiroso</h2><p>Tira cartas boca abajo y miente con cara de póker. Al que pillan, gira el tambor del revólver.</p></div>
-      <div class="juego-acc"><button class="btn" id="localLie">Jugar en este teléfono</button></div>
-    </article>
-    <article class="juego detective">
-      <div class="juego-art">${personaje("#e8e8e8", "civ", 70, ["sombrero", "lupa"])}</div>
-      <div class="juego-txt"><h2>Detectives</h2><p>${CASOS.length} casos con sospechosos, pruebas y testimonios. Cada uno tiene pistas secretas: debatan y arresten al culpable.</p></div>
-      <div class="juego-acc"><button class="btn" id="localCas">Jugar en este teléfono</button></div>
-    </article>
-    <article class="juego online">
-      <div class="juego-txt"><h2>Jugar online</h2><p>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código a los demás.</p></div>
-      <div class="juego-acc row"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
-    </article>
-  </section>`;
-  on("localImp", () => { S.mode = "impostor"; S.online = false; go("players"); });
-  on("localLie", () => { S.mode = "liars"; S.online = false; go("players"); });
-  on("localCas", () => { S.mode = "casos"; S.online = false; go("players"); });
+  <section class="juegos-grid">${juegosMenu().map(([m, n, d, art, cls]) => `<button class="tile ${cls}" data-modo="${m}">
+      <span class="tile-art">${art}</span><b>${n}</b><small>${d}</small><span class="tile-cta">Jugar</span></button>`).join("")}</section>
+  <article class="juego online">
+    <div class="juego-txt"><h2>Jugar online</h2><p>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código a los demás.</p></div>
+    <div class="juego-acc row"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
+  </article>`;
+  app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
+    S.mode = b.dataset.modo; S.online = false;
+    go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
+  });
   Cuenta.conectarBarra();
   on("crear", () => go("onCrear"));
   on("unirme", () => go("onUnirme"));
 };
 
+/* ---------- Duelo (ajedrez y batalla naval): quién contra quién ---------- */
+const CPU_NOMBRES = ["🤖 Rita", "🤖 Tito", "🤖 Pepa"];
+PANTALLAS.duelo = () => {
+  const aj = S.mode === "ajedrez";
+  const rivalesCpu = aj ? [["cpu-facil", "🤖 Compu fácil"], ["cpu-dificil", "🤖 Compu difícil"]] : [["cpu", "🤖 Compu"]];
+  const d = UI.duelo = UI.duelo && UI.duelo.modo === S.mode ? UI.duelo : { modo: S.mode, a: S.players[0] || "", b: rivalesCpu[0][0] };
+  if (!S.players.includes(d.a)) d.a = S.players[0] || "";
+  if (d.b === d.a || (!d.b.startsWith("cpu") && !S.players.includes(d.b))) d.b = rivalesCpu[0][0];
+  const chip = (campo, val, txt, art) => `<button class="chip-j ${d[campo] === val ? "on" : ""}" data-campo="${campo}" data-val="${esc(val)}" aria-pressed="${d[campo] === val}">${art}${esc(txt)}</button>`;
+  app.innerHTML = `${head(0)}
+  <section class="screen">
+    <div><h2>${aj ? "Ajedrez" : "Batalla naval"}</h2><p class="sub">Elige quién juega y contra quién.</p></div>
+    <div class="panel"><span class="label">${aj ? "Juega con blancas" : "Jugador 1"}</span>
+      ${S.players.length ? `<div class="chips-j">${S.players.map(n => chip("a", n, n, avatar(n, 26))).join("")}</div>` : `<p class="empty">Agrega jugadores en la lista.</p>`}</div>
+    <div class="panel"><span class="label">${aj ? "Rival (negras)" : "Rival"}</span>
+      <div class="chips-j">${rivalesCpu.map(([v, t]) => chip("b", v, t, "")).join("")}${S.players.filter(n => n !== d.a).map(n => chip("b", n, n, avatar(n, 26))).join("")}</div>
+      <p class="summary">${d.b.startsWith("cpu") ? "Juegas contra la computadora en este teléfono." : aj ? "Dos personas en el mismo teléfono: se van turnando." : "Dos personas: se pasan el teléfono en cada turno para no ver la flota del otro."}</p></div>
+    <div class="row"><button class="btn ghost" id="lista">Editar jugadores</button><button class="btn" id="go" ${d.a ? "" : "disabled"}>¡A jugar!</button></div>
+    <button class="linkish" id="back">Inicio</button>
+  </section>`;
+  app.querySelectorAll("[data-campo]").forEach(b => b.onclick = () => { d[b.dataset.campo] = b.dataset.val; render(); });
+  on("lista", () => go("players"));
+  on("back", () => go("home"));
+  on("go", () => {
+    const A = { id: "p0", name: d.a };
+    const B = d.b.startsWith("cpu") ? { id: "p1", name: aj ? (d.b === "cpu-dificil" ? "🤖 Compu difícil" : "🤖 Compu fácil") : "🤖 Compu", cpu: true, nivel: d.b === "cpu-dificil" ? "dificil" : "facil" } : { id: "p1", name: d.b };
+    aj ? Ajedrez.empezarLocal([A, B]) : Naval.empezarLocal([A, B]);
+  });
+};
+
 /* ---------- Jugadores (modo local) ---------- */
-const minJug = () => S.mode === "impostor" ? 3 : 2;
+const minJug = () => S.mode === "impostor" ? 3 : ["chinchon", "ajedrez", "naval"].includes(S.mode) ? 1 : 2;
 PANTALLAS.players = () => {
   const n = S.players.length, min = minJug();
   app.innerHTML = `${head(1)}
   <section class="screen">
-    <div><h2>¿Quiénes juegan?</h2><p class="sub">Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}. El orden de la lista es el orden de la ronda.</p></div>
+    <div><h2>¿Quiénes juegan?</h2><p class="sub">${S.mode === "chinchon" ? "Las personas que juegan; abajo puedes sumar compus." : `Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}.`} El orden de la lista es el orden de la ronda.</p></div>
     <form class="add" id="addf"><input id="pname" maxlength="16" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
     <div class="panel">
       <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>
       ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38, "civ", S.mode === "casos" ? ["sombrero"] : [])}<span class="name">${esc(p)}${BD.porNombre(p) ? `<small class="suma">⭐ Suma puntos</small>` : ""}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
     </div>
     ${(() => { const libres = BD.usuarios().filter(u => !S.players.some(x => x.toLowerCase() === u.nombre.toLowerCase())); return libres.length ? `<div class="panel"><span class="label">Perfiles de este teléfono · toca para sumarlos</span><div class="chips-j">${libres.map(u => `<button class="chip-j" data-perfil="${esc(u.nombre)}">${personaje(u.look.color, "civ", 26, u.look.acc)}${esc(u.nombre)}</button>`).join("")}</div></div>` : ""; })()}
-    <div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${n < min || (S.mode !== "impostor" && n > 8) ? "disabled" : ""}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : "Elegir temas"}</button></div>
+    ${S.mode === "chinchon" ? `<div class="panel">
+      <div class="stepper"><div class="txt"><b>Compus en la mesa</b><small>Jugadores de la computadora. En total, de 2 a 5.</small></div>
+        <div class="ctl"><button id="cpuMenos" aria-label="Menos compus" ${S.chCfg.cpus <= 0 ? "disabled" : ""}>−</button><output>${S.chCfg.cpus}</output><button id="cpuMas" aria-label="Más compus" ${S.chCfg.cpus >= 3 ? "disabled" : ""}>+</button></div></div>
+      <div class="opt"><div class="txt"><b>Con comodines</b><small>Agrega 2 comodines que sirven como cualquier carta.</small></div><button class="switch" role="switch" aria-checked="${S.chCfg.comodines}" id="chCom" aria-label="Con comodines"></button></div>
+    </div>` : ""}
+    ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : 0), max = S.mode === "chinchon" ? 5 : S.mode === "impostor" ? 99 : 8, ok = tot >= min && tot <= max && (S.mode !== "chinchon" || n >= 1);
+      return `${S.mode === "chinchon" && tot > 5 ? `<p class="warn">El chinchón es de 2 a 5 jugadores (contando las compus).</p>` : ""}<div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${ok ? "" : "disabled"}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : S.mode === "chinchon" ? "¡Repartir!" : S.mode === "ajedrez" || S.mode === "naval" ? "Listo" : "Elegir temas"}</button></div>`; })()}
   </section>`;
   const inp = byId("pname");
   byId("addf").onsubmit = e => {
@@ -166,7 +201,16 @@ PANTALLAS.players = () => {
   on("clr", () => { S.players = []; save(); render(); });
   app.querySelectorAll("[data-perfil]").forEach(b => b.onclick = () => { S.players.push(b.dataset.perfil); save(); render(); });
   on("back", () => go("home"));
-  on("next", () => S.mode === "liars" ? Lie.empezarLocal() : S.mode === "casos" ? go("casoSel") : go("themes"));
+  on("cpuMenos", () => { S.chCfg.cpus--; store.set("chCfg", S.chCfg); render(); });
+  on("cpuMas", () => { S.chCfg.cpus++; store.set("chCfg", S.chCfg); render(); });
+  on("chCom", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); render(); });
+  on("next", () => {
+    if (S.mode === "liars") return Lie.empezarLocal();
+    if (S.mode === "casos") return go("casoSel");
+    if (S.mode === "ajedrez" || S.mode === "naval") return go("duelo");
+    if (S.mode === "chinchon") return Chin.empezarLocal([...S.players.map((name, i) => ({ id: "p" + i, name })), ...CPU_NOMBRES.slice(0, S.chCfg.cpus).map((name, i) => ({ id: "c" + i, name, cpu: true }))]);
+    go("themes");
+  });
 };
 
 /* ---------- Temas ---------- */

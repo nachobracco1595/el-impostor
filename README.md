@@ -26,6 +26,21 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Opcional (4 o más jugadores): un **soplón** sabe quién es el culpable y gana si arrestan a otra persona.
 - Los casos están en `js/casos-data.js`; para agregar uno nuevo se copia la estructura de un caso existente.
 
+### Chinchón
+- Baraja española de 40 cartas (con 2 comodines opcionales), de 2 a 5 jugadores; se pueden sumar compus.
+- Escaleras (3+ del mismo palo seguidas, el 7 sigue con la sota) y grupos (3 o 4 del mismo número). Un comodín por juego.
+- Se corta con 5 o menos sueltos; todo ligado resta 10; escalera de 7 del mismo palo es **chinchón** y gana la partida.
+- Quien pasa de 100 queda afuera. Si el mazo se agota dos veces en una ronda, la ronda se anula.
+
+### Batalla naval
+- Tablero 10×10 con 5 barcos que se acomodan solos (nunca se tocan). Si aciertas, vuelves a disparar.
+- Contra la compu, entre dos pasando el teléfono, u online.
+
+### Ajedrez
+- Reglas completas: enroque, captura al paso, coronación con elección de pieza, jaque mate, ahogado, 50 jugadas,
+  triple repetición y material insuficiente. Se puede ofrecer tablas o rendirse.
+- Contra la compu (fácil o difícil), dos personas en el mismo teléfono, u online (los demás de la sala miran).
+
 ## Perfiles, puntos y ranking
 - **Iniciar sesión:** cada jugador crea un perfil con su personaje (color, sombrero, lentes…) y un PIN de 4 números.
 - **Puntos:** se suman al terminar cada partida, según el rol y el resultado (las reglas están en el Ranking → "¿Cómo se ganan puntos?").
@@ -77,5 +92,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase). `js/vendor/supabase.js` es supabase-js 2.45.4 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js` y `chinchon.js` los juegos nuevos). `js/vendor/supabase.js` es supabase-js 2.45.4 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -23,6 +23,12 @@ const LOGROS = [
   { id: "cerrado", ic: "🔍", nombre: "Caso cerrado", desc: "Resuelve un caso.", ok: u => u.stats.casos.resueltos.length >= 1 },
   { id: "sherlock", ic: "🕵️", nombre: "Sherlock", desc: "Resuelve todos los casos.", ok: u => CASOS.every(c => u.stats.casos.resueltos.includes(c.id)) },
   { id: "garganta", ic: "🤫", nombre: "Garganta profunda", desc: "Gana como soplón.", ok: u => u.stats.casos.soplonG >= 1 },
+  { id: "chinchon", ic: "🃏", nombre: "¡Chinchón!", desc: "Haz una escalera de siete del mismo palo.", ok: u => u.stats.chinchon.chinchones >= 1 },
+  { id: "menos10", ic: "➖", nombre: "Menos diez", desc: "Corta con todas las cartas ligadas.", ok: u => u.stats.chinchon.menos10 >= 1 },
+  { id: "almirante", ic: "⚓", nombre: "Almirante", desc: "Gana una batalla naval.", ok: u => u.stats.naval.g >= 1 },
+  { id: "intacta", ic: "🚢", nombre: "Flota intacta", desc: "Gana una batalla con 3 barcos sin un rasguño.", ok: u => u.stats.naval.intactaG >= 1 },
+  { id: "mate", ic: "♚", nombre: "Jaque mate", desc: "Gana una partida de ajedrez por mate.", ok: u => u.stats.ajedrez.mates >= 1 },
+  { id: "maestro", ic: "🧠", nombre: "Gran maestro", desc: "Gánale a la compu difícil al ajedrez.", ok: u => u.stats.ajedrez.dificilG >= 1 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
   { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
@@ -34,7 +40,10 @@ function statsVacias() {
   return {
     impostor: { j: 0, g: 0, p: 0, imp: 0, impG: 0, inoG: 0, adivino: 0, bufonG: 0, sorpresa: 0 },
     liars: { j: 0, g: 0, p: 0, clics: 0, aciertos: 0 },
-    casos: { j: 0, g: 0, p: 0, resueltos: [], soplonG: 0 }
+    casos: { j: 0, g: 0, p: 0, resueltos: [], soplonG: 0 },
+    chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
+    naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
+    ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 }
   };
 }
 
@@ -142,6 +151,12 @@ const BD = {
       if (/-hit$/.test(res.winner)) st.sorpresa++;
     } else if (res.juego === "liars") {
       st.clics += res.clics; st.aciertos += res.aciertos;
+    } else if (res.juego === "chinchon") {
+      st.chinchones += res.chinchon ? 1 : 0; st.menos10 += res.menos10; st.cortes += res.cortes;
+    } else if (res.juego === "naval") {
+      st.hundidos += res.hundidos; if (calc.gano && res.intactos >= 3) st.intactaG++;
+    } else if (res.juego === "ajedrez") {
+      if (res.tablas) st.tablas++; if (res.mate) st.mates++; if (calc.gano && res.nivel === "dificil") st.dificilG++;
     } else if (res.juego === "casos") {
       if (res.resuelto && !res.soplon && !st.resueltos.includes(res.casoId)) st.resueltos.push(res.casoId);
       if (res.soplon && calc.gano) st.soplonG++;
@@ -212,7 +227,16 @@ const Puntos = {
     ["Mentiroso: ser el último en pie", "+30"],
     ["Detectives: resolver el caso", "+10 por cada 🔍 de dificultad, +10"],
     ["Detectives: votar al culpable", "+10"],
-    ["Detectives: ganar como soplón", "+35"]
+    ["Detectives: ganar como soplón", "+35"],
+    ["Chinchón: ganar la partida", "+20, +5 por rival"],
+    ["Chinchón: hacer chinchón", "+40"],
+    ["Chinchón: cortar / cortar con −10", "+3 / +8 cada vez"],
+    ["Batalla naval: hundir un barco", "+2 cada uno"],
+    ["Batalla naval: ganar (contra una persona / la compu)", "+25 / +15"],
+    ["Batalla naval: barcos intactos al ganar", "+3 cada uno"],
+    ["Ajedrez: ganar (persona / compu difícil / compu fácil)", "+30 / +25 / +10"],
+    ["Ajedrez: tablas", "+10"],
+    ["Ajedrez: ganar por jaque mate", "+5 extra"]
   ],
 
   calcular(r) {
@@ -233,6 +257,18 @@ const Puntos = {
       if (r.aciertos) d.push([`Atrapaste ${r.aciertos} mentiroso${r.aciertos > 1 ? "s" : ""}`, 5 * r.aciertos]);
       if (r.clics) d.push([`Sobreviviste ${r.clics} gatillazo${r.clics > 1 ? "s" : ""}`, 3 * r.clics]);
       if (r.gano) { gano = true; d.push(["Último en pie", 30]); }
+    } else if (r.juego === "chinchon") {
+      if (r.chinchon) { gano = true; d.push(["¡Chinchón!", 40]); }
+      else if (r.gano) { gano = true; d.push([`Ganaste contra ${r.rivales} rival${r.rivales > 1 ? "es" : ""}`, 20 + 5 * r.rivales]); }
+      const cortesComunes = r.cortes - r.menos10;
+      if (cortesComunes > 0) d.push([`Cortaste ${cortesComunes} ${cortesComunes > 1 ? "veces" : "vez"}`, 3 * cortesComunes]);
+      if (r.menos10) d.push([`Cortaste con −10 (${r.menos10})`, 8 * r.menos10]);
+    } else if (r.juego === "naval") {
+      if (r.hundidos) d.push([`Hundiste ${r.hundidos} barco${r.hundidos > 1 ? "s" : ""}`, 2 * r.hundidos]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a la compu" : "Ganaste la batalla", r.vsCompu ? 15 : 25]); if (r.intactos) d.push([`${r.intactos} barco${r.intactos > 1 ? "s" : ""} intacto${r.intactos > 1 ? "s" : ""}`, 3 * r.intactos]); }
+    } else if (r.juego === "ajedrez") {
+      if (r.gano) { gano = true; d.push([r.vsCompu ? (r.nivel === "dificil" ? "Le ganaste a la compu difícil" : "Le ganaste a la compu fácil") : "Ganaste la partida", r.vsCompu ? (r.nivel === "dificil" ? 25 : 10) : 30]); if (r.mate) d.push(["Por jaque mate", 5]); }
+      else if (r.tablas) d.push(["Tablas", 10]);
     } else if (r.juego === "casos") {
       if (r.soplon) { if (!r.resuelto) { gano = true; d.push(["Ganaste como soplón", 35]); } }
       else {

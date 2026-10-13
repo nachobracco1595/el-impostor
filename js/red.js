@@ -98,11 +98,14 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
       else if (R.game === "casos") Casos.actOn(R, pid, a);
+      else if (R.game === "ajedrez") Ajedrez.actOn(R, pid, a);
+      else if (R.game === "naval") Naval.actOn(R, pid, a);
+      else if (R.game === "chinchon") Chin.actOn(R, pid, a);
     } catch (e) { console.error(e); }
     this.broadcast();
   },
@@ -110,7 +113,7 @@ const Net = {
   viewFor(pid) {
     const v = this.vistaJuego(pid), R = this.R;
     v.looks = Object.fromEntries(R.players.filter(p => p.look).map(p => [p.name, p.look]));
-    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : null;
+    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : null;
     return v;
   },
 
@@ -119,8 +122,11 @@ const Net = {
     if (R.game === "impostor") return ImpOn.view(R, pid);
     if (R.game === "liars") return { ...Lie.view(R.lie, pid), isHost: pid === "H" };
     if (R.game === "casos") return { ...Casos.view(R.casos, pid), isHost: pid === "H" };
+    if (R.game === "ajedrez") return { ...Ajedrez.view(R.aj, pid), isHost: pid === "H" };
+    if (R.game === "naval") return { ...Naval.view(R.nav, pid), isHost: pid === "H" };
+    if (R.game === "chinchon") return { ...Chin.view(R.chi, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, chCom: S.chCfg.comodines, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -277,13 +283,24 @@ PANTALLAS.online = () => {
   if (key !== UI.fase) { UI.fase = key; UI.ver = false; UI.sel = []; }
   if (v.game === "impostor") return ImpOn.render(v);
   if (v.game === "liars") return Lie.render(v, a => Net.send(a), { local: false, isHost: v.isHost });
+  const enviar = a => Net.send(a), op = { local: false, isHost: v.isHost };
+  if (v.game === "ajedrez") return Ajedrez.render(v, enviar, op);
+  if (v.game === "naval") return Naval.render(v, enviar, op);
+  if (v.game === "chinchon") return Chin.render(v, enviar, op);
   if (v.game === "casos") { if (v.phase === "intro") UI.vistas = new Set(); marcarResuelto(v); return Casos.render(v, a => Net.send(a), { local: false, isHost: v.isHost }); }
   renderLobby(v);
 };
 
 function renderLobby(v) {
   const H = v.isHost;
-  const juegos = { impostor: ["El Impostor", personaje("#ff4d63", "imp", 54), "3 o más jugadores"], liars: ["Mesa del Mentiroso", `<span class="cartas-mini">${carta("A")}${carta("J")}</span>`, "2 a 8 jugadores"], casos: ["Detectives", personaje("#e8e8e8", "civ", 54, ["sombrero", "lupa"]), "2 o más detectives"] };
+  const juegos = {
+    impostor: ["El Impostor", personaje("#ff4d63", "imp", 46), "3 o más"],
+    liars: ["Mentiroso", `<span class="cartas-mini">${carta("A")}${carta("J")}</span>`, "2 a 8"],
+    casos: ["Detectives", personaje("#e8e8e8", "civ", 46, ["sombrero", "lupa"]), "2 o más"],
+    chinchon: ["Chinchón", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "2 a 5"],
+    naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
+    ajedrez: ["Ajedrez", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "2 jugadores"]
+  };
   app.innerHTML = `${Net.cabecera()}
   <section class="screen">
     <div class="panel center codigo-box">
@@ -302,6 +319,8 @@ function renderLobby(v) {
       <div class="elige">${Object.entries(juegos).map(([k, j]) => `<button class="elige-j" data-g="${k}" aria-pressed="${v.sel === k}" ${H ? "" : "disabled"}>${j[1]}<b>${j[0]}</b><small>${j[2]}</small></button>`).join("")}</div>
       ${v.sel === "impostor" ? `<p class="summary">${esc(v.resumen)}</p>${H ? `<button class="btn ghost" id="ajustes">Ajustar temas y reglas</button>` : ""}`
         : v.sel === "casos" ? `<p class="summary">Caso: <b>${esc(v.caso)}</b> · ${v.casoCfg.min ? v.casoCfg.min + " min por acto" : "sin cronómetro"}${v.casoCfg.soplon ? " · con soplón" : ""}</p>${H ? `<button class="btn ghost" id="ajCaso">Elegir caso</button>` : ""}`
+        : v.sel === "chinchon" ? `<p class="summary">De 2 a 5 jugadores · ${v.chCom ? "con 2 comodines" : "sin comodines"} · se pierde al pasar de 100.</p>${H ? `<div class="opt"><div class="txt"><b>Con comodines</b></div><button class="switch" role="switch" aria-checked="${v.chCom}" id="chComOn" aria-label="Con comodines"></button></div>` : ""}`
+        : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
         : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
     </div>
     ${v.err ? `<p class="warn">${esc(v.err)}</p>` : ""}
@@ -317,5 +336,6 @@ function renderLobby(v) {
   app.querySelectorAll("[data-kick]").forEach(b => b.onclick = () => Net.send({ t: "kick", id: b.dataset.kick }));
   on("ajustes", () => { S.online = true; go("themes"); });
   on("ajCaso", () => { S.online = true; go("casoSel"); });
+  on("chComOn", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("empezar", () => Net.send({ t: "start" }));
 }

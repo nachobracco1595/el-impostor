@@ -20,10 +20,18 @@ create table if not exists public.perfiles (
   pts_casos    integer generated always as (coalesce((stats -> 'casos' ->> 'p')::integer, 0)) stored
 );
 
+-- Juegos agregados después (se pueden correr sobre una tabla ya creada)
+alter table public.perfiles add column if not exists pts_chinchon integer generated always as (coalesce((stats -> 'chinchon' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists pts_naval    integer generated always as (coalesce((stats -> 'naval' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists pts_ajedrez  integer generated always as (coalesce((stats -> 'ajedrez' ->> 'p')::integer, 0)) stored;
+
 create index if not exists perfiles_puntos_idx on public.perfiles (puntos desc);
 create index if not exists perfiles_impostor_idx on public.perfiles (pts_impostor desc);
 create index if not exists perfiles_liars_idx on public.perfiles (pts_liars desc);
 create index if not exists perfiles_casos_idx on public.perfiles (pts_casos desc);
+create index if not exists perfiles_chinchon_idx on public.perfiles (pts_chinchon desc);
+create index if not exists perfiles_naval_idx on public.perfiles (pts_naval desc);
+create index if not exists perfiles_ajedrez_idx on public.perfiles (pts_ajedrez desc);
 
 -- Seguridad: el ranking es público, pero cada uno solo crea, edita y borra su propio perfil.
 alter table public.perfiles enable row level security;

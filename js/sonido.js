@@ -126,6 +126,29 @@ const Sonido = {
         if (bar % 2 === 1 && [0, 3, 6, 10].includes(k)) S2.pluck(t, mel[(k / 2 + bar) % 8 | 0], 0.11, 0.4);
       }
     },
+    ajedrez: {   // clave de sol tranquila, estilo clavecín
+      bpm: 72, swing: 0, gain: 1.6,
+      tocar(S2, t, i, d) {
+        const bar = Math.floor(i / 16) % 4, k = i % 16;
+        const acordes = [[48, 55, 64, 72], [45, 52, 60, 69], [41, 48, 57, 65], [43, 50, 59, 67]];  // C Am F G
+        const a = acordes[bar];
+        if (k % 2 === 0) { const arp = [a[0], a[2], a[1], a[2]]; S2.pluck(t, arp[(k / 2) % 4] + 12, 0.05, 0.5); }
+        if (k === 0) S2.bajoRedondo(t, a[0] - 12, d * 15, 0.2);
+        const mel = [76, 74, 72, 71, 72, 74, 76, 79];
+        if ((k === 0 || k === 8) && bar % 2 === 0) S2.campana(t, mel[(bar * 2 + k / 8) % 8], 0.035, 2);
+      }
+    },
+    naval: {     // sonar y redoblante de marcha
+      bpm: 92, swing: 0, gain: 1.5,
+      tocar(S2, t, i, d) {
+        const bar = Math.floor(i / 16) % 4, k = i % 16;
+        if (k === 0 && bar % 2 === 0) S2.osc("sine", 1320, t, 1.2, 0.05, S2.musicBus, { dec: 1.2, rev: 1 });   // ping del sonar
+        if (k % 4 === 0) S2.bajoRedondo(t, [33, 33, 36, 31][bar], d * 3, 0.3);
+        if (k === 4 || k === 12) S2.caja(t, 0.18);
+        if (k === 14 || k === 15) S2.caja(t, 0.08);
+        if (k === 0) S2.pad(t, [[45, 52, 57], [45, 52, 57], [48, 55, 60], [43, 50, 55]][bar], d * 16, 0.02);
+      }
+    },
     noir: {
       bpm: 84, swing: 0.34,
       tocar(S2, t, i, d) {
@@ -195,6 +218,11 @@ const Sonido = {
       clic: () => { this.ruido(t, 0.03, 0.4, B, "bandpass", 3500, 4); this.ruido(t + 0.05, 0.02, 0.2, B, "bandpass", 2500, 4); },
       monedas: () => [84, 88, 91, 96].forEach((m, i) => this.osc("square", n(m), t + i * 0.06, 0.12, 0.06, B, { lp: 5000, rev: 0.3 })),
       logro: () => { [72, 76, 79, 84, 88].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.07, 0.6, 0.1, B, { rev: 0.7 })); this.ruido(t + 0.3, 0.8, 0.08, B, "highpass", 7000, 1, { rev: 0.8 }); },
+      pieza: () => { this.osc("triangle", 300, t, 0.06, 0.25, B, { glide: 180 }); this.ruido(t, 0.04, 0.2, B, "bandpass", 1200, 2); },
+      jaque: () => [76, 72].forEach((m, i) => this.osc("square", n(m), t + i * 0.12, 0.18, 0.07, B, { lp: 2500 })),
+      agua: () => { this.ruido(t, 0.6, 0.35, B, "lowpass", 2500, 1, { fTo: 300, rev: 0.5 }); this.osc("sine", 600, t, 0.25, 0.08, B, { glide: 200 }); },
+      tocado: () => { this.ruido(t, 0.7, 0.7, B, "lowpass", 2000, 0.8, { fTo: 200, rev: 0.5 }); this.osc("sine", 80, t, 0.5, 0.7, B, { glide: 35 }); },
+      hundido: () => { this.sfx("tocado"); [55, 52, 48, 43].forEach((m, i) => this.osc("sawtooth", n(m), t + 0.3 + i * 0.18, 0.3, 0.08, B, { lp: 1200, rev: 0.5 })); },
       empieza: () => [67, 72].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.1, 0.35, 0.14, B, { rev: 0.4 }))
     };
     (E[nombre] || (() => {}))();
@@ -207,11 +235,13 @@ const Sonido = {
     [".final-caso.bien", "victoria"], [".final-caso.mal", "derrota"],
     [".pila.abierta", "voltea"], [".acusa", "acusa"], [".tambor.gira", "giro"],
     [".passto .who", "pasa"], [".expediente .exp-t", "maquina"], [".nota.nueva", "papel"],
-    [".starter", "empieza"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
+    [".starter", "empieza"], [".tablero", "pieza"], [".casilla.jaque", "jaque"],
+    [".nv-aviso.agua", "agua"], [".nv-aviso.toc", "tocado"], [".nv-aviso.hund", "hundido"],
+    [".ch-mesa", "carta"], [".ch-cierre", "voltea"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
   ],
   firma() {
     const out = new Set();
-    this.REGLAS.forEach(([sel], i) => { const el = app.querySelector(sel); if (el) out.add(i + "|" + (el.textContent || "").slice(0, 60)); });
+    this.REGLAS.forEach(([sel], i) => { const el = app.querySelector(sel); if (el) out.add(i + "|" + (el.dataset.n || el.dataset.k || "") + (el.textContent || "").slice(0, 60)); });
     return out;
   },
   trasRender() {
@@ -241,10 +271,16 @@ function escenaMusical() {
   if (sc === "play" || sc === "vote") return "tension";
   if (sc === "liars") return "bar";
   if (sc === "casos" || (sc === "casoSel")) return "noir";
+  if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
+  if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
+  if (sc === "chinchon") return "bar";
   if (sc === "online" && UI.v) {
     const v = UI.v;
     if (v.game === "liars") return "bar";
     if (v.game === "casos") return "noir";
+    if (v.game === "ajedrez") return "ajedrez";
+    if (v.game === "naval") return "naval";
+    if (v.game === "chinchon") return "bar";
     if (v.game === "impostor") return v.phase === "roles" ? "misterio" : v.phase === "end" ? "menu" : "tension";
   }
   return "menu";

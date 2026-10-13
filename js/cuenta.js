@@ -46,6 +46,9 @@ const Cuenta = {
     } else if (S.screen === "end" && S.game) deLocal(S.game.players, (p, i) => Imp.resultado(S.game, i));
     else if (S.screen === "liars" && S.lie) deLocal(S.lie.players, p => Lie.resultado(S.lie, p.id));
     else if (S.screen === "casos" && S.caso) deLocal(S.caso.players, p => Casos.resultado(S.caso, p.id, true));
+    else if (S.screen === "ajedrez" && S.aj) deLocal(S.aj.jug.filter(j => !j.cpu), p => Ajedrez.resultado(S.aj, p.id));
+    else if (S.screen === "naval" && S.nav) deLocal(S.nav.jug.filter(j => !j.cpu), p => Naval.resultado(S.nav, p.id));
+    else if (S.screen === "chinchon" && S.chi) deLocal(S.chi.jug.filter(j => !j.cpu), p => Chin.resultado(S.chi, p.id));
     const hechos = pend.map(([u, r]) => r && BD.registrar(u.id, r)).filter(Boolean);
     if (!hechos.length) return;
     if (hechos.length === 1) {
@@ -241,6 +244,9 @@ PANTALLAS.perfil = () => {
       <div class="juego-stats">
         <div><b>🎭 El Impostor</b><span>${st.impostor.p} pts · ${st.impostor.g}/${st.impostor.j} ganadas (${pct(st.impostor.g, st.impostor.j)})</span><small>Fue impostor ${st.impostor.imp} ${st.impostor.imp === 1 ? "vez" : "veces"} y ganó ${st.impostor.impG} · Ganó como inocente ${st.impostor.inoG}</small></div>
         <div><b>🃏 Mesa del Mentiroso</b><span>${st.liars.p} pts · ${st.liars.g}/${st.liars.j} ganadas (${pct(st.liars.g, st.liars.j)})</span><small>${st.liars.aciertos} mentirosos atrapados · ${st.liars.clics} gatillazos sobrevividos</small></div>
+        <div><b>🃏 Chinchón</b><span>${st.chinchon.p} pts · ${st.chinchon.g}/${st.chinchon.j} ganadas (${pct(st.chinchon.g, st.chinchon.j)})</span><small>${st.chinchon.chinchones} chinchones · ${st.chinchon.menos10} cortes con −10</small></div>
+        <div><b>⚓ Batalla naval</b><span>${st.naval.p} pts · ${st.naval.g}/${st.naval.j} ganadas (${pct(st.naval.g, st.naval.j)})</span><small>${st.naval.hundidos} barcos hundidos</small></div>
+        <div><b>♚ Ajedrez</b><span>${st.ajedrez.p} pts · ${st.ajedrez.g}/${st.ajedrez.j} ganadas (${pct(st.ajedrez.g, st.ajedrez.j)})</span><small>${st.ajedrez.mates} mates · ${st.ajedrez.tablas} tablas</small></div>
         <div><b>🔍 Detectives</b><span>${st.casos.p} pts · ${st.casos.g}/${st.casos.j} ganadas (${pct(st.casos.g, st.casos.j)})</span><small>Casos resueltos: ${st.casos.resueltos.length} de ${CASOS.length}</small></div>
       </div></div>
     <div class="panel"><span class="label">Logros</span>
@@ -300,14 +306,14 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["naval", "Naval"], ["ajedrez", "Ajedrez"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}
   <section class="screen">
     <div><h2>Ranking</h2><p class="sub">${enNube ? "Todos los jugadores con cuenta en la nube." : "Perfiles guardados en este teléfono."}</p></div>
     ${Nube.config() ? `<div class="tabs dos">${[["nube", "☁️ Mundial"], ["local", "📱 Este teléfono"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${(UI.rankScope || "nube") === k}">${n}</button>`).join("")}</div>` : ""}
-    <div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
+    <div class="tabs scroll">${tabs.map(([k, n]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
     ${aviso ? `<div class="panel center"><p class="empty">${esc(aviso)}</p></div>` : filas.length ? `
       <div class="podio">${orden.map(i => { const f = podio[i]; return `<div class="podio-p p${i + 1}">
         ${i === 0 ? `<span class="corona">👑</span>` : ""}${personaje(f.u.look.color, "civ", i === 0 ? 86 : 66, f.u.look.acc)}

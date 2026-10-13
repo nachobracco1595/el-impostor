@@ -363,6 +363,8 @@ details.panel > summary::-webkit-details-marker { display: none; }
 /* ---------- Cuentas, perfil y ranking ---------- */
 .btn.google { background: #fff; color: #1f1f1f; box-shadow: 0 4px 0 #b9b6c4; gap: 12px; }
 .btn.google:active { box-shadow: 0 1px 0 #b9b6c4; }
+.mail-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.mail-form .add .btn.chico { height: 52px; }
 .google-box { border-color: #4a3f75; background: linear-gradient(135deg, #2b2347, var(--card)); }
 .cuenta-tipo { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .tabs.dos { grid-template-columns: 1fr 1fr; }

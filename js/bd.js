@@ -1,5 +1,5 @@
 /* Base de datos local (localStorage) con perfiles, puntos, logros e historial.
-   Todo pasa por el objeto BD: para usar una base de datos real (Firebase, Supabase…)
+   Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
 const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives" };
@@ -55,7 +55,7 @@ const BD = {
   },
   guardar() { try { localStorage.setItem(BD_CLAVE, JSON.stringify(this.datos)); } catch {} },
 
-  /* Perfiles locales y, si hay sesión de Google, el perfil de la nube. Los perfiles de nube
+  /* Perfiles locales y, si hay sesión en la nube, el perfil de la nube. Los perfiles de nube
      de otras sesiones quedan en caché pero no se muestran ni suman puntos. */
   usuarios() { const d = this.cargar(); return Object.values(d.usuarios).filter(u => !u.nube || u.id === d.sesion); },
   locales() { return Object.values(this.cargar().usuarios).filter(u => !u.nube); },
@@ -87,7 +87,7 @@ const BD = {
     return u;
   },
 
-  /* Perfil de la nube (Google): el id es el uid de Firebase y no tiene PIN */
+  /* Perfil de la nube: el id es el del usuario de Supabase y no tiene PIN */
   crearNube(uid, nombre, look) {
     nombre = String(nombre).trim().slice(0, 16);
     if (!nombre) throw new Error("Escribe un nombre.");
@@ -159,7 +159,7 @@ const BD = {
     return { ...calc, logros: nuevos, usuario: u };
   },
 
-  /* Exporta solo los perfiles locales: los de Google ya están en la nube */
+  /* Exporta solo los perfiles locales: los de la nube ya están guardados allá */
   exportar() {
     const usuarios = Object.fromEntries(this.locales().map(u => [u.id, u]));
     return JSON.stringify({ v: 1, usuarios, sesion: null, exportado: new Date().toISOString() }, null, 2);

@@ -108,11 +108,16 @@ PANTALLAS.cuenta = () => {
   const pin = UI.pin || "";
   app.innerHTML = `${head(0)}
   <section class="screen">
-    <div><h2>${sel ? `Hola, ${esc(sel.nombre)}` : "¿Quién eres?"}</h2><p class="sub">${sel ? "Escribe tu PIN de 4 números." : "Elige tu perfil. Los perfiles se guardan en este teléfono."}</p></div>
+    <div><h2>${sel ? `Hola, ${esc(sel.nombre)}` : "¿Quién eres?"}</h2><p class="sub">${sel ? "Escribe tu PIN de 4 números." : (Nube.config() ? "Entra con tu cuenta en la nube o elige un perfil de este teléfono." : "Elige tu perfil. Los perfiles se guardan en este teléfono.")}</p></div>
     ${!sel && Nube.config() ? `<div class="panel google-box">
         <span class="label">Cuenta en la nube</span>
         <p class="summary">Tus puntos se guardan en internet, los ves desde cualquier teléfono y apareces en el ranking mundial.</p>
         <button class="btn google" id="google" ${Nube.estado !== "lista" ? "disabled" : ""}>${LOGO_G}${Nube.estado === "lista" ? "Continuar con Google" : Nube.estado === "error" ? "Nube no disponible" : "Conectando…"}</button>
+        <form class="mail-form" id="fMail">
+          <label class="label" for="mail">O entra con tu correo, sin contraseña</label>
+          <div class="add"><input class="campo" id="mail" type="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(UI.mail || "")}" ${Nube.estado !== "lista" ? "disabled" : ""}><button class="btn ghost chico" type="submit" ${Nube.estado !== "lista" ? "disabled" : ""}>Enviar</button></div>
+        </form>
+        ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un enlace a <b>${esc(UI.mailEnviado)}</b>. Ábrelo en este teléfono para entrar (revisa también el spam).</p>` : ""}
         ${UI.errNube ? `<p class="warn">${esc(UI.errNube)}</p>` : ""}
       </div>
       <span class="label">Perfiles sin internet (con PIN, solo en este teléfono)</span>` : ""}
@@ -128,6 +133,15 @@ PANTALLAS.cuenta = () => {
   app.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { UI.loginId = b.dataset.u; UI.pin = ""; UI.pinError = ""; render(); });
   on("nuevo", () => { UI.creando = true; render(); });
   on("google", () => { UI.errNube = ""; Nube.entrarGoogle(); });
+  const fm = byId("fMail");
+  if (fm) fm.onsubmit = async e => {
+    e.preventDefault();
+    const m = byId("mail").value.trim();
+    UI.mail = m; UI.errNube = ""; UI.mailEnviado = "";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)) { UI.errNube = "Escribe un correo válido."; return render(); }
+    try { await Nube.enviarEnlace(m); UI.mailEnviado = m; } catch (err) { UI.errNube = err.message; }
+    render();
+  };
   on("otro", () => { UI.loginId = null; render(); });
   on("volver", () => { UI.loginId = null; go("home"); });
   app.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => {
@@ -157,7 +171,7 @@ PANTALLAS.crearPerfil = () => {
   const nube = !!UI.nubeNuevo;
   app.innerHTML = `${head(0)}
   <section class="screen">
-    <div><h2>${nube ? "Tu perfil en la nube" : "Crear perfil"}</h2><p class="sub">${nube ? "Iniciaste sesión con Google. Elige cómo te verán los demás: tu nombre y tu personaje." : "Arma tu personaje. Con tu perfil sumas puntos, logros y apareces en el ranking."}</p></div>
+    <div><h2>${nube ? "Tu perfil en la nube" : "Crear perfil"}</h2><p class="sub">${nube ? "Ya iniciaste sesión. Elige cómo te verán los demás: tu nombre y tu personaje." : "Arma tu personaje. Con tu perfil sumas puntos, logros y apareces en el ranking."}</p></div>
     <div class="panel">${editorLook(b)}</div>
     <form class="panel" id="f">
       <label class="label" for="pnom">Nombre</label>
@@ -212,7 +226,7 @@ PANTALLAS.perfil = () => {
       <div class="perfil-info">
         <h2>${esc(u.nombre)}</h2>
         <span class="nivel">Nivel ${nv.n} · ${nv.titulo}</span>
-        <small class="cuenta-tipo">${u.nube ? `☁️ Cuenta de Google${Nube.user && Nube.user.email ? ` · ${esc(Nube.user.email)}` : ""}${u.pendiente ? " · ⏳ cambios por subir" : ""}` : "📱 Perfil local de este teléfono"}</small>
+        <small class="cuenta-tipo">${u.nube ? `☁️ Cuenta en la nube${Nube.user && Nube.user.email ? ` · ${esc(Nube.user.email)}` : ""}${u.pendiente ? " · ⏳ cambios por subir" : ""}` : "📱 Perfil local de este teléfono"}</small>
         <div class="xp"><i style="width:${nv.pct}%"></i></div>
         <small class="sub">${u.puntos} puntos${nv.hasta ? ` · faltan ${nv.hasta - u.puntos} para el nivel ${nv.n + 1}` : " · nivel máximo"}</small>
       </div>
@@ -234,7 +248,7 @@ PANTALLAS.perfil = () => {
     <div class="panel"><span class="label">Últimas partidas</span>
       ${u.historial.length ? `<ul class="historial">${u.historial.slice(0, 10).map(h => `<li class="${h.gano ? "g" : "p"}"><span>${fecha(h.f)}</span><b>${esc(JUEGOS[h.juego])}</b><em>${h.gano ? "Ganó" : "Perdió"}</em><strong>+${h.puntos}</strong></li>`).join("")}</ul>` : `<p class="empty">Todavía no jugaste ninguna partida con este perfil.</p>`}</div>
     <div class="panel"><span class="label">Perfiles locales de este teléfono</span>
-      <p class="summary">${u.nube ? "Tu cuenta de Google ya se guarda en la nube. Esto es para los perfiles con PIN: se guardan en este navegador." : "Los perfiles se guardan en este navegador."} Exporta el archivo para tener un respaldo o pasarlo a otro teléfono, e impórtalo allá.</p>
+      <p class="summary">${u.nube ? "Tu cuenta ya se guarda en la nube. Esto es para los perfiles con PIN: se guardan en este navegador." : "Los perfiles se guardan en este navegador."} Exporta el archivo para tener un respaldo o pasarlo a otro teléfono, e impórtalo allá.</p>
       <div class="row"><button class="btn ghost" id="exp">Exportar archivo</button><label class="btn ghost" for="imp">Importar archivo</label></div>
       <input type="file" id="imp" accept=".json,application/json" hidden>
       ${UI.msgBD ? `<p class="summary"><b>${esc(UI.msgBD)}</b></p>` : ""}
@@ -291,7 +305,7 @@ PANTALLAS.ranking = () => {
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}
   <section class="screen">
-    <div><h2>Ranking</h2><p class="sub">${enNube ? "Todos los jugadores con cuenta de Google." : "Perfiles guardados en este teléfono."}</p></div>
+    <div><h2>Ranking</h2><p class="sub">${enNube ? "Todos los jugadores con cuenta en la nube." : "Perfiles guardados en este teléfono."}</p></div>
     ${Nube.config() ? `<div class="tabs dos">${[["nube", "☁️ Mundial"], ["local", "📱 Este teléfono"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${(UI.rankScope || "nube") === k}">${n}</button>`).join("")}</div>` : ""}
     <div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
     ${aviso ? `<div class="panel center"><p class="empty">${esc(aviso)}</p></div>` : filas.length ? `

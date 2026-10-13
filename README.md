@@ -35,26 +35,26 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 
 **Base de datos:** por ahora es local (`localStorage`, clave `impostor:bd`). Desde el perfil se puede exportar a un
 archivo `.json` e importarlo en otro teléfono. Todo el acceso pasa por el objeto `BD` en `js/bd.js`, así que para
-pasar a una base de datos en la nube (Firebase, Supabase) alcanza con reescribir ese archivo.
+la nube está en `js/nube.js` (Supabase).
 El PIN es solo para que nadie use tu perfil en el mismo teléfono: no es seguridad real.
 
-## Nube e inicio de sesión con Google (Firebase)
-Con Firebase configurado aparece **"Continuar con Google"**: el perfil y los puntos se guardan en la nube
-(Firestore, colección `usuarios`) y el ranking pasa a ser **mundial**. Los perfiles locales con PIN siguen funcionando.
+## Nube: inicio de sesión y ranking mundial (Supabase)
+Con Supabase configurado aparecen **"Continuar con Google"** y **"Entra con tu correo"** (enlace mágico, sin contraseña).
+El perfil y los puntos se guardan en la tabla `perfiles` y el ranking pasa a ser **mundial**. Los perfiles locales con PIN siguen funcionando.
 
-Configuración (una sola vez, gratis):
-1. Entrar a https://console.firebase.google.com → **Agregar proyecto** → nombre `el-impostor` (Analytics no hace falta).
-2. **Compilación → Authentication → Comenzar → Método de acceso → Google → Habilitar**, elegir el correo de asistencia y guardar.
-3. **Authentication → Configuración → Dominios autorizados → Agregar dominio:** `nachobracco1595.github.io`.
-4. **Compilación → Firestore Database → Crear base de datos** (ubicación `southamerica-east1`, modo producción).
-   En la pestaña **Reglas**, pegar el contenido de `firestore.rules` y **Publicar**.
-5. **Configuración del proyecto (⚙️) → Tus apps → Web (`</>`)** → registrar la app (sin Hosting) y copiar el objeto
-   `firebaseConfig` en `js/firebase-config.js` (`window.FIREBASE_CONFIG = { ... }`).
+Configuración (una sola vez, plan gratis):
+1. Crear un proyecto en https://supabase.com/dashboard (región São Paulo, `sa-east-1`).
+2. **SQL Editor → New query**: pegar `supabase/esquema.sql` y **Run**.
+3. **Authentication → URL Configuration**: *Site URL* `https://nachobracco1595.github.io/el-impostor/` y en
+   *Redirect URLs* agregar `https://nachobracco1595.github.io/el-impostor/**`.
+4. **Project Settings → API**: copiar *Project URL* y la clave *anon public* en `js/supabase-config.js`
+   (`window.SUPABASE_CONFIG = { url: "...", anonKey: "..." }`). Nunca usar la clave `service_role`.
+5. El correo funciona sin nada más (el plan gratis manda pocos correos por hora).
+6. Para Google: **Authentication → Providers → Google** necesita un *Client ID* y *Client Secret* de una credencial
+   OAuth de Google Cloud (tipo "Aplicación web", con el *Callback URL* que muestra Supabase como URI de redirección autorizada).
 
-Las reglas de `firestore.rules` permiten que cualquiera lea el ranking, pero cada uno solo puede escribir su propio
-perfil; los puntos no pueden bajar ni subir más de 500 de una vez. El correo de Google no se guarda.
-
-Para probar sin tocar la nube real: `firebase emulators:start --project demo-impostor` y abrir `index.html?emu=1`.
+Seguridad (en `supabase/esquema.sql`): cualquiera puede leer el ranking, pero cada uno solo crea, edita y borra su propio
+perfil (Row Level Security), y un trigger impide que los puntos bajen o suban más de 500 de una vez. El correo no se muestra.
 
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
@@ -77,5 +77,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Firebase). `js/vendor/firebase/` es el SDK de Firebase 10.14.1 (licencia Apache 2.0). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase). `js/vendor/supabase.js` es supabase-js 2.45.4 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

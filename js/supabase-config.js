@@ -4,7 +4,9 @@
      anonKey: Publishable key (sb_publishable_…) o la anon key. NUNCA la "secret" / "service_role".
    La clave anon es pública a propósito: la seguridad la dan las reglas de supabase/esquema.sql.
    Con null el juego funciona igual, solo con perfiles locales. */
+/* google: true cuando esté activado en Supabase → Authentication → Providers → Google */
 window.SUPABASE_CONFIG = {
+  google: false,
   url: "https://brvpaoerqcioqxeirxmq.supabase.co",
   anonKey: "sb_publishable_3hDkgv9xoNNmisflbqyskQ_NJT3lPUS"
 };

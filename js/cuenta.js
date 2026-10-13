@@ -115,9 +115,9 @@ PANTALLAS.cuenta = () => {
     ${!sel && Nube.config() ? `<div class="panel google-box">
         <span class="label">Cuenta en la nube</span>
         <p class="summary">Tus puntos se guardan en internet, los ves desde cualquier teléfono y apareces en el ranking mundial.</p>
-        <button class="btn google" id="google" ${Nube.estado !== "lista" ? "disabled" : ""}>${LOGO_G}${Nube.estado === "lista" ? "Continuar con Google" : Nube.estado === "error" ? "Nube no disponible" : "Conectando…"}</button>
+        ${Nube.config().google !== false ? `<button class="btn google" id="google" ${Nube.estado !== "lista" ? "disabled" : ""}>${LOGO_G}${Nube.estado === "lista" ? "Continuar con Google" : Nube.estado === "error" ? "Nube no disponible" : "Conectando…"}</button>` : ""}
         <form class="mail-form" id="fMail">
-          <label class="label" for="mail">O entra con tu correo, sin contraseña</label>
+          <label class="label" for="mail">${Nube.config().google !== false ? "O entra con tu correo, sin contraseña" : "Entra con tu correo, sin contraseña"}</label>
           <div class="add"><input class="campo" id="mail" type="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(UI.mail || "")}" ${Nube.estado !== "lista" ? "disabled" : ""}><button class="btn ghost chico" type="submit" ${Nube.estado !== "lista" ? "disabled" : ""}>Enviar</button></div>
         </form>
         ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un enlace a <b>${esc(UI.mailEnviado)}</b>. Ábrelo en este teléfono para entrar (revisa también el spam).</p>` : ""}

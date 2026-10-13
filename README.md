@@ -49,12 +49,14 @@ Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el su
 - Práctica contra 5 compus en un teléfono, u online de 3 a 10 jugadores (2 impostores desde 7).
 
 ### Trabajos diarios: Tala, Mina y Pesca
+- Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.
+- Con cuenta en la nube te cruzas en vivo con los demás que están en el mismo trabajo (Supabase Realtime, canal por trabajo y día).
 - 3 trabajos por día (uno de cada uno). Cada uno se desbloquea mirando un anuncio (si los anuncios están activos en el panel; si no, se juega gratis). El servidor controla que sea uno por día.
 - 10 minutos por jornada: lo que juntas se convierte en monedas al terminar (hasta 450 por trabajo), y suma algunos puntos.
-- **Tala:** toca los árboles para talarlos; talar seguido da racha. Robles dan más madera, el árbol dorado mucha más; los panales te frenan 2 segundos.
-- **Mina:** rompe bloques y baja de profundidad. Abajo aparecen hierro, oro, esmeralda, diamante, adamantio, cristal arcano y fragmentos del vacío, pero los más duros necesitan un pico mejor. La TNT rompe todo alrededor.
-- **Pesca:** lanza, toca cuando pica y mantén apretado para recoger; suelta cuando el pez tira o se corta la línea.
-- Herramientas en 9 niveles: madera, piedra, metal, esmeralda, diamante, adamantio, encantada, del vacío y de los creadores (el tope). Se mejoran con monedas (de 150 a 3800); cada nivel pega más fuerte y da más material.
+- **Tala:** el botón da hachazos en área (se puede mantener apretado). Robles dan más madera, el árbol dorado mucha más; las abejas te persiguen y te dejan lento.
+- **Mina:** cavas tu camino casillero por casillero. Más hondo (hacia la derecha) aparecen hierro, oro, esmeralda, diamante, adamantio, cristal arcano y fragmentos del vacío, pero los más duros piden mejor pico. La TNT explota y rompe todo alrededor.
+- **Pesca:** te acercas a la orilla y lanzas; en los cardúmenes (burbujas) pican peces mejores. Cuando pica, aprietas rápido y peleas: mantienes al pez dentro de la barra verde. La caña da **fuerza** (sube la barra y recoge más rápido) y **resistencia** (barra más grande y línea más aguantadora).
+- Herramientas en 9 niveles: madera, piedra, metal, esmeralda, diamante, adamantio, encantada, del vacío y de los creadores (el tope). Se mejoran con monedas (de 150 a 3800). Cada nivel pega más fuerte, con más área, y da más material.
 
 ## Perfiles, puntos y ranking
 - **Iniciar sesión:** cada jugador crea un perfil con su personaje (color, sombrero, lentes…) y un PIN de 4 números.

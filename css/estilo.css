@@ -838,3 +838,6 @@ body[data-evento="pascuas"] { background-color: #1a1220; background-image: radia
 .ar-fin-caja .tr-premio b { font-size: 28px; }
 .ar-fin-caja .tr-premio small { font-size: 11px; text-align: center; }
 .ar-tabla b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ar-centro.pop { animation: arPop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes arPop { 0% { transform: scale(2.2); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1); } }

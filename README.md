@@ -140,6 +140,14 @@ Desde el panel (sección **Eventos de temporada**) eliges un evento y lo guardas
 
 Para agregar otro evento (por ejemplo, Carnaval) alcanza con sumarlo a `EVENTOS` en `js/eventos.js`.
 
+## Instalarla como app
+Mesa Loca se puede instalar en el teléfono como una app (ícono propio, pantalla completa, sin la barra del navegador):
+- **iPhone (Safari):** botón Compartir → **Agregar a inicio**.
+- **Android (Chrome):** menú ⋮ → **Instalar app** (o "Agregar a la pantalla principal").
+
+Usa `manifest.webmanifest` y `sw.js` (siempre busca la versión nueva en internet; sin conexión abre la última guardada).
+En la app instalada del iPhone conviene entrar con el **código** del correo (el enlace abre Safari, que es aparte).
+
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).
 Cada juego tiene su pista: fiesta en el menú, misterio al repartir roles, tensión en el debate,

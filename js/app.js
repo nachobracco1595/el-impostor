@@ -33,6 +33,7 @@ function render() {
   if (typeof Cuenta !== "undefined") Cuenta.prepararLooks();
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   if (typeof Evento !== "undefined") Evento.decorar();
+  if (typeof Turno !== "undefined" && !(typeof Net !== "undefined" && Net.activo())) Turno.revisar(null);
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender();

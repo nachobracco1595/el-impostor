@@ -89,30 +89,49 @@ const Naval = {
       const J = s.jug[k], propio = k === i || s.fase === "fin";
       return {
         name: J.name, cpu: !!J.cpu, listo: J.listo, tiros: J.tiros,
+        // Qué tiros pegaron en un barco (eso lo ven los dos; dónde están los barcos enteros, no)
+        tocados: J.tiros.filter(c => J.barcos.some(b => b.celdas.includes(c))),
         barcos: J.barcos.map(b => ({ nombre: b.nombre, len: b.len, hundido: Naval.hundido(b, J.tiros), celdas: propio || Naval.hundido(b, J.tiros) ? b.celdas : null }))
       };
     };
     return { game: "naval", fase: s.fase, turno: s.turno, ultimo: s.ultimo, ganador: s.ganador, yo: i, jug: [vis(0), vis(1)], me: pid };
   },
 
+  /* Barco dibujado en SVG, de "len" casilleros (horizontal o vertical) */
+  barcoSVG(len, hor, hundido) {
+    const L = len * 100, casco = hundido ? "#4a3a3a" : "#8d97ab", cubierta = hundido ? "#3a2c2c" : "#c9d1de", oscuro = hundido ? "#2a1e1e" : "#5b6478";
+    const torres = [...Array(Math.max(1, len - 1))].map((_, i) => { const x = 100 * (i + 1) - (len === 2 ? 50 : 0); return `<circle cx="${x}" cy="50" r="17" fill="${oscuro}" stroke="#1b2333" stroke-width="3"/><rect x="${x - 5}" y="14" width="10" height="30" rx="4" fill="${oscuro}"/>`; }).join("");
+    const g = `<path d="M8 12 H${L - 52} Q${L - 2} 50 ${L - 52} 88 H8 Q-2 50 8 12 Z" fill="${casco}" stroke="#1b2333" stroke-width="6"/>
+      <path d="M22 26 H${L - 64} Q${L - 30} 50 ${L - 64} 74 H22 Z" fill="${cubierta}"/>
+      <rect x="${L / 2 - 30}" y="30" width="60" height="40" rx="8" fill="${oscuro}" stroke="#1b2333" stroke-width="3"/><rect x="${L / 2 - 20}" y="40" width="14" height="10" rx="3" fill="#9fd3ff"/><rect x="${L / 2 + 6}" y="40" width="14" height="10" rx="3" fill="#9fd3ff"/>
+      ${torres}`;
+    return hor ? `<svg viewBox="0 0 ${L} 100" preserveAspectRatio="none" aria-hidden="true">${g}</svg>`
+      : `<svg viewBox="0 0 100 ${L}" preserveAspectRatio="none" aria-hidden="true"><g transform="rotate(90 50 50)">${g}</g></svg>`;
+  },
+
   grilla(J, opts) {
-    const barcoEn = {}; J.barcos.forEach(b => (b.celdas || []).forEach((c, k) => barcoEn[c] = { b, k }));
-    const celdas = [];
+    const tocados = new Set(J.tocados || []), celdas = [];
+    const ocupado = new Set(); J.barcos.forEach(b => (b.celdas || []).forEach(c => ocupado.add(c)));
     for (let c = 0; c < 100; c++) {
-      const tiro = J.tiros.includes(c), be = barcoEn[c];
-      let cls = "agua", cont = "";
-      if (be) { cls = "barco" + (be.b.hundido ? " hundido" : ""); }
-      if (tiro && be) { cls += " tocado"; cont = "💥"; }
-      else if (tiro) { cls += " fallo"; cont = "•"; }
+      const tiro = J.tiros.includes(c), pego = tiro && (tocados.has(c) || ocupado.has(c));
+      let cls = ocupado.has(c) ? "barco" : "agua", cont = "";
+      if (pego) { cls += " tocado"; cont = `<span class="fuego"></span>`; }
+      else if (tiro) { cls += " fallo"; cont = `<span class="salpica"></span>`; }
       if (opts.ultimo === c) cls += " ultimo";
       const toca = opts.disparo && !tiro;
-      celdas.push(`<button class="nc ${cls}" ${toca ? `data-tiro="${c}"` : "disabled"} aria-label="${LETRAS_N[Math.floor(c / 10)]}${c % 10 + 1}">${cont}</button>`);
+      celdas.push(`<button class="nc ${cls}" ${toca ? `data-tiro="${c}"` : "disabled"} aria-label="${LETRAS_N[Math.floor(c / 10)]}${c % 10 + 1}${pego ? ", tocado" : tiro ? ", agua" : ""}">${cont}</button>`);
     }
-    return `<div class="naval-wrap ${opts.cls || ""}"><div class="naval-col">${[...Array(10)].map((_, k) => `<i>${k + 1}</i>`).join("")}</div><div class="naval-fil">${LETRAS_N.split("").map(l => `<i>${l}</i>`).join("")}</div><div class="naval ${opts.cls || ""}">${celdas.join("")}</div></div>`;
+    // Barcos a la vista: los propios y los hundidos del rival
+    const barcos = J.barcos.filter(b => b.celdas).map(b => {
+      const f = Math.floor(b.celdas[0] / 10), c = b.celdas[0] % 10, hor = b.celdas.length < 2 || b.celdas[1] - b.celdas[0] === 1;
+      return `<div class="nb ${b.hundido ? "hundido" : ""}" style="grid-column:${c + 1} / span ${hor ? b.len : 1};grid-row:${f + 1} / span ${hor ? 1 : b.len}">${Naval.barcoSVG(b.len, hor, b.hundido)}</div>`;
+    }).join("");
+    return `<div class="naval-wrap ${opts.cls || ""}"><div class="naval-col">${[...Array(10)].map((_, k) => `<i>${k + 1}</i>`).join("")}</div><div class="naval-fil">${LETRAS_N.split("").map(l => `<i>${l}</i>`).join("")}</div>
+      <div class="naval ${opts.cls || ""} ${opts.disparo ? "apuntar" : ""}"><div class="naval-barcos">${barcos}</div>${celdas.join("")}</div></div>`;
   },
 
   flotaHTML(J) {
-    return `<div class="flota">${J.barcos.map(b => `<span class="${b.hundido ? "hund" : ""}">${b.nombre} <i>${"■".repeat(b.len)}</i></span>`).join("")}</div>`;
+    return `<div class="flota">${J.barcos.map(b => `<span class="${b.hundido ? "hund" : ""}"><span class="flota-b">${Naval.barcoSVG(b.len, true, b.hundido)}</span>${b.nombre}</span>`).join("")}</div>`;
   },
 
   render(v, send, opts) {

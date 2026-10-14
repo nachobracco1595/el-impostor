@@ -298,6 +298,7 @@ PANTALLAS.online = () => {
     return;
   }
   UI.v = v;
+  Turno.revisar(v);
   Cuenta.prepararLooks();
   const lista = v.players || [];
   fijarColores(lista.map(p => p.name));
@@ -375,3 +376,39 @@ function renderLobby(v) {
   if (!H && v.sel === "arena" && UI.arenaPerfil !== v.code) { UI.arenaPerfil = v.code; Net.send({ t: "arenaPerfil", p: Arena.miPerfil() }); }
   on("invitar", () => invitarAmigos());
 }
+
+/* ---------- Aviso de "es tu turno" en los juegos por turnos online ----------
+   Cartel fijo arriba, borde de la pantalla que brilla, sonido, vibración y el título de la pestaña. */
+const Turno = {
+  previo: false, titulo: null,
+  estado(v) {
+    if (!v) return null;
+    if (v.game === "naval" && v.fase === "juego" && v.yo >= 0) return { mio: v.turno === v.yo, quien: v.jug[v.turno].name, que: "disparar" };
+    if (v.game === "chinchon" && (v.fase === "robar" || v.fase === "tirar") && v.yo >= 0) return { mio: v.turno === v.yo && !(v.jug[v.yo] || {}).fuera, quien: v.jug[v.turno].name, que: v.fase === "robar" ? "robar una carta" : "tirar una carta" };
+    if (v.game === "ajedrez" && v.s && v.miColor && !Ajedrez.terminado(v.s)) { const t = v.s.pos.turno; return { mio: v.miColor === t, quien: v.s.jug[t === "w" ? 0 : 1].name, que: "mover" }; }
+    if (v.game === "liars") {
+      if (v.phase === "turn") return { mio: v.turnId === v.me, quien: v.turnName, que: "jugar tus cartas" };
+      if (v.phase === "reveal" && v.rev) return { mio: v.rev.shooterId === v.me, quien: v.rev.shooter, que: "gatillar" };
+    }
+    return null;
+  },
+  pill() {
+    let p = document.getElementById("turnoPill");
+    if (!p) { p = document.createElement("div"); p.id = "turnoPill"; p.className = "turno-pill"; p.setAttribute("role", "status"); p.setAttribute("aria-live", "polite"); document.body.appendChild(p); }
+    return p;
+  },
+  revisar(v) {
+    const e = this.estado(v), mio = !!(e && e.mio), p = this.pill();
+    document.body.classList.toggle("mi-turno", mio); document.body.classList.toggle("con-turno", !!e);
+    p.hidden = !e;
+    if (e) { p.classList.toggle("mio", mio); p.innerHTML = mio ? `🎯 <b>¡Es tu turno!</b> <small>Te toca ${esc(e.que)}</small>` : `⏳ Turno de <b>${esc(e.quien)}</b>`; }
+    if (mio && !this.previo) {
+      if (typeof Sonido !== "undefined") Sonido.sfx("turno");
+      try { navigator.vibrate && navigator.vibrate([90, 60, 90]); } catch {}
+      p.classList.remove("salta"); void p.offsetWidth; p.classList.add("salta");
+    }
+    if (mio && !this.titulo) { this.titulo = document.title; document.title = "🎯 ¡Tu turno! · Mesa Loca"; }
+    if (!mio && this.titulo) { document.title = this.titulo; this.titulo = null; }
+    this.previo = mio;
+  }
+};

@@ -17,7 +17,11 @@ function dibujarSeguro(cv, fn) {
     const c = cv.getContext("2d");
     for (let i = 0; i < 30; i++) c.restore();
     c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
-    if (!dibujarSeguro.avisado) { dibujarSeguro.avisado = true; console.error("Error al dibujar:", e); }
+    if (!dibujarSeguro.avisado) {
+      dibujarSeguro.avisado = true; console.error("Error al dibujar:", e);
+      // Se muestra en pantalla para poder mandar una captura y arreglarlo
+      if (typeof Toast !== "undefined") Toast.mostrar(`<div class="t-ic">⚠️</div><div class="t-txt"><b>Algo no se dibujó bien</b><span>${String(e && e.message || e).slice(0, 120).replace(/[<>&]/g, "")}</span><small>Saca una captura y mándasela a quien armó el juego.</small></div>`, "info");
+    }
   }
 }
 

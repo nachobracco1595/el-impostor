@@ -1,0 +1,17 @@
+{
+  "name": "Mesa Loca",
+  "short_name": "Mesa Loca",
+  "description": "Juegos para jugar con amigos: El Impostor, Arena, Chinchón, La Nave y más.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#13111d",
+  "theme_color": "#13111d",
+  "icons": [
+    { "src": "img/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

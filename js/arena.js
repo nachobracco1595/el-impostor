@@ -8,7 +8,7 @@
 const AR = {
   W: 1400, H: 1000, R: 20,
   CLASES: {
-    guerrero: { nombre: "Guerrero", ic: "🗡️", hp: 160, vel: 190, precio: 0, desc: "Mucha vida y espadazos en abanico.",
+    guerrero: { nombre: "Guerrero", ic: "🗡️", hp: 160, vel: 205, precio: 0, desc: "Mucha vida y espadazos en abanico.",
       atk: { tipo: "melee", alcance: 82, arco: 2.2, dano: 18, cd: 550 }, esp: { nombre: "Giro", ic: "🌀", cd: 6000, desc: "Gira la espada y golpea a todos alrededor." }, arma: ["Espada", "f"] },
     arquero: { nombre: "Arquero", ic: "🏹", hp: 110, vel: 210, precio: 300, desc: "Dispara flechas desde lejos.",
       atk: { tipo: "flecha", vel: 700, dano: 14, cd: 450, alcance: 640 }, esp: { nombre: "Lluvia de flechas", ic: "🎯", cd: 6000, desc: "Cinco flechas en abanico." }, arma: ["Arco", "m"] },
@@ -264,12 +264,12 @@ const Arena = {
     const E = this.esc(s), C = AR.CLASES[j.clase], ritmo = { facil: 0.55, normal: 0.85, dificil: 1 }[j.nivel || "normal"];
     const b = this.objetivo(s, j, 3000); if (!b) return;
     const dx = b.x - j.x, dy = b.y - j.y, d = Math.hypot(dx, dy) || 1;
-    const lejos = C.atk.tipo === "melee" ? C.atk.alcance * 0.7 : 330;
+    const lejos = C.atk.tipo === "melee" ? C.atk.alcance * 0.7 : 270;
     j.giro = j.giro || (Math.random() < 0.5 ? 1 : -1);
     if (Math.random() < 0.005) j.giro *= -1;
     let mx = 0, my = 0;
     if (d > lejos + 20) { mx = dx / d; my = dy / d; }
-    else if (d < lejos - 60 && C.atk.tipo !== "melee") { mx = -dx / d; my = -dy / d; }
+    else if (d < 150 && C.atk.tipo !== "melee") { mx = -dx / d * 0.6; my = -dy / d * 0.6; }   // retrocede poco y lento
     mx += -dy / d * 0.5 * j.giro; my += dx / d * 0.5 * j.giro;
     const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
     const vel = j.st.vel * ritmo * (s.t < j.lento ? 0.5 : 1);
@@ -519,13 +519,22 @@ const Arena = {
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const ctx = cv.getContext("2d"), t = now / 1000;
     n.part = n.part || []; n.vistos = n.vistos || new Set();
-    // La cámara sigue a tu personaje con suavidad
-    const esc = Math.max(0.6, Math.min(1.2, Math.max(W, H) / 1050));
+    // Cámara: se aleja o se acerca sola para que veas a tu personaje y al rival más cercano
     const yo = v.jug[v.yo];
-    const cx = yo ? (yo.vivo ? n.x : yo.x) : 700, cy = yo ? (yo.vivo ? n.y : yo.y) : 500;
+    const mx = yo ? (yo.vivo ? n.x : yo.x) : 700, my = yo ? (yo.vivo ? n.y : yo.y) : 500;
+    const rival = v.jug.filter(j => j.vivo && j.id !== v.me).sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my))[0];
+    const escMax = Math.max(0.6, Math.min(1.1, Math.max(W, H) / 1050));
+    let escObj = escMax, cx = mx, cy = my;
+    if (rival && yo && yo.vivo) {
+      const ax = Math.abs(rival.x - mx) + 220, ay = Math.abs(rival.y - my) + 300;
+      escObj = Math.max(0.42, Math.min(escMax, W / ax, H / ay));
+      cx = mx + (rival.x - mx) * 0.45; cy = my + (rival.y - my) * 0.45;
+    }
+    n.esc = n.esc ? n.esc + (escObj - n.esc) * 0.06 : escObj;
+    const esc = n.esc;
     const objx = Math.max(W / 2 / esc - 200, Math.min(AR.W + 200 - W / 2 / esc, cx)), objy = Math.max(H / 2 / esc - 200, Math.min(AR.H + 200 - H / 2 / esc, cy));
     if (n.camx === undefined) { n.camx = objx; n.camy = objy; }
-    n.camx += (objx - n.camx) * 0.15; n.camy += (objy - n.camy) * 0.15;
+    n.camx += (objx - n.camx) * 0.12; n.camy += (objy - n.camy) * 0.12;
     if (v.t !== n.vtBase) { n.vtBase = v.t; n.vtLocal = now; }
     const vt = v.t + (v.fase === "pelea" ? Math.min(200, now - (n.vtLocal || now)) : 0);
     // Temblor de pantalla cuando te pegan
@@ -555,7 +564,7 @@ const Arena = {
         const g = ctx.createRadialGradient(700, 500, 60, 700, 500, 620); g.addColorStop(0, "#4a5ab8"); g.addColorStop(1, "#283163");
         ctx.fillStyle = g; ctx.fillRect(l.x, l.y, l.w, l.h);
         ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(700, 500, 130, 0, 7); ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,.07)"; ctx.font = "bold 110px 'Dela Gothic One', Figtree, " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MESA LOCA", 700, 500);
+        ctx.fillStyle = "rgba(255,255,255,.04)"; ctx.font = "bold 110px 'Dela Gothic One', Figtree, " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MESA LOCA", 700, 500);
       } else if (v.esc === "volcan") {
         ctx.fillStyle = "#2a1c18"; ctx.fillRect(l.x, l.y, l.w, l.h);
         D.manchas.forEach(m => { ctx.fillStyle = `rgba(0,0,0,${m.a * 2})`; ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 3, 0, 7); ctx.fill(); });
@@ -660,6 +669,18 @@ const Arena = {
     n.part.forEach(p => { const k = (now - p.t0) / 1000, vida = (now - p.t0) / p.vida; ctx.globalAlpha = 1 - vida; ctx.fillStyle = p.color; const s = p.tam * (1 - vida * 0.5); ctx.fillRect(p.x + p.vx * k - s / 2, p.y + p.vy * k + p.grav * k * k - s / 2, s, s); });
     ctx.globalAlpha = 1;
     ctx.restore();
+    // Flechas en el borde para los rivales que quedan fuera de la pantalla
+    v.jug.forEach(j => {
+      if (!j.vivo || j.id === v.me) return;
+      const o = n.otros[j.id] || j, sx = (o.x - n.camx) * esc + W / 2, sy = (o.y - 20 - n.camy) * esc + H / 2, m = 34;
+      if (sx > m && sx < W - m && sy > m + 50 && sy < H - m - 90) return;
+      const ex = Math.max(m, Math.min(W - m, sx)), ey = Math.max(m + 50, Math.min(H - m - 90, sy)), ang = Math.atan2(sy - H / 2, sx - W / 2);
+      ctx.save(); ctx.translate(ex, ey);
+      ctx.fillStyle = "rgba(20,17,32,.85)"; ctx.strokeStyle = "#ff4d63"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 20, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.font = "18px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(AR.CLASES[j.clase].ic, 0, 1);
+      ctx.rotate(ang); ctx.fillStyle = "#ff4d63"; ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(20, -8); ctx.lineTo(20, 8); ctx.fill();
+      ctx.restore();
+    });
     // Luz del escenario y viñeta
     const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, v.esc === "volcan" ? "rgba(60,8,0,.55)" : "rgba(0,0,0,.5)");

@@ -258,7 +258,7 @@ const Mundo = {
       this.motor(s.j).tic(s, dt, now);
       this.drops(s, dt, now);
       if (s.m.aprieta && s.j !== "pesca") this.accion(s);
-      this.dibujar(s, cv, now);
+      dibujarSeguro(cv, () => this.dibujar(s, cv, now));
       Presencia.enviar(s, now);
     };
     this.raf = requestAnimationFrame(paso);

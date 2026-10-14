@@ -1,5 +1,26 @@
 /* Ilustraciones dibujadas en SVG: personajes, avatares, cartas y revólver */
 
+/* Navegadores más viejos (por ejemplo iOS 15) no traen roundRect para dibujar en el lienzo: lo agregamos */
+if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r = 0) {
+    const rr = Array.isArray(r) ? r : [r], R = i => Math.max(0, Math.min(+(rr[i % rr.length] || 0), Math.abs(w) / 2, Math.abs(h) / 2));
+    const [a, b, c, d] = rr.length === 4 ? [R(0), R(1), R(2), R(3)] : rr.length === 2 ? [R(0), R(1), R(0), R(1)] : [R(0), R(0), R(0), R(0)];
+    this.moveTo(x + a, y); this.lineTo(x + w - b, y); this.arcTo(x + w, y, x + w, y + b, b); this.lineTo(x + w, y + h - c); this.arcTo(x + w, y + h, x + w - c, y + h, c);
+    this.lineTo(x + d, y + h); this.arcTo(x, y + h, x, y + h - d, d); this.lineTo(x, y + a); this.arcTo(x, y, x + a, y, a); this.closePath();
+    return this;
+  };
+}
+/* Dibuja un cuadro sin que un error deje la pantalla en negro: si algo falla, se limpia el estado y se sigue */
+function dibujarSeguro(cv, fn) {
+  try { fn(); }
+  catch (e) {
+    const c = cv.getContext("2d");
+    for (let i = 0; i < 30; i++) c.restore();
+    c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+    if (!dibujarSeguro.avisado) { dibujarSeguro.avisado = true; console.error("Error al dibujar:", e); }
+  }
+}
+
 /* Fuentes para emojis: primero los del sistema; si a la PC le faltan (Windows no tiene los más nuevos), Noto Color Emoji */
 const FE = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 if (document.fonts && document.fonts.load) document.fonts.load('24px "Noto Color Emoji"', "🪙🪵🪓🪨🪺🪷🧪🐝🌲🌳🎃🍬🎄🎁🥚🌿👻⛏️🎣💎🐟🦈🐋🌌👢🦀🐡🐠🐙🦑💰").catch(() => {});

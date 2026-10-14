@@ -299,7 +299,7 @@ const Nave = {
       if (!cv || !UI.nave || !Nave.v || !Nave.v.yo) { if (!cv) Nave.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Nave.moverYo(dt);
-      Nave.dibujar(cv);
+      dibujarSeguro(cv, () => Nave.dibujar(cv));
     };
     Nave.raf = requestAnimationFrame(paso);
   },

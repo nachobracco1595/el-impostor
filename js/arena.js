@@ -397,7 +397,7 @@ const Arena = {
       const cv = byId("arCanvas"); if (!cv || !UI.arena || !Arena.v) { if (!cv) Arena.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Arena.moverYo(dt, now);
-      Arena.dibujar(cv, now);
+      dibujarSeguro(cv, () => Arena.dibujar(cv, now));
     };
     Arena.raf = requestAnimationFrame(paso);
   },
@@ -531,7 +531,7 @@ const Arena = {
     // Temblor de pantalla cuando te pegan
     if (yo && yo.hit !== undefined && yo.hit !== n.ultHit) { n.ultHit = yo.hit; if (vt - yo.hit < 300) n.temblor = now + 180; }
     const sh = now < (n.temblor || 0) ? 6 : 0;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     // Fondo de cada escenario
     const fondo = { ring: ["#1a1730", "#08070d"], coliseo: ["#3a2a1a", "#120c08"], volcan: ["#3a120a", "#0a0405"], nave: ["#0b1030", "#020309"] }[v.esc];
     const gf = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, Math.max(W, H)); gf.addColorStop(0, fondo[0]); gf.addColorStop(1, fondo[1]);

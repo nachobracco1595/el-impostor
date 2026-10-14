@@ -1,4 +1,8 @@
 /* Ilustraciones dibujadas en SVG: personajes, avatares, cartas y revólver */
+
+/* Fuentes para emojis: primero los del sistema; si a la PC le faltan (Windows no tiene los más nuevos), Noto Color Emoji */
+const FE = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+if (document.fonts && document.fonts.load) document.fonts.load('24px "Noto Color Emoji"', "🪙🪵🪓🪨🪺🪷🧪🐝🌲🌳🎃🍬🎄🎁🥚🌿👻⛏️🎣💎🐟🦈🐋🌌👢🦀🐡🐠🐙🦑💰").catch(() => {});
 const COLORES = ["#ff6b6b", "#4dabf7", "#51cf66", "#fcc419", "#cc5de8", "#ff922b", "#20c997", "#f06595", "#94d82d", "#748ffc", "#e8e8e8", "#a9746e"];
 
 /* Cada jugador de la lista actual recibe un color distinto; fuera de la lista, uno según su nombre */

@@ -103,6 +103,15 @@ const Nube = {
     if (error) throw new Error(/rate|seconds/i.test(error.message) ? "Se mandaron demasiados correos. Espera un rato y prueba de nuevo." : "No se pudo mandar el correo. Revisa la dirección.");
   },
 
+  /* Entrar con el código del correo (sirve si el correo se abre en otro dispositivo, por ejemplo en el teléfono) */
+  async verificarCodigo(email, codigo) {
+    if (this.estado !== "lista") return;
+    const token = String(codigo || "").replace(/\D/g, "");
+    if (token.length < 6) throw new Error("El código tiene 6 números (o más). Míralo en el correo.");
+    const { error } = await this.sb.auth.verifyOtp({ email, token, type: "email" });
+    if (error) throw new Error(/expired|invalid/i.test(error.message) ? "El código no es válido o ya venció. Pide otro." : "No se pudo entrar con el código.");
+  },
+
   /* Se llama al iniciar o cerrar sesión (también al abrir la página con sesión guardada) */
   async alCambiar(user) {
     this.user = user;

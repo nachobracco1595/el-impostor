@@ -5,6 +5,19 @@ const AJ = {
   INICIO: "rnbqkbnrpppppppp" + ".".repeat(32) + "PPPPPPPPRNBQKBNR",
   VALOR: { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 },
   GLIFO: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
+  /* Piezas dibujadas en SVG (todas del mismo tamaño y del color correcto en cualquier teléfono o PC) */
+  SVG: {
+    p: `<circle cx="22.5" cy="13" r="5.5"/><path d="M17 20.5h11l-1.5 3h-8z"/><path d="M18.5 23.5C17 30 14.5 33 13.5 36h18C30.5 33 28 30 26.5 23.5z"/>`,
+    r: `<path d="M14 36l1.5-18h14L31 36z"/><path d="M12 18V9.5h4.2v3.3h4.3V9.5h4v3.3h4.3V9.5H33V18z"/><path d="M15 30.5h15" fill="none"/>`,
+    b: `<path d="M15 36c1-5 3-7 3.2-9.5h8.6c.2 2.5 2.2 4.5 3.2 9.5z"/><path d="M17 27h11v-2.8H17z"/><path d="M22.5 7.5C16 13 15.5 18.5 17.5 24.2h10C29.5 18.5 29 13 22.5 7.5z"/><path d="M22.5 13.5v6M19.6 16.5h5.8" fill="none"/><circle cx="22.5" cy="6" r="2.3"/>`,
+    n: `<path d="M14 36c0-6 3-9 6-12-2.2.2-5-.5-6.8-2.4-1.8-2 .5-5.6 3-8 2.2-2.4 3.4-5.2 5.2-7.2l1-2.6 2.6 3c5.4 1 8.8 6.8 8.4 15.2-.3 5-2 8-1.6 14z"/><circle cx="20.3" cy="14" r="1.3" class="o"/>`,
+    q: `<path d="M14 36c1-5 2.5-9 3-12h11c.5 3 2 7 3 12z"/><path d="M12.5 13L16.5 24h12l4-11-4.6 5.6-.6-9.1-3.4 8-1.4-9-1.4 9-3.4-8-.6 9.1z"/><circle cx="12.5" cy="12.2" r="2"/><circle cx="17.5" cy="8.5" r="2"/><circle cx="22.5" cy="7" r="2"/><circle cx="27.5" cy="8.5" r="2"/><circle cx="32.5" cy="12.2" r="2"/>`,
+    k: `<path d="M14 36c1-5 2.5-9 3-12h11c.5 3 2 7 3 12z"/><path d="M15.5 24c-2.5-6.5 1.5-10.5 7-8.5 5.5-2 9.5 2 7 8.5z"/><path d="M21 3.5h3v3h3v3h-3v5h-3v-5h-3v-3h3z"/>`
+  },
+  pieza(p, cls = "") {
+    const col = typeof p === "string" && p.length === 1 && p !== p.toLowerCase() ? "w" : "b";
+    return `<svg class="pieza ${col} ${cls}" viewBox="0 0 45 45" aria-hidden="true">${AJ.SVG[p.toLowerCase()]}<rect x="10" y="35.5" width="25" height="5" rx="2"/></svg>`;
+  },
   NOMBRE: { q: "Dama", r: "Torre", b: "Alfil", n: "Caballo" },
   // Tablas de posición (desde el lado blanco, fila 0 = octava)
   PST: {
@@ -226,9 +239,9 @@ const Ajedrez = {
       const cls = [oscura ? "os" : "cl", sel === i ? "sel" : "", pos.ultima && (pos.ultima.de === i || pos.ultima.a === i) ? "ult" : "", i === reyJaque ? "jaque" : "", destinos.some(m => m.a === i) ? (p !== "." || destinos.some(m => m.a === i && m.alPaso) ? "come" : "punto") : ""].join(" ");
       const etiqueta = (abajo === "w" ? f === 7 : f === 0) ? `<i class="lc">${"abcdefgh"[c]}</i>` : "";
       const etf = (abajo === "w" ? c === 0 : c === 7) ? `<i class="lf">${8 - f}</i>` : "";
-      return `<button class="casilla ${cls}" data-sq="${i}" aria-label="${AJ.nombreCasilla(i)}">${p !== "." ? `<span class="pieza ${AJ.color(p)}">${AJ.GLIFO[p.toLowerCase()]}</span>` : ""}${etiqueta}${etf}</button>`;
+      return `<button class="casilla ${cls}" data-sq="${i}" aria-label="${AJ.nombreCasilla(i)}">${p !== "." ? AJ.pieza(p) : ""}${etiqueta}${etf}</button>`;
     }).join("");
-    const comidas = col => s.pos.comidas[col].map(p => `<span class="pieza mini ${AJ.color(p)}">${AJ.GLIFO[p.toLowerCase()]}</span>`).join("");
+    const comidas = col => s.pos.comidas[col].map(p => AJ.pieza(p, "mini")).join("");
     const jugador = (idx, col) => { const j = s.jug[idx]; return `<div class="aj-jug ${pos.turno === col && !Ajedrez.terminado(s) ? "turno" : ""}">${j.cpu ? `<span class="cpu-ic">🤖</span>` : avatar(j.name, 34)}<b>${esc(j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name)}</b><span class="aj-com">${comidas(col)}</span></div>`; };
     const arriba = abajo === "w" ? "b" : "w";
     const g = Ajedrez.ganador(s);
@@ -240,7 +253,7 @@ const Ajedrez = {
     } else {
       estado = `<p class="aj-estado">${pos.jaque ? "<b>¡Jaque!</b> " : ""}${turnoJ.cpu ? "La compu está pensando…" : `Juegan las <b>${pos.turno === "w" ? "blancas" : "negras"}</b> (${esc(turnoJ.name)})`}</p>
         ${s.tablasOfrecidas && s.tablasOfrecidas !== miColor && !opts.local ? `<div class="panel confirm"><b>Tu rival ofrece tablas</b><div class="row"><button class="btn ghost" id="ajRech">Seguir jugando</button><button class="btn" id="ajAcep">Aceptar tablas</button></div></div>` : ""}
-        ${UI.ajPromo ? `<div class="panel"><span class="label">Coronar el peón</span><div class="promo">${["q", "r", "b", "n"].map(q => `<button data-promo="${q}"><span class="pieza ${pos.turno}">${AJ.GLIFO[q]}</span><small>${AJ.NOMBRE[q]}</small></button>`).join("")}</div></div>` : ""}
+        ${UI.ajPromo ? `<div class="panel"><span class="label">Coronar el peón</span><div class="promo">${["q", "r", "b", "n"].map(q => `<button data-promo="${q}">${AJ.pieza(pos.turno === "w" ? q.toUpperCase() : q)}<small>${AJ.NOMBRE[q]}</small></button>`).join("")}</div></div>` : ""}
         ${opts.local || v.miColor ? `<div class="row">${s.jug.some(j => j.cpu) || opts.local ? "" : `<button class="btn ghost chico" id="ajTablas" ${s.tablasOfrecidas === miColor ? "disabled" : ""}>${s.tablasOfrecidas === miColor ? "Tablas ofrecidas" : "Ofrecer tablas"}</button>`}${UI.ajRendir ? `<button class="btn danger chico" id="ajRendirSi">Sí, me rindo</button><button class="btn ghost chico" id="ajRendirNo">No</button>` : `<button class="btn ghost chico" id="ajRendir">Rendirse</button>`}</div>` : ""}`;
     }
     app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="screen ajedrez">

@@ -144,13 +144,21 @@ function pantallaLogin() {
   app.innerHTML = `<section class="caja"><span class="label">Panel de administración</span><h1><img src="img/icono.svg" alt="" width="40" height="40" style="vertical-align:-6px;margin-right:8px">Mesa <span>Loca</span></h1>
     <p class="sub">Entra con el mismo correo que usas en el juego. Te llega un enlace para entrar.</p>
     <form id="fLogin" class="add"><input class="campo" id="mail" type="email" placeholder="tu@correo.com" autocomplete="email" aria-label="Correo"><button class="btn chico" type="submit">Enviar</button></form>
+    <form id="fCod" class="add" hidden><input class="campo" id="cod" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Código del correo" aria-label="Código"><button class="btn chico" type="submit">Entrar</button></form>
     <p class="summary" id="lMsg">${esc(P.msg)}</p>
     </section>`;
+  document.getElementById("fCod").onsubmit = async e => {
+    e.preventDefault();
+    const email = document.getElementById("mail").value.trim(), token = document.getElementById("cod").value.replace(/\D/g, "");
+    const { error } = await P.sb.auth.verifyOtp({ email, token, type: "email" });
+    if (error) document.getElementById("lMsg").textContent = "El código no es válido o ya venció.";
+  };
   document.getElementById("fLogin").onsubmit = async e => {
     e.preventDefault();
     const email = document.getElementById("mail").value.trim();
     const { error } = await P.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname + location.search, shouldCreateUser: false } });
-    document.getElementById("lMsg").textContent = error ? "No se pudo enviar el correo. ¿Es el mismo con el que juegas?" : `📬 Te mandamos un enlace a ${email}. Ábrelo en este dispositivo.`;
+    document.getElementById("lMsg").textContent = error ? "No se pudo enviar el correo. ¿Es el mismo con el que juegas?" : `📬 Te mandamos un correo a ${email}. Abre el enlace en este dispositivo o escribe el código acá arriba.`;
+    if (!error) document.getElementById("fCod").hidden = false;
   };
 }
 

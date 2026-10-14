@@ -130,7 +130,8 @@ PANTALLAS.cuenta = () => {
           <label class="label" for="mail">${Nube.config().google !== false ? "O entra con tu correo, sin contraseña" : "Entra con tu correo, sin contraseña"}</label>
           <div class="add"><input class="campo" id="mail" type="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(UI.mail || "")}" ${Nube.estado !== "lista" ? "disabled" : ""}><button class="btn ghost chico" type="submit" ${Nube.estado !== "lista" ? "disabled" : ""}>Enviar</button></div>
         </form>
-        ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un enlace a <b>${esc(UI.mailEnviado)}</b>. Ábrelo en este teléfono para entrar (revisa también el spam).</p>` : ""}
+        ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un correo a <b>${esc(UI.mailEnviado)}</b> (revisa también el spam). Toca el enlace en este mismo dispositivo, <b>o escribe acá el código</b> que viene en el correo:</p>
+          <form class="add" id="fCodigo"><input class="campo" id="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Código del correo" aria-label="Código del correo"><button class="btn chico" type="submit">Entrar</button></form>` : ""}
         ${UI.errNube ? `<p class="warn">${esc(UI.errNube)}</p>` : ""}
       </div>
       <span class="label">Perfiles sin internet (con PIN, solo en este teléfono)</span>` : ""}
@@ -153,6 +154,13 @@ PANTALLAS.cuenta = () => {
     UI.mail = m; UI.errNube = ""; UI.mailEnviado = "";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)) { UI.errNube = "Escribe un correo válido."; return render(); }
     try { await Nube.enviarEnlace(m); UI.mailEnviado = m; } catch (err) { UI.errNube = err.message; }
+    render();
+  };
+  const fc = byId("fCodigo");
+  if (fc) fc.onsubmit = async e => {
+    e.preventDefault(); UI.errNube = "";
+    const b = fc.querySelector("button"); b.disabled = true;
+    try { await Nube.verificarCodigo(UI.mailEnviado, byId("codigo").value); UI.mailEnviado = ""; } catch (err) { UI.errNube = err.message; b.disabled = false; }
     render();
   };
   on("otro", () => { UI.loginId = null; render(); });

@@ -327,7 +327,7 @@ function renderLobby(v) {
     naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
     arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
-    ajedrez: ["Ajedrez", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "2 jugadores"]
+    ajedrez: ["Ajedrez", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "2 jugadores"]
   };
   app.innerHTML = `${Net.cabecera()}
   <section class="screen">

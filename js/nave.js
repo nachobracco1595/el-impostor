@@ -343,7 +343,7 @@ const Nave = {
       for (let gx = z.x; gx < z.x + z.w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, z.y); ctx.lineTo(gx, z.y + z.h); ctx.stroke(); }
       for (let gy = z.y; gy < z.y + z.h; gy += 40) { ctx.beginPath(); ctx.moveTo(z.x, gy); ctx.lineTo(z.x + z.w, gy); ctx.stroke(); }
       ctx.strokeStyle = "#8a93b8"; ctx.lineWidth = 6; ctx.strokeRect(z.x, z.y, z.w, z.h);
-      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "bold 22px Figtree, sans-serif"; ctx.fillText(z.nombre.toUpperCase(), z.x + 14, z.y + 30);
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "bold 22px Figtree, " + FE; ctx.fillText(z.nombre.toUpperCase(), z.x + 14, z.y + 30);
     });
     // Abrir las paredes donde llegan los pasillos
     ctx.fillStyle = "#1a1d2b"; NV.PASILLOS.forEach(z => ctx.fillRect(z.x + 3, z.y + 3, z.w - 6, z.h - 6));
@@ -356,10 +356,10 @@ const Nave = {
     NV.ESTACIONES.forEach(e => {
       if (mias.has(e.id)) { ctx.fillStyle = `rgba(255,214,64,${0.35 + Math.sin(t * 4) * 0.2})`; ctx.beginPath(); ctx.arc(e.x, e.y, 34, 0, 7); ctx.fill(); }
       ctx.fillStyle = "#2b2f45"; ctx.fillRect(e.x - 22, e.y - 22, 44, 44); ctx.strokeStyle = mias.has(e.id) ? "#ffd43b" : "#6b7394"; ctx.lineWidth = 3; ctx.strokeRect(e.x - 22, e.y - 22, 44, 44);
-      ctx.font = "24px sans-serif"; ctx.fillText(NV.ICONO[e.tipo], e.x, e.y + 1);
+      ctx.font = "24px " + FE; ctx.fillStyle = "#000"; ctx.fillText(NV.ICONO[e.tipo], e.x, e.y + 1);
     });
     // Cuerpos
-    v.cuerpos.forEach(c => { const img = Nave.sprite(c.look, "muerto"); if (img.complete) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(Math.PI / 2); ctx.drawImage(img, -30, -34, 60, 67); ctx.restore(); } ctx.fillStyle = "#ff4d63"; ctx.font = "bold 13px Figtree"; ctx.fillText("🦴 " + c.name, c.x, c.y - 42); });
+    v.cuerpos.forEach(c => { const img = Nave.sprite(c.look, "muerto"); if (img.complete) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(Math.PI / 2); ctx.drawImage(img, -30, -34, 60, 67); ctx.restore(); } ctx.fillStyle = "#ff4d63"; ctx.font = "bold 13px Figtree, " + FE; ctx.fillText("🦴 " + c.name, c.x, c.y - 42); });
     // Personajes (los de afuera de la visión no se ven)
     const vision = !v.yo.vivo ? 9999 : v.yo.imp ? NV.VISION_IMP : NV.VISION;
     v.jug.forEach(j => {
@@ -373,7 +373,7 @@ const Nave = {
       if ((yo ? n.dir : j.dir) < 0) ctx.scale(-1, 1);
       if (img.complete) ctx.drawImage(img, -30, -46, 60, 67);
       ctx.restore();
-      ctx.fillStyle = v.socios.includes(j.id) || (yo && v.yo.imp) ? "#ff4d63" : "#fff"; ctx.font = "bold 14px Figtree"; ctx.globalAlpha = j.vivo ? 1 : 0.5;
+      ctx.fillStyle = v.socios.includes(j.id) || (yo && v.yo.imp) ? "#ff4d63" : "#fff"; ctx.font = "bold 14px Figtree, " + FE; ctx.globalAlpha = j.vivo ? 1 : 0.5;
       ctx.fillText(j.name, o.x, o.y - 54); ctx.globalAlpha = 1;
     });
     ctx.restore();

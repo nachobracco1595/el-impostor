@@ -345,7 +345,7 @@ const Mundo = {
         ctx.fillStyle = d.gema; ctx.strokeStyle = "#0008"; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(8, -2); ctx.lineTo(0, 9); ctx.lineTo(-8, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(4, -3); ctx.lineTo(-2, -3); ctx.fill(); ctx.restore();
-      } else { ctx.font = (d.directo ? 34 : 22) + "px sans-serif"; ctx.fillText(d.ic, d.x, y); }
+      } else { ctx.font = (d.directo ? 34 : 22) + "px " + FE; ctx.fillStyle = "#000"; ctx.fillText(d.ic, d.x, y); }
     }
   },
 
@@ -385,7 +385,7 @@ const Mundo = {
     m.chispas.forEach(c => { const k = (now - c.t) / 1000; ctx.fillStyle = c.color; ctx.globalAlpha = 1 - k / 0.6; if (c.polvo) { ctx.beginPath(); ctx.arc(c.x + c.vx * k, c.y + c.vy * k, 4 + k * 14, 0, 7); ctx.fill(); } else ctx.fillRect(c.x + c.vx * k - 3, c.y + c.vy * k + 400 * k * k - 3, 6, 6); });
     ctx.globalAlpha = 1; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     m.efectos = m.efectos.filter(e => now - e.t < 1100);
-    m.efectos.forEach(e => { const k = (now - e.t) / 1100; ctx.globalAlpha = 1 - k; ctx.font = `800 ${e.grande ? 26 : 19}px Figtree, sans-serif`; ctx.lineWidth = 4; ctx.strokeStyle = "#000a"; ctx.strokeText(e.txt, e.x, e.y - k * 50); ctx.fillStyle = e.color; ctx.fillText(e.txt, e.x, e.y - k * 50); });
+    m.efectos.forEach(e => { const k = (now - e.t) / 1100; ctx.globalAlpha = 1 - k; ctx.font = `800 ${e.grande ? 26 : 19}px Figtree, ${FE}`; ctx.lineWidth = 4; ctx.strokeStyle = "#000a"; ctx.strokeText(e.txt, e.x, e.y - k * 50); ctx.fillStyle = e.color; ctx.fillText(e.txt, e.x, e.y - k * 50); });
     ctx.globalAlpha = 1;
     ctx.restore();
     if (M.luz) M.luz(s, ctx, W, H, esc, now);
@@ -408,7 +408,7 @@ const Mundo = {
     ctx.translate(18, -8); ctx.rotate(ang);
     if (h.complete) ctx.drawImage(h, -10, -40, 44, 44);
     ctx.restore();
-    if (nombre) { ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, sans-serif"; ctx.lineWidth = 3; ctx.strokeStyle = "#000a"; ctx.strokeText(nombre, x, y - 58); ctx.fillStyle = "#fff"; ctx.fillText(nombre, x, y - 58); }
+    if (nombre) { ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3; ctx.strokeStyle = "#000a"; ctx.strokeText(nombre, x, y - 58); ctx.fillStyle = "#fff"; ctx.fillText(nombre, x, y - 58); }
     if (otro && otro.f && s.j === "pesca") Pesca.linea(ctx, x + (cara < 0 ? -30 : 30), y - 40, otro.f.x, otro.f.y, t, false);
   }
 };
@@ -562,20 +562,20 @@ const Tala = {
             ctx.fillStyle = "#d9a86a"; ctx.beginPath(); ctx.ellipse(a.x, a.y - 10, 14, 6, 0, 0, 7); ctx.fill();
             ctx.strokeStyle = "#a8743f"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(a.x, a.y - 10, 8, 3.2, 0, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.ellipse(a.x, a.y - 10, 3.5, 1.4, 0, 0, 7); ctx.stroke();
           }
-          if (crece > 0.6) { ctx.font = "18px sans-serif"; ctx.fillText("🌱", a.x + 10, a.y - 12); }
+          if (crece > 0.6) { ctx.font = "18px " + FE; ctx.fillStyle = "#000"; ctx.fillText("🌱", a.x + 10, a.y - 12); }
           return;
         }
         ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(a.x, a.y + 8, 30, 10, 0, 0, 7); ctx.fill();
         if (A.oro) { ctx.fillStyle = `rgba(255,212,59,${0.25 + Math.sin(t * 3) * 0.1})`; ctx.beginPath(); ctx.arc(a.x, a.y - 30, 48, 0, 7); ctx.fill(); }
         const sh = now - a.tiembla < 200 ? Math.sin((now - a.tiembla) / 15) * 4 : 0;
         ctx.save(); ctx.translate(a.x + sh, a.y + 12); ctx.rotate(Math.sin(t * 1.3 + a.x * 0.01) * 0.035);
-        ctx.font = (A.tam || (a.tipo === "pino" ? 74 : 82)) + "px sans-serif"; ctx.fillText(A.ic, 0, 0); ctx.restore();
-        if (A.oro) { ctx.font = "18px sans-serif"; ctx.fillText("✨", a.x + 24, a.y - 60 + Math.sin(t * 4) * 4); }
+        ctx.font = (A.tam || (a.tipo === "pino" ? 74 : 82)) + "px " + FE; ctx.fillStyle = "#000"; ctx.fillText(A.ic, 0, 0); ctx.restore();
+        if (A.oro) { ctx.font = "18px " + FE; ctx.fillStyle = "#000"; ctx.fillText("✨", a.x + 24, a.y - 60 + Math.sin(t * 4) * 4); }
         if (a.hp < A.hp) { ctx.fillStyle = "#0008"; ctx.fillRect(a.x - 26, a.y - 86, 52, 7); ctx.fillStyle = "#3ddcb1"; ctx.fillRect(a.x - 26, a.y - 86, 52 * Math.max(0, a.hp / A.hp), 7); }
       } });
     }
-    for (const k of m.rocas) if (k.x > v.x0 && k.x < v.x1 && k.y > v.y0 && k.y < v.y1) out.push({ y: k.y, d: ctx => { ctx.textAlign = "center"; ctx.font = "54px sans-serif"; ctx.fillText("🪨", k.x, k.y + 16); } });
-    for (const b of m.abejas) if (b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1) out.push({ y: b.y + 200, d: ctx => { ctx.textAlign = "center"; ctx.font = "26px sans-serif"; const en = s.tema ? s.tema.enemigo : "🐝"; for (let i = 0; i < (en === "🐝" ? 3 : 1); i++) ctx.fillText(en, b.x + Math.sin(t * 9 + i * 2) * 14, b.y + Math.cos(t * 7 + i * 2) * 10 - 20); } });
+    for (const k of m.rocas) if (k.x > v.x0 && k.x < v.x1 && k.y > v.y0 && k.y < v.y1) out.push({ y: k.y, d: ctx => { ctx.textAlign = "center"; ctx.font = "54px " + FE; ctx.fillStyle = "#000"; ctx.fillText("🪨", k.x, k.y + 16); } });
+    for (const b of m.abejas) if (b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1) out.push({ y: b.y + 200, d: ctx => { ctx.textAlign = "center"; ctx.font = "26px " + FE; ctx.fillStyle = "#000"; const en = s.tema ? s.tema.enemigo : "🐝"; for (let i = 0; i < (en === "🐝" ? 3 : 1); i++) ctx.fillText(en, b.x + Math.sin(t * 9 + i * 2) * 14, b.y + Math.cos(t * 7 + i * 2) * 10 - 20); } });
     return out;
   }
 };
@@ -694,7 +694,7 @@ const Mina = {
       ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(x, y, MT, 5);
       ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x, y + MT - 5, MT, 5);
       if (M.id === "tnt") {
-        ctx.fillStyle = "#c0392b"; ctx.fillRect(x + 6, y + 6, MT - 12, MT - 12); ctx.fillStyle = "#fff"; ctx.font = "bold 13px Figtree"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("TNT", x + MT / 2, y + MT / 2);
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(x + 6, y + 6, MT - 12, MT - 12); ctx.fillStyle = "#fff"; ctx.font = "bold 13px Figtree, " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("TNT", x + MT / 2, y + MT / 2);
       } else if (M.id !== "piedra") {
         const brilla = M.req >= 3 ? 0.75 + Math.sin(t * 3 + cx) * 0.25 : 1;
         [[14, 16, 7], [37, 22, 8], [22, 39, 6], [41, 42, 5]].forEach(([a, b, rr]) => {
@@ -715,7 +715,7 @@ const Mina = {
       ctx.fillStyle = "#ffe066"; ctx.beginPath(); ctx.ellipse(a.x, a.y - 1, 3.5, 6, 0, 0, 7); ctx.fill();
     }
     // Cartel de la entrada
-    ctx.fillStyle = "#ffd43b"; ctx.font = "bold 16px Figtree"; ctx.textAlign = "center"; ctx.fillText("⛏️ Más hondo = minerales mejores →", 3 * MT, 13.4 * MT);
+    ctx.fillStyle = "#ffd43b"; ctx.font = "bold 16px Figtree, " + FE; ctx.textAlign = "center"; ctx.fillText("⛏️ Más hondo = minerales mejores →", 3 * MT, 13.4 * MT);
   },
   objetos() { return []; },
   /* Oscuridad con huecos de luz: tu lámpara (más grande con mejor pico) y las antorchas */
@@ -736,7 +736,7 @@ const Mina = {
     ctx.globalCompositeOperation = "lighter";
     visibles.forEach(a => { const [x, y] = aPantalla(a.x, a.y), r = 120 * esc, g = ctx.createRadialGradient(x, y, 4, x, y, r); g.addColorStop(0, "rgba(255,140,40,.35)"); g.addColorStop(1, "rgba(255,140,40,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); });
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#fff"; ctx.font = "bold 14px Figtree"; ctx.textAlign = "left"; ctx.fillText(`Profundidad: ${s.m.prof} m`, 14, H - 18);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 14px Figtree, " + FE; ctx.textAlign = "left"; ctx.fillText(`Profundidad: ${s.m.prof} m`, 14, H - 18);
   }
 };
 
@@ -862,8 +862,8 @@ const Pesca = {
     ctx.strokeStyle = "#6fb6ff"; ctx.lineWidth = 2; ctx.strokeRect(18, top, 40, alto);
     const by = top + alto * (1 - g.barra - g.alto);
     ctx.fillStyle = "rgba(61,220,177,.75)"; ctx.fillRect(20, by, 36, alto * g.alto);
-    ctx.font = "26px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(m.pez.ic, 38, top + alto * (1 - g.pez));
+    ctx.font = "26px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#000"; ctx.fillText(m.pez.ic, 38, top + alto * (1 - g.pez));
     ctx.fillStyle = "#1b1726"; ctx.fillRect(70, top, 14, alto);
     ctx.fillStyle = g.avance > 66 ? "#3ddcb1" : g.avance > 33 ? "#ffc53d" : "#ff4d63";
     ctx.fillRect(70, top + alto * (1 - g.avance / 100), 14, alto * g.avance / 100);
@@ -905,7 +905,7 @@ const Pesca = {
   },
   objetos(s, v) {
     const out = [];
-    for (const a of s.m.arboles) if (a.x > v.x0 && a.x < v.x1 && a.y > v.y0 && a.y < v.y1) out.push({ y: a.y, d: ctx => { ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(a.x, a.y + 8, 28, 9, 0, 0, 7); ctx.fill(); ctx.font = "78px sans-serif"; ctx.fillText(a.ic, a.x, a.y + 12); } });
+    for (const a of s.m.arboles) if (a.x > v.x0 && a.x < v.x1 && a.y > v.y0 && a.y < v.y1) out.push({ y: a.y, d: ctx => { ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(a.x, a.y + 8, 28, 9, 0, 0, 7); ctx.fill(); ctx.font = "78px " + FE; ctx.fillStyle = "#000"; ctx.fillText(a.ic, a.x, a.y + 12); } });
     return out;
   },
   encima(s, ctx, t) {
@@ -913,7 +913,7 @@ const Pesca = {
     if (m.boya) {
       const x0 = m.x + (m.cara < 0 ? -34 : 34), y0 = m.y - 42;
       this.linea(ctx, x0, y0, m.boya.x, m.boya.y, t, m.p === "pica" || m.p === "pelea");
-      if (m.p === "pica") { ctx.font = "bold 30px Figtree"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd43b"; ctx.fillText("❗", m.boya.x, m.boya.y - 30 + Math.sin(t * 20) * 3); }
+      if (m.p === "pica") { ctx.font = "bold 30px Figtree, " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#ffd43b"; ctx.fillText("❗", m.boya.x, m.boya.y - 30 + Math.sin(t * 20) * 3); }
       if (m.p === "pelea") { ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(m.boya.x, m.boya.y, 10 + ((t * 40 + i * 12) % 36), 0, 7); ctx.stroke(); } }
     }
   }

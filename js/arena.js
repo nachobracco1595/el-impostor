@@ -483,10 +483,10 @@ const Arena = {
     }
     ctx.restore(); ctx.globalAlpha = 1;
     if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = TR.NIVELES[Math.max(j.eq.arma, j.eq.armadura)].color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-    if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("❄️", x + 22, y - 44); }
+    if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("❄️", x + 22, y - 44); }
     if (!j.name) return;
     // Nombre y vida (barra redondeada con borde)
-    ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, sans-serif"; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
+    ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
     const nom = `${AR.CLASES[j.clase].ic} ${j.name}`; ctx.strokeText(nom, x, y - 68); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, y - 68);
     const p = Math.max(0, j.hp / j.max);
     ctx.fillStyle = "#000c"; ctx.beginPath(); ctx.roundRect(x - 28, y - 62, 56, 9, 4.5); ctx.fill();
@@ -555,7 +555,7 @@ const Arena = {
         const g = ctx.createRadialGradient(700, 500, 60, 700, 500, 620); g.addColorStop(0, "#4a5ab8"); g.addColorStop(1, "#283163");
         ctx.fillStyle = g; ctx.fillRect(l.x, l.y, l.w, l.h);
         ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(700, 500, 130, 0, 7); ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,.07)"; ctx.font = "bold 110px 'Dela Gothic One', Figtree"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MESA LOCA", 700, 500);
+        ctx.fillStyle = "rgba(255,255,255,.07)"; ctx.font = "bold 110px 'Dela Gothic One', Figtree, " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MESA LOCA", 700, 500);
       } else if (v.esc === "volcan") {
         ctx.fillStyle = "#2a1c18"; ctx.fillRect(l.x, l.y, l.w, l.h);
         D.manchas.forEach(m => { ctx.fillStyle = `rgba(0,0,0,${m.a * 2})`; ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 3, 0, 7); ctx.fill(); });
@@ -604,7 +604,7 @@ const Arena = {
     if (v.esc === "ring") { const l = E.lim; [0, 10, 20].forEach((o, i) => { ctx.strokeStyle = ["#ff4d63", "#ffffff", "#4dabf7"][i]; ctx.lineWidth = 5; ctx.strokeRect(l.x - o, l.y - o, l.w + o * 2, l.h + o * 2); }); }
     // Pociones
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    v.pociones.forEach(p => { const b = Math.sin(t * 3 + p.k) * 4; ctx.fillStyle = "rgba(61,220,177,.25)"; ctx.beginPath(); ctx.arc(p.x, p.y, 22 + Math.sin(t * 4) * 3, 0, 7); ctx.fill(); ctx.font = "30px sans-serif"; ctx.fillText("🧪", p.x, p.y + b); });
+    v.pociones.forEach(p => { const b = Math.sin(t * 3 + p.k) * 4; ctx.fillStyle = "rgba(61,220,177,.25)"; ctx.beginPath(); ctx.arc(p.x, p.y, 22 + Math.sin(t * 4) * 3, 0, 7); ctx.fill(); ctx.font = "30px " + FE; ctx.fillStyle = "#000"; ctx.fillText("🧪", p.x, p.y + b); });
     // Luchadores (los otros interpolados), ordenados por altura
     const lista = v.jug.map(j => {
       const o = n.otros[j.id] = n.otros[j.id] || { x: j.x, y: j.y };
@@ -616,7 +616,7 @@ const Arena = {
       return { j, o, esYo, anda };
     }).sort((a, b) => a.o.y - b.o.y);
     lista.forEach(({ j, o, esYo, anda }) => {
-      if (!j.vivo) { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(o.x, o.y + 14, 20, 7, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#8a8f98"; ctx.beginPath(); ctx.roundRect(o.x - 14, o.y - 20, 28, 34, [14, 14, 3, 3]); ctx.fill(); ctx.fillStyle = "#5c616b"; ctx.font = "bold 10px Figtree"; ctx.fillText("RIP", o.x, o.y - 4); return; }
+      if (!j.vivo) { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(o.x, o.y + 14, 20, 7, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#8a8f98"; ctx.beginPath(); ctx.roundRect(o.x - 14, o.y - 20, 28, 34, [14, 14, 3, 3]); ctx.fill(); ctx.fillStyle = "#5c616b"; ctx.font = "bold 10px Figtree, " + FE; ctx.fillText("RIP", o.x, o.y - 4); return; }
       if (esYo) { ctx.strokeStyle = "#3ddcb1"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(o.x, o.y + 16, 28, 11, 0, 0, 7); ctx.stroke(); }
       Arena.dibujarLuchador(ctx, esYo ? { ...j, cara: n.cara } : j, o.x, o.y, t, anda, vt);
     });
@@ -651,7 +651,7 @@ const Arena = {
       } else if (f.tipo === "onda") { ctx.strokeStyle = f.color; ctx.globalAlpha = 1 - k; ctx.lineWidth = 12 * (1 - k) + 2; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.3 + 0.7 * k), 0, 7); ctx.stroke(); ctx.fillStyle = f.color; ctx.globalAlpha = 0.15 * (1 - k); ctx.fill(); }
       else if (f.tipo === "boom") { const g = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r * (0.6 + k)); g.addColorStop(0, `rgba(255,255,220,${1 - k})`); g.addColorStop(0.5, `rgba(255,140,0,${0.7 * (1 - k)})`); g.addColorStop(1, "rgba(255,60,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.6 + k), 0, 7); ctx.fill(); }
       else if (f.tipo === "humo") { ctx.fillStyle = `rgba(80,70,110,${0.6 * (1 - k)})`; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(f.x + Math.cos(i * 1.3) * 20 * (1 + k), f.y + Math.sin(i * 1.3) * 14 * (1 + k), 18 + k * 16, 0, 7); ctx.fill(); } }
-      else if (f.tipo === "num") { const kk = (vt - f.t) / 1000; if (kk > 1) return; const esc2 = kk < 0.15 ? 0.6 + kk / 0.15 * 0.6 : 1.2 - kk * 0.2; ctx.globalAlpha = 1 - Math.max(0, kk - 0.5) * 2; ctx.save(); ctx.translate(f.x, f.y - kk * 50); ctx.scale(esc2, esc2); ctx.font = "900 24px Figtree"; ctx.lineWidth = 5; ctx.strokeStyle = "#000c"; ctx.strokeText(f.txt, 0, 0); ctx.fillStyle = f.color; ctx.fillText(f.txt, 0, 0); ctx.restore(); }
+      else if (f.tipo === "num") { const kk = (vt - f.t) / 1000; if (kk > 1) return; const esc2 = kk < 0.15 ? 0.6 + kk / 0.15 * 0.6 : 1.2 - kk * 0.2; ctx.globalAlpha = 1 - Math.max(0, kk - 0.5) * 2; ctx.save(); ctx.translate(f.x, f.y - kk * 50); ctx.scale(esc2, esc2); ctx.font = "900 24px Figtree, " + FE; ctx.lineWidth = 5; ctx.strokeStyle = "#000c"; ctx.strokeText(f.txt, 0, 0); ctx.fillStyle = f.color; ctx.fillText(f.txt, 0, 0); ctx.restore(); }
       ctx.globalAlpha = 1;
     });
     if (n.vistos.size > 400) n.vistos = new Set([...n.vistos].slice(-200));

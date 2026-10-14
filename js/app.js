@@ -117,7 +117,7 @@ function juegosMenu() {
     ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
-    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini"><span class="pieza w">♚</span><span class="pieza b">♞</span></span>`, "t-aj"],
+    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
     ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
   ];

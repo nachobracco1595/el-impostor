@@ -1,5 +1,7 @@
 /* Arranque: si el enlace trae ?sala=ABCD, abre directamente "Unirme" */
 S.screen = codigoUrl() ? "onUnirme" : "home";
+// Si estaba esperando el correo para entrar (por ejemplo, salió de la app a mirar el mail), vuelve a esa pantalla
+if (S.screen === "home" && UI.mailEnviado && !BD.sesion()) S.screen = "cuenta";
 render();
 Nube.iniciar();
 

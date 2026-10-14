@@ -146,7 +146,7 @@ Mesa Loca se puede instalar en el teléfono como una app (ícono propio, pantall
 - **Android (Chrome):** menú ⋮ → **Instalar app** (o "Agregar a la pantalla principal").
 
 Usa `manifest.webmanifest` y `sw.js` (siempre busca la versión nueva en internet; sin conexión abre la última guardada).
-En la app instalada del iPhone conviene entrar con el **código** del correo (el enlace abre Safari, que es aparte).
+En la app instalada del iPhone el enlace del correo se abre en Safari, que es aparte: para entrar en la app, en el correo mantén apretado el botón → **Copiar enlace** y pégalo en la app (o escribe el código, si el correo lo trae).
 
 ## Música y sonidos
 La música y los efectos se generan en el teléfono con Web Audio (no hay archivos de audio).

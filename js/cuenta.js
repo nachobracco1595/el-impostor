@@ -1,4 +1,9 @@
 /* Cuentas: inicio de sesión, perfil, ranking, avisos de puntos y logros */
+
+/* ¿Se abrió como app instalada (pantalla completa)? */
+const esApp = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+/* Si salimos a mirar el correo y la app se recargó, se recuerda a qué correo mandamos (por 20 minutos) */
+(() => { try { const p = store.get("mailPendiente", null); if (p && Date.now() - p.t < 20 * 60000) { UI.mailEnviado = p.m; UI.mail = p.m; } } catch {} })();
 const CABEZAS = ["", "sombrero", "gorra", "galera", "chef", "casco", "pelo", "auriculares", "cofia"];
 const CARAS = ["", "lentes", "bigote", "barba", "mono", "collar"];
 const NOMBRE_ACC = { "": "Nada", sombrero: "Sombrero", gorra: "Gorra", galera: "Galera", chef: "Chef", casco: "Casco", pelo: "Pelo largo", auriculares: "Auriculares", cofia: "Cofia", lentes: "Lentes", bigote: "Bigote", barba: "Barba", mono: "Moño", collar: "Collar" };
@@ -130,8 +135,9 @@ PANTALLAS.cuenta = () => {
           <label class="label" for="mail">${Nube.config().google !== false ? "O entra con tu correo, sin contraseña" : "Entra con tu correo, sin contraseña"}</label>
           <div class="add"><input class="campo" id="mail" type="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(UI.mail || "")}" ${Nube.estado !== "lista" ? "disabled" : ""}><button class="btn ghost chico" type="submit" ${Nube.estado !== "lista" ? "disabled" : ""}>Enviar</button></div>
         </form>
-        ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un correo a <b>${esc(UI.mailEnviado)}</b> (revisa también el spam). Toca el enlace en este mismo dispositivo, <b>o escribe acá el código</b> que viene en el correo:</p>
-          <form class="add" id="fCodigo"><input class="campo" id="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Código del correo" aria-label="Código del correo"><button class="btn chico" type="submit">Entrar</button></form>` : ""}
+        ${UI.mailEnviado ? `<p class="summary">📬 Te mandamos un correo a <b>${esc(UI.mailEnviado)}</b> (revisa también el spam).
+          ${esApp() ? `<b>Estás en la app:</b> el enlace del correo se abre en Safari, que es aparte. En el correo <b>mantén apretado el botón del enlace → Copiar enlace</b> (sin abrirlo) y pégalo acá, o escribe el código si viene uno:` : `Toca el enlace en este mismo dispositivo, <b>o pega acá el enlace o el código</b> del correo:`}</p>
+          <form class="add" id="fCodigo"><input class="campo" id="codigo" autocomplete="one-time-code" placeholder="Código o enlace del correo" aria-label="Código o enlace del correo"><button class="btn chico" type="submit">Entrar</button></form>` : ""}
         ${UI.errNube ? `<p class="warn">${esc(UI.errNube)}</p>` : ""}
       </div>
       <span class="label">Perfiles sin internet (con PIN, solo en este teléfono)</span>` : ""}
@@ -153,14 +159,14 @@ PANTALLAS.cuenta = () => {
     const m = byId("mail").value.trim();
     UI.mail = m; UI.errNube = ""; UI.mailEnviado = "";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)) { UI.errNube = "Escribe un correo válido."; return render(); }
-    try { await Nube.enviarEnlace(m); UI.mailEnviado = m; } catch (err) { UI.errNube = err.message; }
+    try { await Nube.enviarEnlace(m); UI.mailEnviado = m; store.set("mailPendiente", { m, t: Date.now() }); } catch (err) { UI.errNube = err.message; }
     render();
   };
   const fc = byId("fCodigo");
   if (fc) fc.onsubmit = async e => {
     e.preventDefault(); UI.errNube = "";
     const b = fc.querySelector("button"); b.disabled = true;
-    try { await Nube.verificarCodigo(UI.mailEnviado, byId("codigo").value); UI.mailEnviado = ""; } catch (err) { UI.errNube = err.message; b.disabled = false; }
+    try { await Nube.verificarCodigo(UI.mailEnviado, byId("codigo").value); UI.mailEnviado = ""; store.set("mailPendiente", null); } catch (err) { UI.errNube = err.message; b.disabled = false; }
     render();
   };
   on("otro", () => { UI.loginId = null; render(); });

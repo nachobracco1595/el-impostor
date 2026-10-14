@@ -106,8 +106,17 @@ const Nube = {
   /* Entrar con el código del correo (sirve si el correo se abre en otro dispositivo, por ejemplo en el teléfono) */
   async verificarCodigo(email, codigo) {
     if (this.estado !== "lista") return;
-    const token = String(codigo || "").replace(/\D/g, "");
-    if (token.length < 6) throw new Error("El código tiene 6 números (o más). Míralo en el correo.");
+    const txt = String(codigo || "").trim();
+    // También sirve pegar el enlace del correo (mantener apretado el botón del mail → Copiar enlace)
+    if (/token=/.test(txt)) {
+      let u; try { u = new URL(txt); } catch { throw new Error("Ese enlace no se entiende. Cópialo completo desde el correo."); }
+      const token_hash = u.searchParams.get("token") || u.searchParams.get("token_hash"), type = u.searchParams.get("type") || "magiclink";
+      const { error } = await this.sb.auth.verifyOtp({ token_hash, type: type === "signup" ? "signup" : type === "invite" ? "invite" : "magiclink" });
+      if (error) throw new Error(/expired|invalid/i.test(error.message) ? "El enlace ya se usó o venció. Pide otro correo y pega el enlace sin abrirlo." : "No se pudo entrar con el enlace.");
+      return;
+    }
+    const token = txt.replace(/\D/g, "");
+    if (token.length < 6) throw new Error("Escribe el código del correo o pega el enlace.");
     const { error } = await this.sb.auth.verifyOtp({ email, token, type: "email" });
     if (error) throw new Error(/expired|invalid/i.test(error.message) ? "El código no es válido o ya venció. Pide otro." : "No se pudo entrar con el código.");
   },

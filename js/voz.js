@@ -23,10 +23,10 @@ const Voz = {
     if (!this.posible() || !window.isSecureContext) return this.aviso("🎙️", "Este navegador no permite la voz", "Prueba con Chrome o Safari actualizados, desde la página del juego (https).");
     this.entrando = true; this.pintar();
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+      this.stream = await this.pedirMic();
     } catch (e) {
-      this.entrando = false; this.pintar();
-      return this.aviso("🔒", "Sin permiso para el micrófono", e && e.name === "NotAllowedError" ? "Dale permiso al micrófono en el candado de la barra del navegador (o en Ajustes → Safari → Micrófono) y prueba de nuevo." : "No se encontró un micrófono.");
+      this.entrando = false; this.sesion("playback"); this.pintar();
+      return this.explicar(e);
     }
     this.entrando = false; this.activo = true; this.mute = false; this.abierto = true;
     try { this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)(); this.ctx.resume && this.ctx.resume(); } catch {}
@@ -37,12 +37,50 @@ const Voz = {
     this.pintar();
   },
 
+  /* En iPhone la música del juego deja el audio en modo "solo reproducción" (suena aunque esté en silencio).
+     En ese modo iOS no presta el micrófono: para la voz hay que pasar a "reproducir y grabar". */
+  sesion(tipo) { try { if (navigator.audioSession) navigator.audioSession.type = tipo; } catch {} },
+
+  async pedirMic() {
+    this.sesion("play-and-record");
+    const pedidos = [{ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }, { audio: true }];
+    let error;
+    for (let k = 0; k < 3; k++) {
+      try { return await navigator.mediaDevices.getUserMedia(pedidos[Math.min(k, 1)]); }
+      catch (e) {
+        error = e;
+        if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) break;
+        // iOS a veces tarda en soltar el audio de la música: se espera un poco y se prueba con lo más simple
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+    throw error;
+  },
+
+  explicar(e) {
+    const nombre = (e && e.name) || "Error", ua = navigator.userAgent;
+    const iphone = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const appAjena = /FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|TikTok|Twitter/i.test(ua);
+    const enMarco = window.top !== window;
+    let titulo, texto;
+    if (appAjena || enMarco) { titulo = "Abre el juego en el navegador"; texto = `Dentro de ${appAjena ? "esta app" : "esta página"} no se puede usar el micrófono. Abre el enlace en ${iphone ? "Safari" : "Chrome"} y entra a la sala de nuevo.`; }
+    else if (nombre === "NotAllowedError" || nombre === "SecurityError") {
+      titulo = "Sin permiso para el micrófono";
+      texto = iphone ? "Toca «aA» en la barra de Safari → Ajustes del sitio web → Micrófono → Permitir. También revisa Ajustes del iPhone → Safari → Micrófono. Después prueba de nuevo." : "Toca el candado de la barra del navegador, permite el micrófono y prueba de nuevo.";
+    } else if (nombre === "NotReadableError" || nombre === "AbortError" || nombre === "InvalidStateError") {
+      titulo = "El micrófono está ocupado"; texto = "Puede que otra app lo esté usando (una llamada, un audio de WhatsApp, Siri). Ciérrala y prueba de nuevo. Si sigue, recarga la página.";
+    } else if (nombre === "NotFoundError" || nombre === "OverconstrainedError") { titulo = "No se encontró un micrófono"; texto = "Revisa que el teléfono tenga micrófono disponible (sin auriculares a medio conectar) y prueba de nuevo."; }
+    else { titulo = "No se pudo usar el micrófono"; texto = "Recarga la página y prueba de nuevo."; }
+    Toast.mostrar(`<div class="t-ic">🎙️</div><div class="t-txt"><b>${esc(titulo)}</b><span>${esc(texto)}</span><small>Código: ${esc(nombre)}</small></div>`, "info");
+  },
+
   salir() {
     if (!this.activo && !this.stream) return;
     this.activo = false; this.abierto = false;
     if (Net.activo()) try { Net.send({ t: "voz", on: false }); } catch {}
     Object.keys(this.llamadas).forEach(p => this.cortar(p));
     if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.sesion("playback");
     this.stream = null; this.niveles = {}; this.hablando.clear();
     clearInterval(this.timer); this.timer = null;
     this.ducking();

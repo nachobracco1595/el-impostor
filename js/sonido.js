@@ -9,7 +9,7 @@ const Sonido = {
     if (this.ctx) { if (this.ctx.state === "suspended") this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+    try { if (navigator.audioSession && !(typeof Voz !== "undefined" && Voz.activo)) navigator.audioSession.type = "playback"; } catch {}
     const ctx = this.ctx = new AC();
     this.master = ctx.createGain(); this.master.gain.value = 0.9;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;

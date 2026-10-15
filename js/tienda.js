@@ -94,7 +94,7 @@ const Eco = {
 
   comprar(u, id) {
     const it = CATALOGO[id], precio = typeof Evento !== "undefined" ? Evento.precio(id) : it && it.precio;
-    if (!it || u.inv.includes(id) || u.monedas < precio || (typeof Evento !== "undefined" && !Evento.itemDisponible(id))) return false;
+    if (!it || it.refs || u.inv.includes(id) || u.monedas < precio || (typeof Evento !== "undefined" && !Evento.itemDisponible(id))) return false;
     u.monedas -= precio; u.inv.push(id);
     if (u.nube) Nube.actividad("compra", it.evento ? "evento" : it.tipo, 0, -precio);
     Eco.guardar(u); return true;
@@ -222,7 +222,7 @@ PANTALLAS.tienda = () => {
   if (tab === "evento" && !ev) tab = "cabeza";
   const m = Eco.mision(u), e = Eco.diario(u);
   // Las cosas de un evento se ven solo mientras está prendido (o si ya las tienes)
-  const items = Object.entries(CATALOGO).filter(([id, it]) => tab === "evento" ? it.evento === ev.id && Evento.itemDisponible(id) : it.tipo === tab && (!it.evento || Eco.tiene(u, id) || Evento.itemDisponible(id)));
+  const items = Object.entries(CATALOGO).filter(([id, it]) => tab === "evento" ? it.evento === ev.id && Evento.itemDisponible(id) : it.tipo === tab && (!it.evento || Eco.tiene(u, id) || Evento.itemDisponible(id)) && (!it.refs || Eco.tiene(u, id)));
   const prev = (id, it) => {
     const l = { ...u.look, acc: u.look.acc.slice() };
     if (it.tipo === "color") l.color = it.valor;

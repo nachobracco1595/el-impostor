@@ -343,3 +343,88 @@ begin
     where buscar = '' or p.nombre ilike '%' || buscar || '%'
     order by ultima desc nulls last, p.puntos desc limit 100) u);
 end $$;
+
+-- ============ Referidos: invitar amigos con un link ============
+-- Cada perfil tiene un código. El que entra con el link recibe monedas de bienvenida;
+-- el que invitó cobra cuando su amigo ya jugó unas partidas (así no sirve crear cuentas falsas).
+alter table public.perfiles add column if not exists ref text unique default upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+update public.perfiles set ref = upper(substr(md5(random()::text || id::text), 1, 6)) where ref is null;
+
+-- El código no se puede cambiar desde la app
+create or replace function public.perfiles_ref_fijo() returns trigger
+language plpgsql as $$ begin new.ref := old.ref; return new; end $$;
+drop trigger if exists perfiles_ref_fijo on public.perfiles;
+create trigger perfiles_ref_fijo before update on public.perfiles for each row execute function public.perfiles_ref_fijo();
+
+create table if not exists public.referidos (
+  invitado   uuid primary key references public.perfiles (id) on delete cascade,
+  invitador  uuid not null references public.perfiles (id) on delete cascade,
+  pagado     boolean not null default false,
+  creado     timestamptz not null default now()
+);
+create index if not exists referidos_invitador_idx on public.referidos (invitador);
+alter table public.referidos enable row level security;   -- solo con las funciones de abajo
+
+insert into public.config (clave, valor) values ('referidos', '{"activo": true, "premioInvitado": 100, "premioInvitador": 150, "partidas": 3, "maxPorDia": 5}') on conflict do nothing;
+
+-- El nuevo jugador canjea el código del link (solo cuentas nuevas, una vez, no uno mismo)
+create or replace function public.canjear_referido(codigo text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; yo public.perfiles; inv public.perfiles; m integer;
+begin
+  select valor into cfg from public.config where clave = 'referidos';
+  if cfg is null or not coalesce((cfg ->> 'activo')::boolean, true) then return jsonb_build_object('ok', false, 'motivo', 'apagado'); end if;
+  select * into yo from public.perfiles where id = auth.uid();
+  if not found then return jsonb_build_object('ok', false, 'motivo', 'sin perfil'); end if;
+  if yo.creado < now() - interval '3 days' then return jsonb_build_object('ok', false, 'motivo', 'cuenta vieja'); end if;
+  if exists (select 1 from public.referidos where invitado = yo.id) then return jsonb_build_object('ok', false, 'motivo', 'ya usado'); end if;
+  select * into inv from public.perfiles where ref = upper(trim(codigo)) and id <> yo.id;
+  if not found then return jsonb_build_object('ok', false, 'motivo', 'codigo'); end if;
+  insert into public.referidos (invitado, invitador) values (yo.id, inv.id);
+  m := least(greatest(coalesce((cfg ->> 'premioInvitado')::integer, 100), 0), 500);
+  if m > 0 then insert into public.regalos (usuario, monedas, motivo) values (yo.id, m, left('Bienvenida: te invitó ' || inv.nombre, 80)); end if;
+  return jsonb_build_object('ok', true, 'invitador', inv.nombre, 'monedas', m);
+end $$;
+
+-- El que invitó: cobra los amigos que ya jugaron lo suficiente y ve su lista
+create or replace function public.mis_referidos() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; minimo integer; premio integer; tope integer; hoy integer; r record; lista jsonb := '[]'::jsonb; nuevos integer := 0; codigo text;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false); end if;
+  select valor into cfg from public.config where clave = 'referidos';
+  minimo := coalesce((cfg ->> 'partidas')::integer, 3);
+  premio := least(greatest(coalesce((cfg ->> 'premioInvitador')::integer, 150), 0), 500);
+  tope := coalesce((cfg ->> 'maxPorDia')::integer, 5);
+  select ref into codigo from public.perfiles where id = auth.uid();
+  select count(*) into hoy from public.actividad where usuario = auth.uid() and tipo = 'regalo' and creado >= date_trunc('day', now()) and juego = 'referido';
+  for r in
+    select f.invitado, f.pagado, f.creado, p.nombre, p.look,
+      (select count(*) from public.actividad a where a.usuario = f.invitado and a.tipo = 'partida') as partidas
+    from public.referidos f join public.perfiles p on p.id = f.invitado
+    where f.invitador = auth.uid() order by f.creado desc
+  loop
+    if not r.pagado and r.partidas >= minimo and premio > 0 and hoy + nuevos < tope then
+      update public.referidos set pagado = true where invitado = r.invitado;
+      insert into public.regalos (usuario, monedas, motivo) values (auth.uid(), premio, left('Tu amigo ' || r.nombre || ' ya juega', 80));
+      insert into public.actividad (usuario, tipo, juego, monedas) values (auth.uid(), 'regalo', 'referido', 0);
+      nuevos := nuevos + 1; r.pagado := true;
+    end if;
+    lista := lista || jsonb_build_object('nombre', r.nombre, 'look', r.look, 'partidas', least(r.partidas, minimo), 'activo', r.partidas >= minimo, 'pagado', r.pagado, 'creado', r.creado);
+  end loop;
+  return jsonb_build_object('ok', true, 'codigo', codigo, 'lista', lista, 'nuevos', nuevos, 'partidas', minimo, 'premio', premio,
+    'premioInvitado', coalesce((cfg ->> 'premioInvitado')::integer, 100), 'activo', coalesce((cfg ->> 'activo')::boolean, true));
+end $$;
+
+-- Panel: los que más invitaron
+create or replace function public.panel_referidos() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'total', (select count(*) from public.referidos),
+    'activos', (select count(*) from public.referidos where pagado),
+    'top', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (
+      select p.nombre, p.look, count(*) as invitados, count(*) filter (where f.pagado) as activos
+      from public.referidos f join public.perfiles p on p.id = f.invitador group by p.id order by count(*) desc limit 10) t));
+end $$;

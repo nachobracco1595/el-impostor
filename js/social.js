@@ -128,6 +128,7 @@ PANTALLAS.amigos = () => {
   app.innerHTML = `${head(0)}
   <section class="screen">
     <div><h2>Amigos</h2><p class="sub">Busca a tus amigos por su nombre, chatea e invítalos a tu sala.</p></div>
+    <button class="ref-banner chico" id="refInvitar"><span class="ev-ic">🤝</span><div><b>¿Tus amigos no juegan todavía?</b><small>Mándales tu link: ganan los dos monedas.</small></div><span class="ref-flecha">›</span></button>
     <form class="add" id="fBus"><input id="qAmigo" maxlength="16" placeholder="Buscar por nombre" autocomplete="off" value="${esc(UI.qAmigo || "")}" aria-label="Buscar amigos"><button type="submit" aria-label="Buscar">🔍</button></form>
     ${res ? `<div class="panel"><span class="label">Resultados</span>${res.length ? `<ul class="players">${res.map(p => {
         const ya = amigos.includes(p.id), pedido = env.includes(p.id);
@@ -151,6 +152,7 @@ PANTALLAS.amigos = () => {
   app.querySelectorAll("[data-quitar]").forEach(b => b.onclick = async () => { await Social.quitar(b.dataset.quitar); render(); });
   app.querySelectorAll("[data-charla]").forEach(li => li.onclick = () => { UI.charla = li.dataset.charla; Social.charla = []; go("charla"); Social.cargarCharla().then(render); });
   on("aVolver", () => { UI.busqueda = null; go("home"); });
+  on("refInvitar", () => go("invitar"));
 };
 
 /* ---------- Charla con un amigo ---------- */

@@ -138,7 +138,8 @@ const Nube = {
       if (data && data.length) {
         const u = BD.adoptarNube(user.id, this.deFila(data[0]));
         if (u.pendiente) this.subir(u);
-        this.revisarRegalos(u);
+        // Invitaciones: canjear el link con el que entró, cobrar amigos que ya juegan y después los regalos
+        Referidos.canjear().then(() => Referidos.cargar(u)).catch(() => {}).then(() => this.revisarRegalos(u));
         if (this.volvioDeLogin || S.screen === "cuenta" || S.screen === "crearPerfil") { this.volvioDeLogin = false; alIniciar(u); }
         else render();
       } else {
@@ -171,6 +172,7 @@ const Nube = {
     const { error } = await this.sb.from("perfiles").insert({ id: u.id, ...this.aFila(u) });
     if (error) { console.error(error); throw new Error("No se pudo guardar tu perfil en la nube. Prueba de nuevo."); }
     u.pendiente = false; BD.guardar();
+    Referidos.canjear().catch(() => {}).then(() => this.revisarRegalos(u));
     return u;
   },
 

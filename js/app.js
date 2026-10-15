@@ -132,6 +132,7 @@ PANTALLAS.home = () => {
     <p class="sub center">Juegos para jugar con amigos: el Impostor, la Arena, el Chinchón, La Nave y muchos más. En un solo teléfono o cada uno en el suyo.</p>
   </section>
   ${typeof Evento !== "undefined" ? Evento.cartel() : ""}
+  ${typeof Referidos !== "undefined" ? Referidos.cartel() : ""}
   <section class="juegos-grid">${juegosMenu().map(([m, n, d, art, cls]) => `<button class="tile ${cls}" data-modo="${m}">
       <span class="tile-art">${art}</span><b>${n}</b><small>${d}</small><span class="tile-cta">Jugar</span></button>`).join("")}</section>
   <article class="juego online">
@@ -147,6 +148,7 @@ PANTALLAS.home = () => {
   });
   Cuenta.conectarBarra();
   if (typeof Evento !== "undefined") Evento.conectarCartel();
+  if (typeof Referidos !== "undefined") Referidos.conectarCartel();
   on("crear", () => go("onCrear"));
   on("unirme", () => go("onUnirme"));
 };

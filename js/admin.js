@@ -27,7 +27,9 @@ async function cambiar(user) {
 
 async function cargar() {
   P.cargando = true; pintar();
-  const [r, u, ev] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle()]);
+  const [r, u, ev, rf, rc] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle(), P.sb.rpc("panel_referidos"), P.sb.from("config").select("valor").eq("clave", "referidos").maybeSingle()]);
+  P.refs = rf.error ? null : rf.data;
+  P.refCfg = Object.assign({ activo: true, premioInvitado: 100, premioInvitador: 150, partidas: 3, maxPorDia: 5 }, (rc.data && rc.data.valor) || {});
   P.evento = Object.assign({ id: null, trabajo: true, multi: 1, mensaje: "", items: {} }, (ev.data && ev.data.valor) || {});
   P.cargando = false;
   if (r.error) { P.msg = "No se pudieron cargar los datos: " + r.error.message; return pintar(); }
@@ -75,6 +77,25 @@ function pintar() {
     <h2>Eventos de temporada</h2>
     <p class="sub">Prende un evento y los jugadores ven el cartel en el inicio, los colores de la temporada, la pestaña especial en la tienda y el trabajo del evento.</p>
     ${pantallaEvento()}
+  </section>
+
+  <section class="dos-col">
+    <article class="tarjeta">
+      <h2>Invitaciones (referidos)</h2>
+      <p class="sub">${P.refs ? `${num(P.refs.total)} invitados en total · ${num(P.refs.activos)} ya juegan y cobraron premio.` : "Corre el SQL nuevo para ver los referidos."}</p>
+      <form id="fRef" class="ads-form">
+        <label class="opt"><span class="txt"><b>Invitaciones con premio</b><small>Si lo apagas, los links siguen funcionando pero no dan monedas.</small></span><input type="checkbox" id="rfOn" ${P.refCfg.activo ? "checked" : ""}></label>
+        <div class="row"><label class="campo-l">🪙 al amigo nuevo<input class="campo" id="rfInv" type="number" min="0" max="500" value="${P.refCfg.premioInvitado}"></label>
+          <label class="campo-l">🪙 al que invitó<input class="campo" id="rfDor" type="number" min="0" max="500" value="${P.refCfg.premioInvitador}"></label></div>
+        <div class="row"><label class="campo-l">Partidas para cobrar<input class="campo" id="rfPar" type="number" min="1" max="50" value="${P.refCfg.partidas}"></label>
+          <label class="campo-l">Máximo de premios por día<input class="campo" id="rfMax" type="number" min="1" max="50" value="${P.refCfg.maxPorDia}"></label></div>
+        <button class="btn" type="submit">Guardar</button><p class="summary" id="rfMsg"></p>
+      </form>
+    </article>
+    <article class="tarjeta">
+      <h2>Los que más invitaron</h2>
+      <ol class="tabla-rank">${(P.refs && P.refs.top || []).map((t, i) => `<li><span class="pos">${i + 1}</span>${mini(t.look)}<span class="nm"><b>${esc(t.nombre)}</b><small>${num(t.activos)} ya juegan</small></span><strong>${num(t.invitados)}</strong></li>`).join("") || `<p class="empty">Todavía nadie invitó amigos.</p>`}</ol>
+    </article>
   </section>
 
   <section class="dos-col">
@@ -134,6 +155,16 @@ function pintar() {
     if (!error) P.datos.config = valor;
   };
   conectarEvento();
+  const fr = document.getElementById("fRef");
+  if (fr) fr.onsubmit = async e => {
+    e.preventDefault();
+    const n = (id, a, b, d) => Math.max(a, Math.min(b, Math.round(+document.getElementById(id).value || d)));
+    const valor = { activo: document.getElementById("rfOn").checked, premioInvitado: n("rfInv", 0, 500, 100), premioInvitador: n("rfDor", 0, 500, 150), partidas: n("rfPar", 1, 50, 3), maxPorDia: n("rfMax", 1, 50, 5) };
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "referidos").select("clave");
+    if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "referidos", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
+    document.getElementById("rfMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";
+    if (!error) P.refCfg = valor;
+  };
   conectarTips();
   // Si el gráfico quedó de otro ancho que el calculado, se redibuja una vez con el ancho real
   const svg = app.querySelector(".graf svg");

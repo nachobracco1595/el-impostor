@@ -140,6 +140,14 @@ Desde el panel (sección **Eventos de temporada**) eliges un evento y lo guardas
 
 Para agregar otro evento (por ejemplo, Carnaval) alcanza con sumarlo a `EVENTOS` en `js/eventos.js`.
 
+## Invitar amigos (referidos)
+Cada jugador con cuenta en la nube tiene un link personal (Inicio → **Invita amigos y gana 🪙**, o desde Amigos).
+- El amigo que entra con el link y crea su cuenta recibe monedas de bienvenida.
+- El que invitó cobra cuando su amigo ya jugó unas partidas (así no sirve crear cuentas falsas).
+- Títulos especiales: «Embajador» con 3 amigos que ya juegan y «Alma de la fiesta» con 10.
+- Desde el panel se ajustan los premios, las partidas necesarias y el máximo de premios por día, y se ve quién invitó más.
+- El servidor controla todo (`canjear_referido`, `mis_referidos`): solo cuentas nuevas, una vez por persona, nadie se invita a sí mismo.
+
 ## Instalarla como app
 Mesa Loca se puede instalar en el teléfono como una app (ícono propio, pantalla completa, sin la barra del navegador):
 - **iPhone (Safari):** botón Compartir → **Agregar a inicio**.
@@ -169,5 +177,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena y `eventos.js` los eventos de temporada. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

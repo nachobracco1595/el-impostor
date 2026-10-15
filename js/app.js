@@ -36,6 +36,7 @@ function render() {
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   if (typeof Evento !== "undefined") Evento.decorar();
   if (typeof Turno !== "undefined" && !(typeof Net !== "undefined" && Net.activo())) Turno.revisar(null);
+  document.body.classList.toggle("en-ruleta", S.screen === "ruleta");
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender();

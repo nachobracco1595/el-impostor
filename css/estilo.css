@@ -717,20 +717,28 @@ label.btn { cursor: pointer; }
 .ru-hist i { min-width: 24px; height: 24px; padding: 0 4px; display: grid; place-items: center; border-radius: 6px; font-style: normal; font-size: 12px; font-weight: 800; color: #fff; border: 1px solid rgba(255, 255, 255, .25); }
 .ru-hist i:first-child { outline: 2px solid var(--spot); }
 .ru-hist i.rojo { background: #d42a2a; } .ru-hist i.negro { background: #1b1b22; } .ru-hist i.verde { background: #1a8a4a; }
-.ru-pano-scroll { overflow-x: auto; min-width: 0; max-width: 100%; padding: 2px 0 6px; }
-.ru-pano { display: grid; grid-template-columns: 24px repeat(12, minmax(0, 1fr)) 26px; grid-template-rows: repeat(3, 38px); gap: 2px; padding: 4px; border-radius: 10px; background: #0f5132; border: 2px solid #d9b45a; }
-.ru-c { position: relative; border: 1px solid rgba(255, 255, 255, .35); border-radius: 5px; color: #fff; font: 800 12px/1 system-ui, sans-serif; min-width: 0; padding: 0; cursor: pointer; background: #1b1b22; }
-.ru-c.rojo { background: #c92a2a; } .ru-c.negro { background: #1b1b22; } .ru-c.verde { background: #1a8a4a; } .ru-c.afuera { background: #146b43; font-size: 12px; }
-.ru-c.cero { grid-column: 1; font-size: 15px; }
+.ru-pano { align-self: stretch; width: 100%; box-sizing: border-box; display: grid; grid-template-columns: 46px repeat(3, minmax(0, 1fr)) 52px; grid-template-rows: 44px repeat(12, 42px) 42px; gap: 3px; padding: 6px; border-radius: 14px; background: #0f5132; border: 3px solid #d9b45a; box-shadow: inset 0 0 20px rgba(0, 0, 0, .4); }
+.ru-c { position: relative; border: 1px solid rgba(255, 255, 255, .35); border-radius: 7px; color: #fff; font: 800 18px/1 system-ui, sans-serif; padding: 0; min-width: 0; cursor: pointer; background: #1b1b22; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; }
+.ru-c.rojo { background: #c92a2a; } .ru-c.negro { background: #1b1b22; } .ru-c.verde { background: #1a8a4a; } .ru-c.afuera { background: #146b43; font-size: 13px; }
+.ru-c.lado { font-size: 12px; line-height: 1.15; }
+.ru-c.lado.rojo { background: #c92a2a; font-size: 22px; color: #ffb3b3; } .ru-c.lado.negro { background: #1b1b22; font-size: 22px; color: #888; }
+.ru-c.cero { font-size: 20px; }
+.ru-c:active { filter: brightness(1.35); }
+.ru-c.toque { animation: ruToque .3s ease; }
+@keyframes ruToque { 40% { transform: scale(.92); filter: brightness(1.5); } }
 .ru-c.gana { box-shadow: 0 0 0 3px var(--spot), 0 0 14px var(--spot); z-index: 2; animation: latido 1s ease-in-out 3; }
-.ru-afuera { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.ru-afuera .ru-c { height: 40px; }
-.ru-ficha { position: absolute; right: -5px; top: -7px; min-width: 20px; height: 20px; padding: 0 3px; border-radius: 50%; display: grid; place-items: center; font: 800 10px/1 system-ui, sans-serif; color: #fff; border: 2px dashed rgba(255, 255, 255, .8); box-shadow: 0 2px 3px rgba(0, 0, 0, .5); z-index: 3; animation: trCanto .25s ease; }
+.ru-ficha { position: absolute; right: -4px; top: -6px; min-width: 24px; height: 24px; padding: 0 3px; border-radius: 50%; display: grid; place-items: center; font: 800 11px/1 system-ui, sans-serif; color: #fff; border: 2px dashed rgba(255, 255, 255, .85); box-shadow: 0 2px 3px rgba(0, 0, 0, .5); z-index: 3; pointer-events: none; animation: trCanto .25s ease; }
+.ru-c.lado .ru-ficha { right: 50%; translate: 50% 0; top: auto; bottom: 3px; min-width: 24px; height: 24px; font-size: 10px; }
 .ru-ficha.f5 { background: #e03131; } .ru-ficha.f10 { background: #1c7ed6; } .ru-ficha.f25 { background: #2f9e44; } .ru-ficha.f50 { background: #f08c00; } .ru-ficha.f100 { background: #1b1b22; border-color: #ffd43b; }
-.ru-fichas { display: flex; justify-content: center; gap: 8px; }
-.ru-ficha.grande { position: static; width: 50px; height: 50px; font-size: 15px; border-width: 3px; cursor: pointer; transition: transform .15s; animation: none; }
-.ru-ficha.grande.on { transform: translateY(-6px) scale(1.08); box-shadow: 0 0 0 3px var(--spot), 0 6px 10px rgba(0, 0, 0, .5); }
-.ruleta .row .btn.chico { flex: 1; }
+.ru-barra { position: sticky; bottom: 0; z-index: 15; margin: 0 -12px -12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; background: rgba(24, 20, 36, .96); border-top: 2px solid #d9b45a; backdrop-filter: blur(6px); box-shadow: 0 -8px 20px rgba(0, 0, 0, .45); display: flex; flex-direction: column; gap: 8px; }
+.ru-fichas { display: flex; justify-content: space-between; gap: 6px; }
+.ru-ficha.grande { position: static; translate: none; width: 50px; height: 50px; font-size: 15px; border-width: 3px; cursor: pointer; transition: transform .15s; animation: none; pointer-events: auto; touch-action: manipulation; }
+.ru-ficha.grande.on { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 0 3px var(--spot), 0 6px 10px rgba(0, 0, 0, .5); }
+.ru-acc { display: flex; gap: 6px; align-items: stretch; }
+.ru-acc .btn.chico { flex: 0 0 46px; padding: 0; font-size: 20px; }
+.ru-acc .tb-girar { flex: 1; padding-block: 12px; font-size: 18px; }
+.ru-tot { text-align: center; color: var(--muted); font-size: 13px; } .ru-tot b { color: #fff; } .ru-tot .ok { color: var(--teal); }
+body.en-ruleta .audio-ctl { display: none; }
 
 /* Tragamonedas */
 .slots { gap: 10px; }

@@ -116,44 +116,72 @@ const RU = {
 PANTALLAS.ruleta = () => {
   if (Timba.sinPerfil("Ruleta")) return;
   const u = BD.sesion(), R = UI.rul = UI.rul || { ficha: 10, ap: {}, prev: {}, hist: [], rot: 0, bola: 0, girando: false, res: null, deshacer: [] };
-  const tot = RU.total(R.ap), max = Math.min(Timba.maxApuesta(), Timba.saldo(u));
-  const ficha = (k) => R.ap[k] ? `<span class="ru-ficha f${RU.FICHAS.filter(f => f <= R.ap[k]).pop() || 5}">${R.ap[k]}</span>` : "";
+  const maximo = () => Math.min(Timba.maxApuesta(), Timba.saldo(u));
+  const ficha = k => R.ap[k] ? `<span class="ru-ficha f${RU.FICHAS.filter(f => f <= R.ap[k]).pop() || 5}">${R.ap[k]}</span>` : "";
   const ganadora = k => R.res && !R.girando && RU.gana(k, R.res.n) ? "gana" : "";
-  // Paño horizontal: el 0 a la izquierda, 12 columnas de 3 y los "2 a 1" a la derecha
-  let pano = `<button class="ru-c verde cero ${ganadora("n0")}" data-ap="n0" style="grid-row:1/4">0${ficha("n0")}</button>`;
-  for (let f = 0; f < 3; f++) for (let c = 0; c < 12; c++) { const n = c * 3 + 3 - f; pano += `<button class="ru-c ${RU.color(n)} ${ganadora("n" + n)}" data-ap="n${n}" style="grid-row:${f + 1};grid-column:${c + 2}">${n}${ficha("n" + n)}</button>`; }
-  ["col3", "col2", "col1"].forEach((k, f) => pano += `<button class="ru-c afuera ${ganadora(k)}" data-ap="${k}" style="grid-row:${f + 1};grid-column:14">2:1${ficha(k)}</button>`);
-  const afuera = RU.AFUERA.filter(a => !a[0].startsWith("col"));
+  const celda = (k, txt, cls, pos) => `<button class="ru-c ${cls} ${ganadora(k)}" data-ap="${k}" style="${pos}">${txt}${ficha(k)}</button>`;
+  // Paño vertical (cómodo en el teléfono): el 0 arriba, 12 filas de 3 números, docenas a la izquierda,
+  // apuestas simples a la derecha y los "2 a 1" abajo de cada columna
+  let pano = celda("n0", "0", "verde cero", "grid-row:1;grid-column:2/5");
+  for (let f = 0; f < 12; f++) for (let c = 0; c < 3; c++) { const n = f * 3 + c + 1; pano += celda("n" + n, n, RU.color(n), `grid-row:${f + 2};grid-column:${c + 2}`); }
+  ["doc1", "doc2", "doc3"].forEach((k, d) => pano += celda(k, `${d + 1}ª<br>doc.`, "afuera lado", `grid-row:${d * 4 + 2}/${d * 4 + 6};grid-column:1`));
+  [["bajo", "1<br>a<br>18"], ["par", "Par"], ["rojo", "◆"], ["negro", "◆"], ["impar", "Im-<br>par"], ["alto", "19<br>a<br>36"]]
+    .forEach(([k, t], x) => pano += celda(k, t, `afuera lado ${k === "rojo" ? "rojo" : k === "negro" ? "negro" : ""}`, `grid-row:${x * 2 + 2}/${x * 2 + 4};grid-column:5`));
+  ["col1", "col2", "col3"].forEach((k, c) => pano += celda(k, "2 a 1", "afuera", `grid-row:14;grid-column:${c + 2}`));
+  const tot = RU.total(R.ap);
   app.innerHTML = `${Timba.cabecera(u, "🎡 Ruleta")}<section class="screen ruleta">
-    <div class="ru-mesa">
+    <div class="ru-mesa" id="ruMesa">
       <div class="ru-rueda-box">${RU.rueda(R.rot, R.bola)}
         <div class="ru-res ${R.res && !R.girando ? RU.color(R.res.n) : ""}" id="ruRes">${R.res && !R.girando ? `<b>${R.res.n}</b><small>${R.res.premio ? `+${R.res.premio} 🪙` : "Sin premio"}</small>` : R.girando ? "<small>¡No va más!</small>" : "<small>Hagan sus apuestas</small>"}</div>
       </div>
       <div class="ru-hist">${R.hist.slice(0, 12).map(n => `<i class="${RU.color(n)}">${n}</i>`).join("") || `<small class="sub">Acá aparecen los últimos números.</small>`}</div>
     </div>
-    <div class="ru-pano-scroll"><div class="ru-pano ${R.girando ? "quieto" : ""}">${pano}</div></div>
-    <div class="ru-afuera">${afuera.map(([k, t]) => `<button class="ru-c afuera ${k === "rojo" ? "rojo" : k === "negro" ? "negro" : ""} ${ganadora(k)}" data-ap="${k}">${k === "rojo" ? "◆ Rojo" : k === "negro" ? "◆ Negro" : t}${ficha(k)}</button>`).join("")}</div>
-    <div class="ru-fichas" role="radiogroup" aria-label="Valor de la ficha">${RU.FICHAS.map(f => `<button class="ru-ficha grande f${f} ${R.ficha === f ? "on" : ""}" data-ficha="${f}" aria-pressed="${R.ficha === f}">${f}</button>`).join("")}</div>
-    <p class="tb-linea">Apostado: <b>${tot}</b> 🪙 · máximo ${Math.min(Timba.maxApuesta(), u.monedas)} por tirada${R.res && !R.girando && R.res.premio ? ` · <b class="ok">Ganaste ${R.res.premio} 🪙</b>` : ""}</p>
-    <div class="row"><button class="btn ghost chico" id="ruDes" ${R.deshacer.length && !R.girando ? "" : "disabled"}>↶ Deshacer</button><button class="btn ghost chico" id="ruBorrar" ${tot && !R.girando ? "" : "disabled"}>Borrar</button><button class="btn ghost chico" id="ruRep" ${!tot && RU.total(R.prev) && RU.total(R.prev) <= max && !R.girando ? "" : "disabled"}>↻ Repetir</button></div>
-    <button class="btn tb-girar" id="ruGirar" ${tot && tot <= u.monedas && !R.girando ? "" : "disabled"}>${R.girando ? "Girando…" : "🎡 ¡Girar!"}</button>
-    <details class="panel"><summary class="label">Cómo se paga</summary><p class="summary">Pleno (un número): 35 a 1. Docenas y columnas: 2 a 1. Rojo/negro, par/impar, 1-18/19-36: 1 a 1. Si sale el 0 pierden todas las apuestas de afuera. Elige la ficha y toca el paño para apostar.</p></details>
+    <p class="tb-linea">Elegí la ficha abajo y tocá el paño para apostar. Cada toque suma una ficha.</p>
+    <div class="ru-pano ${R.girando ? "quieto" : ""}">${pano}</div>
+    <details class="panel"><summary class="label">Cómo se paga</summary><p class="summary">Pleno (un número): 35 a 1. Docenas y columnas (2 a 1): 2 a 1. Rojo/negro, par/impar, 1-18/19-36: 1 a 1. Si sale el 0 pierden todas las apuestas de afuera.</p></details>
     <p class="tb-aviso">Las monedas son del juego: no se compran ni se cambian por plata. Jugá por diversión.</p>
+    <div class="ru-barra">
+      <div class="ru-fichas" role="radiogroup" aria-label="Valor de la ficha">${RU.FICHAS.map(f => `<button class="ru-ficha grande f${f} ${R.ficha === f ? "on" : ""}" data-ficha="${f}" aria-pressed="${R.ficha === f}">${f}</button>`).join("")}</div>
+      <div class="ru-acc">
+        <button class="btn ghost chico" id="ruDes" aria-label="Deshacer la última ficha">↶</button>
+        <button class="btn ghost chico" id="ruBorrar" aria-label="Borrar todas las apuestas">✕</button>
+        <button class="btn ghost chico" id="ruRep" aria-label="Repetir la apuesta anterior">↻</button>
+        <button class="btn tb-girar" id="ruGirar"></button>
+      </div>
+      <small class="ru-tot" id="ruTot"></small>
+    </div>
   </section>`;
+  // Actualiza fichas y botones sin redibujar toda la pantalla (así no salta ni parpadea al tocar)
+  const refrescar = () => {
+    const t = RU.total(R.ap), mx = maximo();
+    app.querySelectorAll("[data-ap]").forEach(b => { const vieja = b.querySelector(".ru-ficha"); if (vieja) vieja.remove(); if (R.ap[b.dataset.ap]) b.insertAdjacentHTML("beforeend", ficha(b.dataset.ap)); });
+    byId("ruTot").innerHTML = R.girando ? "Girando…" : `Apostado <b>${t}</b> 🪙 · máx. ${mx}${R.res && R.res.premio ? ` · <b class="ok">Ganaste ${R.res.premio}</b>` : ""}`;
+    byId("ruDes").disabled = !R.deshacer.length || R.girando;
+    byId("ruBorrar").disabled = !t || R.girando;
+    byId("ruRep").disabled = !!t || !RU.total(R.prev) || RU.total(R.prev) > mx || R.girando;
+    const g = byId("ruGirar"); g.disabled = !t || t > u.monedas || R.girando; g.textContent = R.girando ? "Girando…" : t ? `🎡 Girar · ${t}` : "🎡 Girar";
+  };
+  refrescar();
   on("tbAtras", () => { if (!R.girando) go("casino"); });
   if (R.girando) return;
-  app.querySelectorAll("[data-ficha]").forEach(b => b.onclick = () => { R.ficha = +b.dataset.ficha; render(); });
+  app.querySelectorAll("[data-ficha]").forEach(b => b.onclick = () => {
+    R.ficha = +b.dataset.ficha;
+    app.querySelectorAll("[data-ficha]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
+  });
+  const limpiarResultado = () => { if (!R.res) return; R.res = null; app.querySelectorAll(".ru-c.gana").forEach(x => x.classList.remove("gana")); };
   app.querySelectorAll("[data-ap]").forEach(b => b.onclick = () => {
-    const k = b.dataset.ap;
-    if (R.res) { R.res = null; }
-    if (RU.total(R.ap) + R.ficha > max) { Toast.mostrar(`<div class="t-ic">🪙</div><div class="t-txt"><b>Llegaste al máximo</b><span>Puedes apostar hasta ${max} 🪙 por tirada.</span></div>`, "info"); return; }
+    const k = b.dataset.ap, mx = maximo();
+    limpiarResultado();
+    if (RU.total(R.ap) + R.ficha > mx) { Toast.mostrar(`<div class="t-ic">🪙</div><div class="t-txt"><b>Llegaste al máximo</b><span>Puedes apostar hasta ${mx} 🪙 por tirada.</span></div>`, "info"); return; }
     R.ap[k] = (R.ap[k] || 0) + R.ficha; R.deshacer.push([k, R.ficha]);
     if (typeof Sonido !== "undefined") Sonido.sfx("clic");
-    render();
+    try { navigator.vibrate && navigator.vibrate(12); } catch {}
+    b.classList.remove("toque"); void b.offsetWidth; b.classList.add("toque");
+    refrescar();
   });
-  on("ruDes", () => { const [k, f] = R.deshacer.pop(); R.ap[k] -= f; if (R.ap[k] <= 0) delete R.ap[k]; render(); });
-  on("ruBorrar", () => { R.ap = {}; R.deshacer = []; R.res = null; render(); });
-  on("ruRep", () => { R.ap = { ...R.prev }; R.deshacer = Object.entries(R.ap); R.res = null; render(); });
+  on("ruDes", () => { const [k, f] = R.deshacer.pop(); R.ap[k] -= f; if (R.ap[k] <= 0) delete R.ap[k]; refrescar(); });
+  on("ruBorrar", () => { R.ap = {}; R.deshacer = []; limpiarResultado(); refrescar(); });
+  on("ruRep", () => { R.ap = { ...R.prev }; R.deshacer = Object.entries(R.ap); limpiarResultado(); refrescar(); });
   on("ruGirar", () => {
     const apuesta = RU.total(R.ap);
     if (!apuesta || apuesta > u.monedas) return;
@@ -166,6 +194,7 @@ PANTALLAS.ruleta = () => {
     const destino = R.rot + 360 * 5 + ((((-k * paso) - R.rot) % 360) + 360) % 360;
     R.bola = R.bola % 360; const bolaDestino = -360 * 7;
     render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (typeof Sonido !== "undefined") Sonido.sfx("ruleta");
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const g = byId("ruGiro"), b = byId("ruBola");

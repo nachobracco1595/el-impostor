@@ -19,6 +19,7 @@ const S = {
   used: store.get("used", []),
   chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
   trCfg: Object.assign({ n: 2, a: 30, juntos: false }, store.get("trCfg", {})),
+  biCfg: Object.assign({ valor: 10, n: 1, cpus: 5, vel: 2500 }, store.get("biCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
   casoId: store.get("casoId", "collar"),
   caso: null,         // partida local de detectives
@@ -122,6 +123,7 @@ function juegosMenu() {
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
     ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
     ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
+    ["casino", "Casino", "Ruleta, tragamonedas y bingo.", `<span class="tr-mini">🎰🎡</span>`, "t-casino"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
   ];
 }
@@ -145,6 +147,7 @@ PANTALLAS.home = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");
     if (S.mode === "trabajos") return go("trabajos");
+    if (S.mode === "casino") return go("casino");
     if (S.mode === "arena") return go("arenaIntro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });

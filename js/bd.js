@@ -36,6 +36,9 @@ const LOGROS = [
   { id: "cazador", ic: "🔪", nombre: "Cazador espacial", desc: "Elimina a 3 en una sola partida de La Nave.", ok: u => u.stats.nave.triple >= 1 },
   { id: "gladiador", ic: "🛡️", nombre: "Gladiador", desc: "Gana 10 peleas en la Arena.", ok: u => u.stats.arena.g >= 10 },
   { id: "elo1500", ic: "🏟️", nombre: "Leyenda de la Arena", desc: "Llega a 1500 de ELO en la Arena.", ok: u => u.stats.arena.mejorElo >= 1500 },
+  { id: "pleno", ic: "🎡", nombre: "¡Pleno!", desc: "Acierta el número justo en la ruleta.", ok: u => (u.stats.timba || {}).plenos >= 1 },
+  { id: "jackpot", ic: "🎰", nombre: "Jackpot", desc: "Saca el premio mayor de una tragamonedas.", ok: u => (u.stats.timba || {}).jackpots >= 1 },
+  { id: "bingo", ic: "🎱", nombre: "¡Bingo!", desc: "Canta bingo con un cartón comprado.", ok: u => (u.stats.timba || {}).bingos >= 1 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
   { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
@@ -53,7 +56,9 @@ function statsVacias() {
     naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
     ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
     nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
-    arena: { j: 0, g: 0, p: 0, elo: 1000, mejorElo: 1000, kills: 0 }
+    arena: { j: 0, g: 0, p: 0, elo: 1000, mejorElo: 1000, kills: 0 },
+    // El casino no suma partidas ni puntos: solo lleva la cuenta
+    timba: { j: 0, g: 0, p: 0, jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0 }
   };
 }
 

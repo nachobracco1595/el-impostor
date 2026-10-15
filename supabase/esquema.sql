@@ -179,14 +179,14 @@ $$;
 create table if not exists public.actividad (
   id       bigint generated always as identity primary key,
   usuario  uuid not null references public.perfiles (id) on delete cascade,
-  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo')),
+  tipo     text not null check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo', 'timba')),
   juego    text check (char_length(juego) <= 20),
   puntos   integer not null default 0,
   monedas  integer not null default 0,
   creado   timestamptz not null default now()
 );
 alter table public.actividad drop constraint if exists actividad_tipo_check;
-alter table public.actividad add constraint actividad_tipo_check check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo'));
+alter table public.actividad add constraint actividad_tipo_check check (tipo in ('partida', 'ingreso', 'compra', 'mision', 'anuncio', 'regalo', 'ajuste', 'trabajo', 'timba'));
 create index if not exists actividad_creado_idx on public.actividad (creado);
 create index if not exists actividad_usuario_idx on public.actividad (usuario, creado);
 alter table public.actividad enable row level security;
@@ -429,4 +429,47 @@ begin
     'top', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (
       select p.nombre, p.look, count(*) as invitados, count(*) filter (where f.pagado) as activos
       from public.referidos f join public.perfiles p on p.id = f.invitador group by p.id order by count(*) desc limit 10) t));
+end $$;
+
+-- ============ Casino: ruleta, tragamonedas y bingo ============
+-- Cada jugada mueve las monedas en el servidor (apuesta y premio juntos), controlando el saldo y el premio máximo.
+-- Así las ganancias grandes no chocan con el control de perfiles_controlar (+500 por vez).
+insert into public.config (clave, valor) values ('timba', '{"activo": true, "maxApuesta": 500}') on conflict do nothing;
+
+create or replace function public.timba_jugar(juego text, apuesta integer, premio integer) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; saldo integer; tope integer; maxap integer;
+begin
+  if auth.uid() is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;
+  select valor into cfg from public.config where clave = 'timba';
+  if cfg is not null and not coalesce((cfg ->> 'activo')::boolean, true) then return jsonb_build_object('ok', false, 'motivo', 'cerrado'); end if;
+  maxap := least(greatest(coalesce((cfg ->> 'maxApuesta')::integer, 500), 10), 5000);
+  if timba_jugar.juego not in ('ruleta', 'tragamonedas', 'bingo') or apuesta < 0 or premio < 0 or apuesta > 5000
+     or (timba_jugar.juego <> 'bingo' and (apuesta < 1 or apuesta > maxap)) then
+    return jsonb_build_object('ok', false, 'motivo', 'datos');
+  end if;
+  tope := case timba_jugar.juego when 'ruleta' then apuesta * 36 when 'tragamonedas' then apuesta * 1000 else 50000 end;
+  if premio > tope then return jsonb_build_object('ok', false, 'motivo', 'premio'); end if;
+  select p.monedas into saldo from public.perfiles p where p.id = auth.uid() for update;
+  if saldo is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;
+  if saldo < apuesta then return jsonb_build_object('ok', false, 'motivo', 'saldo', 'monedas', saldo); end if;
+  perform set_config('impostor.ajuste', '1', true);
+  update public.perfiles p set monedas = p.monedas - apuesta + premio where p.id = auth.uid() returning p.monedas into saldo;
+  perform set_config('impostor.ajuste', '0', true);
+  insert into public.actividad (usuario, tipo, juego, monedas) values (auth.uid(), 'timba', timba_jugar.juego, premio - apuesta);
+  return jsonb_build_object('ok', true, 'monedas', saldo);
+end $$;
+
+-- Panel: cómo le va a la gente en el casino
+create or replace function public.panel_timba(dias integer default 7) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare desde timestamptz := now() - make_interval(days => least(greatest(dias, 1), 90));
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'jugadas', (select count(*) from public.actividad where tipo = 'timba' and creado >= desde),
+    'jugadores', (select count(distinct usuario) from public.actividad where tipo = 'timba' and creado >= desde),
+    'neto', (select coalesce(sum(monedas), 0) from public.actividad where tipo = 'timba' and creado >= desde),
+    'porJuego', (select coalesce(jsonb_object_agg(juego, jsonb_build_object('jugadas', n, 'neto', neto)), '{}'::jsonb) from (
+      select juego, count(*) as n, sum(monedas) as neto from public.actividad where tipo = 'timba' and creado >= desde group by juego) x));
 end $$;

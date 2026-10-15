@@ -59,7 +59,7 @@ const Nube = {
   cfg: {},
   async cargarConfig() {
     const { data, error } = await this.sb.from("config").select("clave,valor");
-    if (!error && data) { this.cfg = Object.fromEntries(data.map(r => [r.clave, r.valor])); if (["home", "tienda", "trabajos"].includes(S.screen)) render(); }
+    if (!error && data) { this.cfg = Object.fromEntries(data.map(r => [r.clave, r.valor])); if (["home", "tienda", "trabajos", "casino"].includes(S.screen)) render(); }
   },
 
   /* Anota la actividad para el panel (partidas, premios, compras). No bloquea el juego si falla. */
@@ -125,7 +125,7 @@ const Nube = {
   async alCambiar(user) {
     this.user = user;
     if (!user) {
-      this.uidCargado = null;
+      this.uidCargado = null; this.listo = null;
       const ses = BD.sesion();
       if (ses && ses.nube) { BD.salir(); render(); }
       return;
@@ -137,6 +137,7 @@ const Nube = {
       if (error) throw error;
       if (data && data.length) {
         const u = BD.adoptarNube(user.id, this.deFila(data[0]));
+        this.listo = user.id;
         if (u.pendiente) this.subir(u);
         // Invitaciones: canjear el link con el que entró, cobrar amigos que ya juegan y después los regalos
         Referidos.canjear().then(() => Referidos.cargar(u)).catch(() => {}).then(() => this.revisarRegalos(u));
@@ -171,13 +172,18 @@ const Nube = {
     const u = BD.crearNube(this.user.id, nombre, look);
     const { error } = await this.sb.from("perfiles").insert({ id: u.id, ...this.aFila(u) });
     if (error) { console.error(error); throw new Error("No se pudo guardar tu perfil en la nube. Prueba de nuevo."); }
-    u.pendiente = false; BD.guardar();
+    u.pendiente = false; this.listo = u.id; BD.guardar();
     Referidos.canjear().catch(() => {}).then(() => this.revisarRegalos(u));
     return u;
   },
 
+  /* Todo lo que toca las monedas en la nube va en fila, uno detrás del otro, para que nada pise a nada */
+  cola: Promise.resolve(),
+  enCola(fn) { const p = this.cola.then(fn, fn); this.cola = p.catch(() => {}); return p; },
+
   /* Sube el perfil; si falla queda marcado como pendiente y se reintenta después */
-  async subir(u) {
+  subir(u) { return this.enCola(() => this.subirYa(u)); },
+  async subirYa(u) {
     if (!u || !u.nube) return;
     if (!this.user || this.user.id !== u.id || !this.sb) { u.pendiente = true; BD.guardar(); return; }
     const { error } = await this.sb.from("perfiles").update(this.aFila(u)).eq("id", u.id);

@@ -4,7 +4,7 @@ const CFG = EMU ? { url: "http://127.0.0.1:54321", anonKey: "anon-key" } : windo
 const app = document.getElementById("app"), tip = document.getElementById("tip");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = n => new Intl.NumberFormat("es").format(n || 0);
-const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
+const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", ruleta: "Ruleta", tragamonedas: "Tragamonedas", bingo: "Bingo", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
 const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };
@@ -28,6 +28,9 @@ async function cambiar(user) {
 async function cargar() {
   P.cargando = true; pintar();
   const [r, u, ev, rf, rc] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle(), P.sb.rpc("panel_referidos"), P.sb.from("config").select("valor").eq("clave", "referidos").maybeSingle()]);
+  const [tb, tc] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle()]);
+  P.timba = tb.error ? null : tb.data;
+  P.timbaCfg = Object.assign({ activo: true, maxApuesta: 500 }, (tc.data && tc.data.valor) || {});
   P.refs = rf.error ? null : rf.data;
   P.refCfg = Object.assign({ activo: true, premioInvitado: 100, premioInvitador: 150, partidas: 3, maxPorDia: 5 }, (rc.data && rc.data.valor) || {});
   P.evento = Object.assign({ id: null, trabajo: true, multi: 1, mensaje: "", items: {} }, (ev.data && ev.data.valor) || {});
@@ -100,6 +103,16 @@ function pintar() {
 
   <section class="dos-col">
     <article class="tarjeta">
+      <h2>🎰 Casino</h2>
+      <p class="sub">${P.timba ? `En ${P.dias} días: ${num(P.timba.jugadas)} jugadas de ${num(P.timba.jugadores)} jugadores. Los jugadores ${P.timba.neto >= 0 ? "ganaron" : "perdieron"} <b>${num(Math.abs(P.timba.neto))}</b> 🪙 en total.` : "Corre el SQL nuevo para ver el casino."}</p>
+      ${P.timba && Object.keys(P.timba.porJuego || {}).length ? `<ul class="tb-panel">${Object.entries(P.timba.porJuego).map(([j, x]) => `<li><b>${esc(NOMBRES[j] || j)}</b><span>${num(x.jugadas)} jugadas</span><span class="${x.neto >= 0 ? "pos" : "neg"}">${x.neto >= 0 ? "+" : "−"}${num(Math.abs(x.neto))} 🪙</span></li>`).join("")}</ul>` : ""}
+      <form id="fTimba" class="ads-form">
+        <label class="opt"><span class="txt"><b>Casino abierto</b><small>Ruleta, tragamonedas y bingo con monedas. Si lo cierras, nadie puede apostar.</small></span><input type="checkbox" id="tbOn" ${P.timbaCfg.activo ? "checked" : ""}></label>
+        <label class="campo-l">Apuesta máxima por tirada (ruleta y tragamonedas)<input class="campo" id="tbMax" type="number" min="10" max="5000" value="${P.timbaCfg.maxApuesta}"></label>
+        <button class="btn" type="submit">Guardar</button><p class="summary" id="tbMsg"></p>
+      </form>
+    </article>
+    <article class="tarjeta">
       <h2>Anuncios con recompensa</h2>
       <p class="sub">Los jugadores con cuenta ven "Mirar un anuncio" en la tienda. El servidor controla el máximo por día.</p>
       <form id="fAds" class="ads-form">
@@ -164,6 +177,15 @@ function pintar() {
     if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "referidos", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
     document.getElementById("rfMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";
     if (!error) P.refCfg = valor;
+  };
+  const ft = document.getElementById("fTimba");
+  if (ft) ft.onsubmit = async e => {
+    e.preventDefault();
+    const valor = { activo: document.getElementById("tbOn").checked, maxApuesta: Math.max(10, Math.min(5000, Math.round(+document.getElementById("tbMax").value || 500))) };
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "timba").select("clave");
+    if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "timba", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
+    document.getElementById("tbMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";
+    if (!error) P.timbaCfg = valor;
   };
   conectarTips();
   // Si el gráfico quedó de otro ancho que el calculado, se redibuja una vez con el ancho real

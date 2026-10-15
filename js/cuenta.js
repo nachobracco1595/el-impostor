@@ -274,6 +274,7 @@ PANTALLAS.perfil = () => {
         <div><b>⚓ Batalla naval</b><span>${st.naval.p} pts · ${st.naval.g}/${st.naval.j} ganadas (${pct(st.naval.g, st.naval.j)})</span><small>${st.naval.hundidos} barcos hundidos</small></div>
         <div><b>♚ Ajedrez</b><span>${st.ajedrez.p} pts · ${st.ajedrez.g}/${st.ajedrez.j} ganadas (${pct(st.ajedrez.g, st.ajedrez.j)})</span><small>${st.ajedrez.mates} mates · ${st.ajedrez.tablas} tablas</small></div>
         <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
+        ${st.timba && st.timba.jugadas ? `<div><b>🎰 Casino</b><span>${st.timba.jugadas} jugadas · ${st.timba.ganado - st.timba.apostado >= 0 ? "+" : ""}${st.timba.ganado - st.timba.apostado} 🪙 en total</span><small>Mayor premio: ${st.timba.mayor} 🪙 · ${st.timba.plenos} plenos · ${st.timba.jackpots} jackpots · ${st.timba.bingos} bingos</small></div>` : ""}
         <div><b>🔍 Detectives</b><span>${st.casos.p} pts · ${st.casos.g}/${st.casos.j} ganadas (${pct(st.casos.g, st.casos.j)})</span><small>Casos resueltos: ${st.casos.resueltos.length} de ${CASOS.length}</small></div>
       </div></div>
     <div class="panel"><span class="label">Logros</span>

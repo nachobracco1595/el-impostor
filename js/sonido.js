@@ -238,6 +238,9 @@ const Sonido = {
       hacha: () => { this.osc("triangle", 180, t, 0.09, 0.35, B, { glide: 90 }); this.ruido(t, 0.06, 0.3, B, "bandpass", 900, 1.5); },
       cae: () => { this.ruido(t, 0.5, 0.3, B, "lowpass", 1500, 0.8, { fTo: 200 }); this.osc("sine", 110, t + 0.25, 0.3, 0.5, B, { glide: 50 }); },
       pico: () => { this.osc("square", 1900 + Math.random() * 400, t, 0.05, 0.06, B, { lp: 5000 }); this.ruido(t, 0.05, 0.3, B, "bandpass", 4200, 3); },
+      ruleta: () => { for (let i = 0; i < 46; i++) { const tt = t + 5 * Math.pow(i / 46, 1.8); this.ruido(tt, 0.02, 0.18, B, "bandpass", 4200, 3); } this.ruido(t + 5.05, 0.06, 0.3, B, "bandpass", 2400, 2); },
+      rodillo: () => { for (let i = 0; i < 26; i++) this.ruido(t + i * 0.055, 0.03, 0.12, B, "bandpass", 1800 + (i % 3) * 300, 2); },
+      bolilla: () => { this.osc("sine", 900, t, 0.08, 0.2, B, { glide: 500 }); this.ruido(t, 0.05, 0.2, B, "bandpass", 3000, 2); this.osc("triangle", n(84), t + 0.08, 0.3, 0.08, B, { rev: 0.4 }); },
       canto: () => { [67, 74].forEach((m, i) => this.osc("square", n(m), t + i * 0.09, 0.16, 0.07, B, { lp: 2600, rev: 0.3 })); this.ruido(t, 0.05, 0.15, B, "bandpass", 1800, 1); },
       empieza: () => [67, 72].forEach((m, i) => this.osc("triangle", n(m), t + i * 0.1, 0.35, 0.14, B, { rev: 0.4 }))
     };
@@ -253,7 +256,7 @@ const Sonido = {
     [".passto .who", "pasa"], [".expediente .exp-t", "maquina"], [".nota.nueva", "papel"],
     [".starter", "empieza"], [".tablero", "pieza"], [".casilla.jaque", "jaque"],
     [".nv-aviso.agua", "agua"], [".nv-aviso.toc", "tocado"], [".nv-aviso.hund", "hundido"],
-    [".ch-mesa", "carta"], [".tr-mesa", "carta"], [".tr-burbuja", "canto"], [".tr-fin-mano", "voltea"], [".ch-cierre", "voltea"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
+    [".ch-mesa", "carta"], [".tr-mesa", "carta"], [".tr-burbuja", "canto"], [".tr-fin-mano", "voltea"], [".bi-actual", "bolilla"], [".bi-canto.linea", "bien"], [".bi-canto.bingo", "victoria"], [".ch-cierre", "voltea"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
   ],
   firma() {
     const out = new Set();
@@ -290,6 +293,7 @@ function escenaMusical() {
   if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
   if (sc === "chinchon" || sc === "truco") return "bar";
+  if (["casino", "ruleta", "slots", "bingo", "bingoSolo"].includes(sc)) return "bar";
   if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
   if (sc === "arena") return "tension";
   if (sc === "arenaIntro") return "naval";
@@ -301,7 +305,7 @@ function escenaMusical() {
     if (v.game === "ajedrez") return "ajedrez";
     if (v.game === "arena") return "tension";
     if (v.game === "naval") return "naval";
-    if (v.game === "chinchon" || v.game === "truco") return "bar";
+    if (v.game === "chinchon" || v.game === "truco" || v.game === "bingo") return "bar";
     if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";
     if (v.game === "impostor") return v.phase === "roles" ? "misterio" : v.phase === "end" ? "menu" : "tension";
   }

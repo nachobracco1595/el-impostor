@@ -195,7 +195,8 @@ function mostrarDiario(u) {
   </div>`;
   document.body.appendChild(caja);
   caja.querySelector("#cobrar").onclick = () => {
-    const r = Eco.cobrarDiario(u);
+    // Siempre sobre el perfil actual (el de la nube pudo haber llegado mientras la ventana estaba abierta)
+    const r = Eco.cobrarDiario(BD.usuario(u.id) || u);
     caja.remove();
     if (!r) return;
     Toast.mostrar(`<div class="t-pts">+${r.monedas}<small>monedas</small></div><div class="t-txt"><b>Premio del día ${r.dia}</b><span>Racha: ${r.racha} día${r.racha > 1 ? "s" : ""} 🔥</span></div>`, "puntos");
@@ -208,6 +209,8 @@ let diarioMostrado = null;
 function revisarDiario() {
   const u = BD.sesion();
   if (!u || S.screen !== "home" || diarioMostrado === u.id + hoyStr()) return;
+  // Con cuenta en la nube se espera a tener el perfil de la nube: si no, el premio se cobraría sobre una copia vieja del teléfono
+  if (u.nube && typeof Nube !== "undefined" && Nube.listo !== u.id) return;
   diarioMostrado = u.id + hoyStr();
   if (Eco.diario(u).puede) setTimeout(() => mostrarDiario(u), 400);
 }

@@ -108,7 +108,7 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -117,6 +117,7 @@ const Net = {
       else if (R.game === "naval") Naval.actOn(R, pid, a);
       else if (R.game === "chinchon") Chin.actOn(R, pid, a);
       else if (R.game === "truco") Truco.actOn(R, pid, a);
+      else if (R.game === "bingo") Bingo.actOn(R, pid, a);
       else if (R.game === "nave") Nave.actOn(R, pid, a);
       else if (R.game === "arena") Arena.actOn(R, pid, a);
     } catch (e) { console.error(e); }
@@ -140,10 +141,11 @@ const Net = {
     if (R.game === "naval") return { ...Naval.view(R.nav, pid), isHost: pid === "H" };
     if (R.game === "chinchon") return { ...Chin.view(R.chi, pid), isHost: pid === "H" };
     if (R.game === "truco") return { ...Truco.view(R.tru, pid), isHost: pid === "H" };
+    if (R.game === "bingo") return { ...Bingo.view(R.bin, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, trCfg: { ...S.trCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, trCfg: { ...S.trCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -313,6 +315,7 @@ PANTALLAS.online = () => {
   if (v.game === "naval") return Naval.render(v, enviar, op);
   if (v.game === "chinchon") return Chin.render(v, enviar, op);
   if (v.game === "truco") return Truco.render(v, enviar, op);
+  if (v.game === "bingo") return Bingo.render(v, enviar, op);
   if (v.game === "nave") return Nave.render(v, enviar, op);
   if (v.game === "arena") return Arena.render(v, enviar, op);
   if (UI.arena) Arena.parar();
@@ -329,6 +332,7 @@ function renderLobby(v) {
     casos: ["Detectives", personaje("#e8e8e8", "civ", 46, ["sombrero", "lupa"]), "2 o más"],
     chinchon: ["Chinchón", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "2 a 5"],
     truco: ["Truco", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "2 a 6"],
+    bingo: ["Bingo", `<span class="nave-mini">🎱</span>`, "1 o más"],
     naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
     arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
@@ -357,6 +361,9 @@ function renderLobby(v) {
         : v.sel === "truco" ? (() => { const c = v.trCfg, n = v.players.length, tot = Math.max(n + n % 2, c.n); return `<p class="summary">${tot > 6 ? "El truco es de 2 a 6 jugadores." : `${tot / 2} contra ${tot / 2}${tot > n ? ` (${tot - n} compu${tot - n > 1 ? "s" : ""} completa${tot - n > 1 ? "n" : ""} la mesa)` : ""} · a ${c.a} puntos · sin flor. Los equipos se sientan alternados en el orden de la sala.`}</p>
           ${H ? `<span class="label">Mesa mínima</span><div class="seg">${[[2, "1 vs 1"], [4, "2 vs 2"], [6, "3 vs 3"]].map(([k, t]) => `<button aria-pressed="${c.n === k}" data-trn="${k}">${t}</button>`).join("")}</div>
           <div class="seg">${[15, 30].map(k => `<button aria-pressed="${c.a === k}" data-tra="${k}">A ${k}</button>`).join("")}</div>${tot > n && n >= 2 ? `<div class="opt"><div class="txt"><b>Personas en el mismo equipo</b></div><button class="switch" role="switch" aria-checked="${c.juntos}" id="trJuntos" aria-label="Personas en el mismo equipo"></button></div>` : ""}` : ""}`; })()
+        : v.sel === "bingo" ? `<p class="summary">${v.biCfg.valor ? `Cartón a <b>${v.biCfg.valor} 🪙</b>, hasta 3 por persona. Línea se lleva el 30% del pozo y bingo el 70%. Cada uno paga con las monedas de su perfil.` : "Bingo amistoso: cartones gratis, sin premio en monedas."}</p>
+          ${H ? `<span class="label">Valor del cartón</span><div class="seg">${[0, ...BI.VALORES].map(x => `<button aria-pressed="${v.biCfg.valor === x}" data-biv="${x}">${x ? x + " 🪙" : "Gratis"}</button>`).join("")}</div>
+          <span class="label">Velocidad</span><div class="seg">${BI.VELOCIDADES.map(([ms, t]) => `<button aria-pressed="${v.biCfg.vel === ms}" data-biz="${ms}">${t}</button>`).join("")}</div>` : ""}`
         : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su clase y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
           <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
@@ -380,6 +387,8 @@ function renderLobby(v) {
   on("ch89On", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   on("empezar", () => Net.send({ t: "start" }));
   app.querySelectorAll("[data-trn]").forEach(b => b.onclick = () => { S.trCfg.n = +b.dataset.trn; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
+  app.querySelectorAll("[data-biv]").forEach(b => b.onclick = () => { S.biCfg.valor = +b.dataset.biv; store.set("biCfg", S.biCfg); Net.cfgCambiada(); });
+  app.querySelectorAll("[data-biz]").forEach(b => b.onclick = () => { S.biCfg.vel = +b.dataset.biz; store.set("biCfg", S.biCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-tra]").forEach(b => b.onclick = () => { S.trCfg.a = +b.dataset.tra; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });

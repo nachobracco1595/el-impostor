@@ -40,6 +40,7 @@ const Chat = {
   },
 
   pintar() {
+    if (typeof Voz !== "undefined") Voz.pintar();
     if (!this.btn) this.crear();
     const activo = Net.activo() && Net.estado === "ok";
     this.btn.hidden = !activo;

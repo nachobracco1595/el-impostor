@@ -186,7 +186,7 @@ const Sonido = {
     }
   },
 
-  volMusica(nombre) { return this.musicaOn ? 0.5 * ((this.PISTAS[nombre] || {}).gain || 1) : 0; },
+  volMusica(nombre) { return this.musicaOn ? 0.5 * ((this.PISTAS[nombre] || {}).gain || 1) * (typeof Voz !== "undefined" && Voz.activo ? 0.3 : 1) : 0; },
 
   musica(nombre, forzar) {
     this.quiere = nombre;

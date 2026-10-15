@@ -1084,3 +1084,23 @@ body.con-turno #app { padding-top: calc(56px + env(safe-area-inset-top, 0px)); }
 .ref-flecha { font-size: 28px; color: var(--teal); font-weight: 800; }
 .ref-codigo .codigo-big { letter-spacing: 4px; font-size: clamp(34px, 12vw, 54px); }
 .ref-codigo a.btn { display: inline-grid; place-items: center; text-decoration: none; }
+
+/* ---------- Chat de voz ---------- */
+.voz-flot { position: fixed; left: 72px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 21; width: 52px; height: 52px; border-radius: 50%; background: var(--card-2); border: 2px solid var(--line); color: #fff; font-size: 23px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); display: grid; place-items: center; transition: box-shadow .15s, background .2s; }
+.voz-flot.on { background: #2b8a3e; border-color: #69db7c; }
+.voz-flot.mute { background: #c92a2a; border-color: #ff8787; }
+.voz-flot.habla { box-shadow: 0 0 0 4px rgba(105, 219, 124, .6), 0 0 18px rgba(105, 219, 124, .8); }
+.voz-flot .burbuja { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #2b8a3e; color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+.voz-panel { position: fixed; left: 12px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 22; width: min(320px, calc(100vw - 24px)); padding: 12px; border-radius: 18px; background: var(--card); border: 2px solid #2b8a3e; box-shadow: 0 10px 30px rgba(0, 0, 0, .55); display: flex; flex-direction: column; gap: 8px; animation: aparece .25s ease; }
+.voz-panel .row .btn { flex: 1; }
+.voz-panel .summary, .voz-panel .sub { margin: 0; font-size: 12px; }
+.voz-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
+.voz-lista li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 12px; background: rgba(255, 255, 255, .04); transition: background .15s; }
+.voz-lista .voz-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voz-lista li i { font-style: normal; }
+.voz-lista li.habla { background: rgba(105, 219, 124, .18); box-shadow: inset 0 0 0 2px rgba(105, 219, 124, .7); }
+.voz-hablan { position: fixed; left: 132px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 21; max-width: calc(100vw - 250px); padding: 6px 12px; border-radius: 999px; background: rgba(43, 138, 62, .92); color: #fff; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: aparece .2s ease; }
+.voz-audio { display: none; }
+body.en-nave .voz-flot { bottom: auto; top: calc(246px + env(safe-area-inset-top, 0px)); left: auto; right: 14px; width: 46px; height: 46px; }
+body.en-nave .voz-panel { bottom: auto; top: calc(300px + env(safe-area-inset-top, 0px)); left: auto; right: 12px; }
+body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc(80px + env(safe-area-inset-top, 0px)); max-width: 80vw; }

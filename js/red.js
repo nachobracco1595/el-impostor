@@ -44,6 +44,7 @@ const Net = {
     this.code = Array(4).fill(0).map(() => pick(LETRAS.split(""))).join("");
     this.R = { code: this.code, players: [{ id: "H", name, on: true, look: Cuenta.look() }], game: null, sel: "impostor", err: "" };
     const peer = this.peer = new Peer(PREFIJO + this.code, this.opciones());
+    Voz.enganchar(peer);
     peer.on("open", () => { this.estado = "ok"; keepAwake(); this.broadcast(); });
     peer.on("error", e => {
       if (e.type === "unavailable-id") return this.crear(name);
@@ -79,6 +80,7 @@ const Net = {
       this.conns[cid] = c; c.cid = cid;
       this.broadcast();
       if (R.chat && R.chat.length) c.send({ t: "chat", lista: R.chat });
+      if (R.voz && Object.keys(R.voz).length) this.enviarVoz();
     } else if (m.t === "act" && c.cid) {
       this.hostAct(c.cid, m.a || {});
     }
@@ -90,6 +92,7 @@ const Net = {
     const R = this.R, p = R.players.find(x => x.id === c.cid);
     if (!p) return;
     p.on = false;
+    if (R.voz && R.voz[c.cid]) { delete R.voz[c.cid]; this.enviarVoz(); }
     if (!R.game) R.players = R.players.filter(x => x !== p);
     this.broadcast();
   },
@@ -101,6 +104,15 @@ const Net = {
       if (!txt || !quien) return;
       R.chat = [...(R.chat || []), { id: (R.chatN = (R.chatN || 0) + 1), de: quien.name, txt, t: Date.now() }].slice(-60);
       this.enviarChat();
+      return;
+    }
+    if (a.t === "voz") {
+      const quien = R.players.find(x => x.id === pid);
+      if (!quien) return;
+      R.voz = R.voz || {};
+      if (a.on && typeof a.peer === "string") R.voz[pid] = { peer: a.peer.slice(0, 64), mute: !!a.mute, name: quien.name };
+      else delete R.voz[pid];
+      this.enviarVoz();
       return;
     }
     if (a.t === "arenaPerfil") { const quien = R.players.find(x => x.id === pid); if (quien) quien.arena = Arena.validar(a.p); return; }
@@ -151,6 +163,13 @@ const Net = {
     };
   },
 
+  /* Lista del chat de voz: quién está y con qué id de PeerJS (cada teléfono se conecta con los demás) */
+  enviarVoz() {
+    const R = this.R, lista = Object.entries(R.voz || {}).filter(([pid]) => R.players.some(p => p.id === pid && p.on)).map(([pid, x]) => ({ pid, ...x }));
+    for (const c of Object.values(this.conns)) { try { if (c.open) c.send({ t: "voz", lista }); } catch {} }
+    Voz.recibir(lista);
+  },
+
   enviarChat() {
     for (const c of Object.values(this.conns)) { try { if (c.open) c.send({ t: "chat", lista: this.R.chat }); } catch {} }
     Chat.recibir(this.R.chat);
@@ -173,6 +192,7 @@ const Net = {
     this.rol = "guest"; this.code = code; this.name = name; this.estado = "conectando"; this.error = ""; this.view = null;
     store.set("nombre", name);
     const peer = this.peer = new Peer(this.opciones());
+    Voz.enganchar(peer);
     peer.on("open", () => this.conectar());
     peer.on("error", e => this.fallo(e));
     peer.on("disconnected", () => { try { peer.reconnect(); } catch {} });
@@ -181,10 +201,11 @@ const Net = {
 
   conectar() {
     const c = this.conn = this.peer.connect(PREFIJO + this.code, { reliable: true });
-    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil() }); keepAwake(); });
+    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil() }); keepAwake(); if (Voz.activo) setTimeout(() => Voz.anunciar(), 300); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
       if (m.t === "chat") Chat.recibir(m.lista || []);
+      if (m.t === "voz") Voz.recibir(m.lista || []);
       if (m.t === "error") { this.estado = "error"; this.error = m.msg; render(); }
     });
     c.on("close", () => { if (this.rol === "guest" && this.estado !== "error") { this.estado = "perdida"; render(); } });
@@ -204,6 +225,7 @@ const Net = {
   },
 
   salir(silencio) {
+    if (typeof Voz !== "undefined") { Voz.salir(); Voz.lista = []; }
     try { this.peer && this.peer.destroy(); } catch {}
     Object.assign(this, { rol: null, peer: null, conn: null, view: null, R: null, conns: {}, estado: "", error: "" });
     if (typeof Chat !== "undefined") Chat.pintar();

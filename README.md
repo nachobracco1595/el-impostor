@@ -5,7 +5,7 @@
   <img alt="Mesa Loca" src="img/logo-horizontal-oscuro.png" width="420">
 </picture>
 
-Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
+Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Truco, Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
 
 Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `logo-horizontal-oscuro.png`, `logo-vertical.png`).
 
@@ -38,6 +38,11 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - Escaleras (3+ del mismo palo seguidas, en la de 40 el 7 sigue con la sota) y grupos (3 o 4 del mismo número). Un comodín por juego.
 - Se corta con 5 o menos sueltos; todo ligado resta 10; escalera de 7 del mismo palo es **chinchón** y gana la partida.
 - Quien pasa de 100 queda afuera. Si el mazo se agota dos veces en una ronda, la ronda se anula.
+
+### Truco
+- Truco argentino con baraja de 40, sin flor: 1 contra 1, 2 contra 2 o 3 contra 3 (los equipos se sientan alternados), a 15 o a 30 (malas y buenas). Las compus completan la mesa, en un teléfono y online.
+- Envido, real envido y falta envido en la primera baza ("el envido está primero"); truco, retruco y vale cuatro (solo sube el equipo que quiso); irse al mazo.
+- Bazas con pardas: si empatan, define la otra; si son todas pardas gana el mano. Los puntos se marcan con fósforos.
 
 ### Batalla naval
 - Tablero 10×10 con 5 barcos que se acomodan solos (nunca se tocan). Si aciertas, vuelves a disparar.
@@ -177,5 +182,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

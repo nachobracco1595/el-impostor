@@ -18,6 +18,7 @@ const S = {
   cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, allImp: false, noImp: false, minutes: 3 }, store.get("cfg", {})),
   used: store.get("used", []),
   chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
+  trCfg: Object.assign({ n: 2, a: 30, juntos: false }, store.get("trCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
   casoId: store.get("casoId", "collar"),
   caso: null,         // partida local de detectives
@@ -116,6 +117,7 @@ function juegosMenu() {
     ["liars", "Mesa del Mentiroso", "Miente con las cartas o gatilla.", `<span class="cartas-mini">${carta("K")}${carta("J")}</span>`, "t-lie"],
     ["casos", "Detectives", `${CASOS.length} casos para resolver en grupo.`, personaje("#e8e8e8", "civ", 64, ["sombrero", "lupa"]), "t-cas"],
     ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
+    ["truco", "Truco", "Envido, truco y vale cuatro.", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "t-tru"],
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
     ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
@@ -129,7 +131,7 @@ PANTALLAS.home = () => {
   <section class="screen hero">
     <img class="hero-logo" src="img/icono.svg" alt="" width="132" height="132">
     <h1 class="titulo">Mesa <span>Loca</span></h1>
-    <p class="sub center">Juegos para jugar con amigos: el Impostor, la Arena, el Chinchón, La Nave y muchos más. En un solo teléfono o cada uno en el suyo.</p>
+    <p class="sub center">Juegos para jugar con amigos: el Impostor, el Truco, la Arena, el Chinchón, La Nave y muchos más. En un solo teléfono o cada uno en el suyo.</p>
   </section>
   ${typeof Evento !== "undefined" ? Evento.cartel() : ""}
   ${typeof Referidos !== "undefined" ? Referidos.cartel() : ""}
@@ -184,12 +186,12 @@ PANTALLAS.duelo = () => {
 };
 
 /* ---------- Jugadores (modo local) ---------- */
-const minJug = () => S.mode === "impostor" ? 3 : ["chinchon", "ajedrez", "naval"].includes(S.mode) ? 1 : 2;
+const minJug = () => S.mode === "impostor" ? 3 : ["chinchon", "ajedrez", "naval", "truco"].includes(S.mode) ? 1 : 2;
 PANTALLAS.players = () => {
   const n = S.players.length, min = minJug();
   app.innerHTML = `${head(1)}
   <section class="screen">
-    <div><h2>¿Quiénes juegan?</h2><p class="sub">${S.mode === "chinchon" ? "Las personas que juegan; abajo puedes sumar compus." : `Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}.`} El orden de la lista es el orden de la ronda.</p></div>
+    <div><h2>¿Quiénes juegan?</h2><p class="sub">${S.mode === "truco" ? "Las personas que juegan; los lugares que sobran los ocupan compus." : S.mode === "chinchon" ? "Las personas que juegan; abajo puedes sumar compus." : `Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}.`} El orden de la lista es el orden de la ronda.</p></div>
     <form class="add" id="addf"><input id="pname" maxlength="16" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
     <div class="panel">
       <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>
@@ -202,8 +204,16 @@ PANTALLAS.players = () => {
       <div class="opt"><div class="txt"><b>Con comodines</b><small>Agrega 2 comodines que sirven como cualquier carta.</small></div><button class="switch" role="switch" aria-checked="${S.chCfg.comodines}" id="chCom" aria-label="Con comodines"></button></div>
       <div class="opt"><div class="txt"><b>Con 8 y 9</b><small>${S.chCfg.con89 ? "Baraja de 48: la escalera va 7, 8, 9, sota." : "Baraja de 40: sin 8 ni 9, el 7 sigue con la sota."}</small></div><button class="switch" role="switch" aria-checked="${S.chCfg.con89}" id="ch89" aria-label="Con 8 y 9"></button></div>
     </div>` : ""}
-    ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : 0), max = S.mode === "chinchon" ? 5 : S.mode === "impostor" ? 99 : 8, ok = tot >= min && tot <= max && (S.mode !== "chinchon" || n >= 1);
-      return `${S.mode === "chinchon" && tot > 5 ? `<p class="warn">El chinchón es de 2 a 5 jugadores (contando las compus).</p>` : ""}<div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${ok ? "" : "disabled"}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : S.mode === "chinchon" ? "¡Repartir!" : S.mode === "ajedrez" || S.mode === "naval" ? "Listo" : "Elegir temas"}</button></div>`; })()}
+    ${S.mode === "truco" ? `<div class="panel">
+      <span class="label">Mesa</span>
+      <div class="seg">${[[2, "1 vs 1"], [4, "2 vs 2"], [6, "3 vs 3"]].map(([k, t]) => `<button aria-pressed="${S.trCfg.n === k}" data-trn="${k}">${t}</button>`).join("")}</div>
+      <span class="label">Se juega a</span>
+      <div class="seg">${[15, 30].map(k => `<button aria-pressed="${S.trCfg.a === k}" data-tra="${k}">${k} puntos</button>`).join("")}</div>
+      ${S.trCfg.n > 2 && n >= 2 ? `<div class="opt"><div class="txt"><b>Personas en el mismo equipo</b><small>${S.trCfg.juntos ? "Juegan juntas contra las compus." : "Se reparten en los dos equipos."}</small></div><button class="switch" role="switch" aria-checked="${S.trCfg.juntos}" id="trJuntos" aria-label="Personas en el mismo equipo"></button></div>` : ""}
+      <p class="summary">${n >= S.trCfg.n ? "" : `${S.trCfg.n - n} compu${S.trCfg.n - n > 1 ? "s" : ""} completa${S.trCfg.n - n > 1 ? "n" : ""} la mesa. `}${n > 1 ? "Cuando le toca a otra persona, se pasan el teléfono." : ""}</p>
+    </div>` : ""}
+    ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : 0), max = S.mode === "chinchon" ? 5 : S.mode === "truco" ? S.trCfg.n : S.mode === "impostor" ? 99 : 8, ok = (S.mode === "truco" ? n >= 1 : tot >= min) && tot <= max && (S.mode !== "chinchon" || n >= 1);
+      return `${S.mode === "truco" && n > S.trCfg.n ? `<p class="warn">En ${S.trCfg.n / 2} contra ${S.trCfg.n / 2} juegan como mucho ${S.trCfg.n} personas.</p>` : ""}${S.mode === "chinchon" && tot > 5 ? `<p class="warn">El chinchón es de 2 a 5 jugadores (contando las compus).</p>` : ""}<div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${ok ? "" : "disabled"}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : S.mode === "chinchon" || S.mode === "truco" ? "¡Repartir!" : S.mode === "ajedrez" || S.mode === "naval" ? "Listo" : "Elegir temas"}</button></div>`; })()}
   </section>`;
   const inp = byId("pname");
   byId("addf").onsubmit = e => {
@@ -221,10 +231,14 @@ PANTALLAS.players = () => {
   on("cpuMas", () => { S.chCfg.cpus++; store.set("chCfg", S.chCfg); render(); });
   on("chCom", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); render(); });
   on("ch89", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); render(); });
+  app.querySelectorAll("[data-trn]").forEach(b => b.onclick = () => { S.trCfg.n = +b.dataset.trn; store.set("trCfg", S.trCfg); render(); });
+  app.querySelectorAll("[data-tra]").forEach(b => b.onclick = () => { S.trCfg.a = +b.dataset.tra; store.set("trCfg", S.trCfg); render(); });
+  on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); render(); });
   on("next", () => {
     if (S.mode === "liars") return Lie.empezarLocal();
     if (S.mode === "casos") return go("casoSel");
     if (S.mode === "ajedrez" || S.mode === "naval") return go("duelo");
+    if (S.mode === "truco") return Truco.empezarLocal(Truco.asientos(S.players.map((name, i) => ({ id: "p" + i, name })), S.trCfg.n, S.trCfg.juntos));
     if (S.mode === "chinchon") return Chin.empezarLocal([...S.players.map((name, i) => ({ id: "p" + i, name })), ...CPU_NOMBRES.slice(0, S.chCfg.cpus).map((name, i) => ({ id: "c" + i, name, cpu: true }))]);
     go("themes");
   });

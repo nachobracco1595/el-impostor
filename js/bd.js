@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -25,6 +25,9 @@ const LOGROS = [
   { id: "garganta", ic: "🤫", nombre: "Garganta profunda", desc: "Gana como soplón.", ok: u => u.stats.casos.soplonG >= 1 },
   { id: "chinchon", ic: "🃏", nombre: "¡Chinchón!", desc: "Haz una escalera de siete del mismo palo.", ok: u => u.stats.chinchon.chinchones >= 1 },
   { id: "menos10", ic: "➖", nombre: "Menos diez", desc: "Corta con todas las cartas ligadas.", ok: u => u.stats.chinchon.menos10 >= 1 },
+  { id: "truquero", ic: "🗡️", nombre: "Truquero", desc: "Gana 10 partidas de truco.", ok: u => u.stats.truco.g >= 10 },
+  { id: "vale4", ic: "4️⃣", nombre: "Vale cuatro", desc: "Gana una mano de truco a vale cuatro.", ok: u => u.stats.truco.vale4 >= 1 },
+  { id: "e33", ic: "🎯", nombre: "Treinta y tres", desc: "Ten 33 de envido (7 y 6 del mismo palo).", ok: u => u.stats.truco.e33 >= 1 },
   { id: "almirante", ic: "⚓", nombre: "Almirante", desc: "Gana una batalla naval.", ok: u => u.stats.naval.g >= 1 },
   { id: "intacta", ic: "🚢", nombre: "Flota intacta", desc: "Gana una batalla con 3 barcos sin un rasguño.", ok: u => u.stats.naval.intactaG >= 1 },
   { id: "mate", ic: "♚", nombre: "Jaque mate", desc: "Gana una partida de ajedrez por mate.", ok: u => u.stats.ajedrez.mates >= 1 },
@@ -46,6 +49,7 @@ function statsVacias() {
     liars: { j: 0, g: 0, p: 0, clics: 0, aciertos: 0 },
     casos: { j: 0, g: 0, p: 0, resueltos: [], soplonG: 0 },
     chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
+    truco: { j: 0, g: 0, p: 0, envidos: 0, vale4: 0, e33: 0 },
     naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
     ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
     nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
@@ -159,6 +163,8 @@ const BD = {
       st.clics += res.clics; st.aciertos += res.aciertos;
     } else if (res.juego === "chinchon") {
       st.chinchones += res.chinchon ? 1 : 0; st.menos10 += res.menos10; st.cortes += res.cortes;
+    } else if (res.juego === "truco") {
+      st.envidos += res.envidos | 0; st.vale4 += res.vale4 | 0; st.e33 += res.e33 | 0;
     } else if (res.juego === "naval") {
       st.hundidos += res.hundidos; if (calc.gano && res.intactos >= 3) st.intactaG++;
     } else if (res.juego === "nave") {
@@ -244,6 +250,9 @@ const Puntos = {
     ["Detectives: votar al culpable", "+10"],
     ["Detectives: ganar como soplón", "+35"],
     ["Chinchón: ganar la partida", "+20, +5 por rival"],
+    ["Truco: ganar la partida (contra personas / la compu)", "+25 / +12"],
+    ["Truco: ganar un envido querido", "+2 cada uno"],
+    ["Truco: ganar una mano a vale cuatro", "+5"],
     ["Arena: ganar la pelea", "+25 (contra la compu +10)"],
     ["Arena: cada eliminación", "+5"],
     ["Chinchón: hacer chinchón", "+40"],
@@ -282,6 +291,10 @@ const Puntos = {
       const cortesComunes = r.cortes - r.menos10;
       if (cortesComunes > 0) d.push([`Cortaste ${cortesComunes} ${cortesComunes > 1 ? "veces" : "vez"}`, 3 * cortesComunes]);
       if (r.menos10) d.push([`Cortaste con −10 (${r.menos10})`, 8 * r.menos10]);
+    } else if (r.juego === "truco") {
+      if (r.envidos) d.push([`Ganaste ${r.envidos} envido${r.envidos > 1 ? "s" : ""}`, 2 * Math.min(10, r.envidos)]);
+      if (r.vale4) d.push(["Ganaste un vale cuatro", 5 * Math.min(3, r.vale4)]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a la compu" : "Ganaste la partida", r.vsCompu ? 12 : 25]); }
     } else if (r.juego === "naval") {
       if (r.hundidos) d.push([`Hundiste ${r.hundidos} barco${r.hundidos > 1 ? "s" : ""}`, 2 * r.hundidos]);
       if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a la compu" : "Ganaste la batalla", r.vsCompu ? 15 : 25]); if (r.intactos) d.push([`${r.intactos} barco${r.intactos > 1 ? "s" : ""} intacto${r.intactos > 1 ? "s" : ""}`, 3 * r.intactos]); }

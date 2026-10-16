@@ -4,7 +4,7 @@ const CFG = EMU ? { url: "http://127.0.0.1:54321", anonKey: "anon-key" } : windo
 const app = document.getElementById("app"), tip = document.getElementById("tip");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = n => new Intl.NumberFormat("es").format(n || 0);
-const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", ruleta: "Ruleta", tragamonedas: "Tragamonedas", bingo: "Bingo", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
+const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", ruleta: "Ruleta", tragamonedas: "Tragamonedas", bingo: "Bingo", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
 const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };

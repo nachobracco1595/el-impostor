@@ -120,7 +120,7 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -131,18 +131,19 @@ const Net = {
       else if (R.game === "truco") Truco.actOn(R, pid, a);
       else if (R.game === "burako") Burako.actOn(R, pid, a);
       else if (R.game === "poker") Poker.actOn(R, pid, a);
+      else if (R.game === "carrera") Carrera.actOn(R, pid, a);
       else if (R.game === "bingo") Bingo.actOn(R, pid, a);
       else if (R.game === "nave") Nave.actOn(R, pid, a);
       else if (R.game === "arena") Arena.actOn(R, pid, a);
     } catch (e) { console.error(e); }
     // En La Nave las posiciones se reparten con el reloj (10 por segundo), no con cada movimiento
-    if (!((R.game === "nave" || R.game === "arena") && a.t === "pos")) this.broadcast();
+    if (!((R.game === "nave" || R.game === "arena" || R.game === "carrera") && a.t === "pos")) this.broadcast();
   },
 
   viewFor(pid) {
     const v = this.vistaJuego(pid), R = this.R;
     v.looks = Object.fromEntries(R.players.filter(p => p.look).map(p => [p.name, p.look]));
-    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "truco" ? Truco.resultado(R.tru, pid) : R.game === "burako" ? Burako.resultado(R.bk, pid) : R.game === "poker" ? Poker.resultado(R.pk, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : R.game === "arena" ? Arena.resultado(R.arena, pid) : null;
+    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "truco" ? Truco.resultado(R.tru, pid) : R.game === "burako" ? Burako.resultado(R.bk, pid) : R.game === "poker" ? Poker.resultado(R.pk, pid) : R.game === "carrera" ? Carrera.resultado(R.car, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : R.game === "arena" ? Arena.resultado(R.arena, pid) : null;
     return v;
   },
 
@@ -157,11 +158,12 @@ const Net = {
     if (R.game === "truco") return { ...Truco.view(R.tru, pid), isHost: pid === "H" };
     if (R.game === "burako") return { ...Burako.view(R.bk, pid), isHost: pid === "H" };
     if (R.game === "poker") return { ...Poker.view(R.pk, pid), isHost: pid === "H" };
+    if (R.game === "carrera") return { ...Carrera.view(R.car, pid), isHost: pid === "H" };
     if (R.game === "bingo") return { ...Bingo.view(R.bin, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -343,6 +345,8 @@ PANTALLAS.online = () => {
   if (v.game === "truco") return Truco.render(v, enviar, op);
   if (v.game === "burako") return Burako.render(v, enviar, op);
   if (v.game === "poker") return Poker.render(v, enviar, op);
+  if (v.game === "carrera") return Carrera.render(v, enviar, op);
+  if (UI.cr) Carrera.parar();
   if (v.game === "bingo") return Bingo.render(v, enviar, op);
   if (v.game === "nave") return Nave.render(v, enviar, op);
   if (v.game === "arena") return Arena.render(v, enviar, op);
@@ -359,6 +363,7 @@ function renderLobby(v) {
     liars: ["Mentiroso", `<span class="cartas-mini">${carta("A")}${carta("J")}</span>`, "2 a 8"],
     casos: ["Detectives", personaje("#e8e8e8", "civ", 46, ["sombrero", "lupa"]), "2 o más"],
     chinchon: ["Chinchón", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "2 a 5"],
+    carrera: ["Carrera Loca", `<span class="nave-mini">🏁</span>`, "1 o más"],
     poker: ["Póker", `<span class="pk-mini">${Poker.carta("As")}${Poker.carta("Kh")}</span>`, "2 a 8"],
     burako: ["Burako", `<span class="bk-mini">${Burako.ficha("R07a")}${Burako.ficha("J00a")}</span>`, "2 o 4"],
     truco: ["Truco", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "2 a 6"],
@@ -391,6 +396,8 @@ function renderLobby(v) {
         : v.sel === "truco" ? (() => { const c = v.trCfg, n = v.players.length, tot = Math.max(n + n % 2, c.n); return `<p class="summary">${tot > 6 ? "El truco es de 2 a 6 jugadores." : `${tot / 2} contra ${tot / 2}${tot > n ? ` (${tot - n} compu${tot - n > 1 ? "s" : ""} completa${tot - n > 1 ? "n" : ""} la mesa)` : ""} · a ${c.a} puntos · sin flor. Los equipos se sientan alternados en el orden de la sala.`}</p>
           ${H ? `<span class="label">Mesa mínima</span><div class="seg">${[[2, "1 vs 1"], [4, "2 vs 2"], [6, "3 vs 3"]].map(([k, t]) => `<button aria-pressed="${c.n === k}" data-trn="${k}">${t}</button>`).join("")}</div>
           <div class="seg">${[15, 30].map(k => `<button aria-pressed="${c.a === k}" data-tra="${k}">A ${k}</button>`).join("")}</div>${tot > n && n >= 2 ? `<div class="opt"><div class="txt"><b>Personas en el mismo equipo</b></div><button class="switch" role="switch" aria-checked="${c.juntos}" id="trJuntos" aria-label="Personas en el mismo equipo"></button></div>` : ""}` : ""}`; })()
+        : v.sel === "carrera" ? (() => { const c = v.carCfg, n = v.players.length, bots = Math.max(0, Math.min(7, c.mesa - n)); return `<p class="summary">Todos a la vez por la misma pista de obstáculos: gana el primero en llegar.${bots ? ` Corren ${bots} bot${bots > 1 ? "s" : ""} también.` : ""}</p>
+          ${H ? `<span class="label">Completar con bots hasta</span><div class="seg">${[[0, "Sin bots"], [4, "4"], [6, "6"], [8, "8"]].map(([k, t]) => `<button aria-pressed="${c.mesa === k}" data-crm="${k}">${t}</button>`).join("")}</div>` : ""}`; })()
         : v.sel === "poker" ? (() => { const c = v.pkCfg, n = v.players.length, tot = Math.max(n, Math.max(2, c.mesa)); return `<p class="summary">${n > 8 ? "El póker es de hasta 8 jugadores." : `Texas Hold'em en torneo · ${tot} en la mesa${tot > n ? ` (${tot - n} bot${tot - n > 1 ? "s" : ""})` : ""} · ${c.fichas} fichas cada uno. Las fichas son de la mesa, no las monedas.`}</p>
           ${H ? `<span class="label">Mesa de</span><div class="seg">${[2, 4, 6, 8].map(k => `<button aria-pressed="${c.mesa === k}" data-pkm="${k}">${k}</button>`).join("")}</div>
           <div class="seg">${[["facil", "Bots fáciles"], ["normal", "Normales"], ["dificil", "Difíciles"]].map(([k, t]) => `<button aria-pressed="${c.nivel === k}" data-pkn="${k}">${t}</button>`).join("")}</div>` : ""}`; })()
@@ -428,6 +435,7 @@ function renderLobby(v) {
   app.querySelectorAll("[data-bkn]").forEach(b => b.onclick = () => { S.bkCfg.n = +b.dataset.bkn; store.set("bkCfg", S.bkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-liem]").forEach(b => b.onclick = () => { S.lieCfg.mesa = +b.dataset.liem; store.set("lieCfg", S.lieCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-chc]").forEach(b => b.onclick = () => { S.chCfg.cpus = +b.dataset.chc; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
+  app.querySelectorAll("[data-crm]").forEach(b => b.onclick = () => { S.carCfg.mesa = +b.dataset.crm; store.set("carCfg", S.carCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-pkm]").forEach(b => b.onclick = () => { S.pkCfg.mesa = +b.dataset.pkm; store.set("pkCfg", S.pkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-pkn]").forEach(b => b.onclick = () => { S.pkCfg.nivel = b.dataset.pkn; store.set("pkCfg", S.pkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-bkm]").forEach(b => b.onclick = () => { S.bkCfg.meta = +b.dataset.bkm; store.set("bkCfg", S.bkCfg); Net.cfgCambiada(); });

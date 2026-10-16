@@ -295,7 +295,7 @@ function escenaMusical() {
   if (sc === "chinchon" || sc === "truco" || sc === "burako" || sc === "poker" || sc === "pokerIntro") return "bar";
   if (["casino", "ruleta", "slots", "bingo", "bingoSolo"].includes(sc)) return "bar";
   if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
-  if (sc === "arena") return "tension";
+  if (sc === "arena" || sc === "carrera") return "tension";
   if (sc === "arenaIntro") return "naval";
   if (sc === "nave" || sc === "naveIntro") return S.nave && S.nave.fase === "reunion" ? "tension" : "espacio";
   if (sc === "online" && UI.v) {
@@ -303,7 +303,7 @@ function escenaMusical() {
     if (v.game === "liars") return "bar";
     if (v.game === "casos") return "noir";
     if (v.game === "ajedrez") return "ajedrez";
-    if (v.game === "arena") return "tension";
+    if (v.game === "arena" || v.game === "carrera") return "tension";
     if (v.game === "naval") return "naval";
     if (v.game === "chinchon" || v.game === "truco" || v.game === "bingo" || v.game === "burako" || v.game === "poker") return "bar";
     if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";

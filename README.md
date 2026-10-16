@@ -19,7 +19,8 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 3. Pasen el teléfono: cada uno ve su rol y la palabra (el impostor ve la pista).
 4. La app dice quién empieza; debatan con el cronómetro y voten a quién expulsar.
 
-### Mesa del Mentiroso (estilo Liar's Bar)
+### Mesa del Mentiroso
+- Se pueden sumar bots (en un teléfono y online) que mienten, desconfían y gatillan solos. (estilo Liar's Bar)
 - Baraja de Reinas, Reyes, Ases y Comodines. Cada ronda se reparten 5 cartas y se elige la carta de la mesa.
 - En tu turno tiras de 1 a 3 cartas boca abajo diciendo que son de la mesa. El comodín vale como cualquiera.
 - El siguiente te cree (y tira las suyas) o grita "¡Mentiroso!". Si había alguna carta falsa, gatilla el mentiroso; si no, el que acusó.
@@ -42,6 +43,10 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 ### Chat de voz en las salas
 - En cualquier sala online aparece el botón 🎙️ al lado del chat. El audio va directo de teléfono a teléfono (WebRTC con PeerJS), sin servidor propio.
 - Se puede silenciar el micrófono, se ve quién está hablando y la música del juego baja mientras hay voz. Con auriculares no hay eco.
+
+### Carrera Loca
+- Carrera de obstáculos para todos a la vez: barras giratorias (se saltan), péndulos y bloques (se esquivan), pozos de agua (volvés al último banderín), cintas, barro y puertas falsas. Joystick con el dedo y botón de salto.
+- Contra bots (3, 5 o 7; fáciles, normales o difíciles) u online con amigos y bots. La pista sale de una semilla y los obstáculos se mueven con el reloj de la carrera, así todos ven lo mismo.
 
 ### Póker
 - Texas Hold'em en formato torneo: todos con las mismas fichas (de la mesa, no son las monedas), ciegas que suben cada 6 manos, gana el último que queda. Pozos laterales, all-in y desempates.
@@ -202,5 +207,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js`, `poker.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js`, `poker.js`, `carrera.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

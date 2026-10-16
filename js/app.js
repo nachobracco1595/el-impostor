@@ -20,6 +20,7 @@ const S = {
   chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
   lieCfg: Object.assign({ bots: 2, mesa: 4 }, store.get("lieCfg", {})),
   trCfg: Object.assign({ n: 2, a: 30, juntos: false }, store.get("trCfg", {})),
+  carCfg: Object.assign({ bots: 5, nivel: "normal", mesa: 6 }, store.get("carCfg", {})),
   pkCfg: Object.assign({ bots: 3, nivel: "normal", fichas: 1000, mesa: 4 }, store.get("pkCfg", {})),
   bkCfg: Object.assign({ n: 2, meta: 1500, juntos: false }, store.get("bkCfg", {})),
   biCfg: Object.assign({ valor: 10, n: 1, cpus: 5, vel: 2500 }, store.get("biCfg", {})),
@@ -166,6 +167,7 @@ function juegosMenu() {
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
     ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
+    ["carrera", "Carrera Loca", "Obstáculos, saltos y a la meta.", `<span class="tr-mini">🏃💨🏁</span>`, "t-car"],
     ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
     ["casino", "Casino", "Ruleta, tragamonedas y bingo.", `<span class="tr-mini">🎰🎡</span>`, "t-casino"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
@@ -193,6 +195,7 @@ PANTALLAS.home = () => {
     if (S.mode === "trabajos") return go("trabajos");
     if (S.mode === "casino") return go("casino");
     if (S.mode === "poker") return go("pokerIntro");
+    if (S.mode === "carrera") return go("carreraIntro");
     if (S.mode === "arena") return go("arenaIntro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });

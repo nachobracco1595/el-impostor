@@ -81,7 +81,7 @@ const Burako = {
     const m = Burako.mazo();
     s.jug.forEach(j => j.mano = m.splice(0, 11));
     Object.assign(s, { muertos: [m.splice(0, 11), m.splice(0, 11)], muertoTomado: [false, false], mazo: m, descarte: [], mesa: [[], []],
-      turno: s.mano, fase: "robar", res: null, log: [], aviso: null, mov: s.mov + 1, turnos: 0 });
+      turno: s.mano, fase: "robar", res: null, log: [], aviso: null, mov: s.mov + 1, turnos: 0, nuevas: {}, nuevasDe: {}, levanto: null });
   },
   decir(s, txt) { s.log = [...s.log, txt].slice(-5); },
   tieneCanasta: (s, q) => s.mesa[q].some(j => j.canasta),
@@ -100,10 +100,11 @@ const Burako = {
     if (a.t === "robar" && s.fase === "robar") {
       if (a.de === "descarte") {
         if (!s.descarte.length) return;
-        J.mano.push(...s.descarte); Burako.decir(s, `${J.name} levantó el pozo (${s.descarte.length})`); s.descarte = [];
+        J.mano.push(...s.descarte); Burako.decir(s, `${J.name} levantó el pozo (${s.descarte.length})`);
+        s.nuevas[i] = s.descarte.slice(); s.nuevasDe[i] = "pozo"; s.levanto = { i, fichas: s.descarte.slice(), k: s.mov + 1 }; s.descarte = [];
       } else {
         if (!s.mazo.length) return Burako.cerrarMano(s, null);
-        J.mano.push(s.mazo.pop()); Burako.decir(s, `${J.name} robó`);
+        const t = s.mazo.pop(); J.mano.push(t); s.nuevas[i] = [t]; s.nuevasDe[i] = "mazo"; Burako.decir(s, `${J.name} robó del mazo`);
       }
       s.fase = "jugar"; s.mov++;
     } else if (a.t === "bajar" && s.fase === "jugar" && tiene(a.ids)) {
@@ -137,7 +138,7 @@ const Burako = {
     const J = s.jug[i], q = Burako.equipo(s, i);
     if (J.mano.length) return false;
     if (!s.muertoTomado[q]) {
-      s.muertoTomado[q] = true; J.mano = s.muertos[q]; s.muertos[q] = [];
+      s.muertoTomado[q] = true; J.mano = s.muertos[q]; s.muertos[q] = []; s.nuevas[i] = J.mano.slice(); s.nuevasDe[i] = "muerto";
       s.aviso = { k: s.mov, txt: `¡${J.name.replace(/^🤖\s*/, "")} tomó el muerto!`, eq: q };
       Burako.decir(s, `${J.name} tomó el muerto`);
       if (tiro) { s.turno = (i + 1) % s.n; s.fase = "robar"; return true; }
@@ -246,7 +247,9 @@ const Burako = {
       game: "burako", id: s.id, me: pid, yo, n: s.n, fase: s.fase, turno: s.turno, pts: s.pts, meta: s.cfg.meta, ronda: s.ronda, mov: s.mov,
       jug: s.jug.map((j, i) => ({ name: j.name, cpu: !!j.cpu, n: j.mano.length, eq: Burako.equipo(s, i) })),
       mano: yo >= 0 ? s.jug[yo].mano : [], mesa: s.mesa, top: s.descarte.slice(-1)[0] || null, descarte: s.descarte.length, mazo: s.mazo.length,
-      muertoTomado: s.muertoTomado, res: s.res, ganador: s.ganador, log: s.log, aviso: s.aviso
+      muertoTomado: s.muertoTomado, res: s.res, ganador: s.ganador, log: s.log, aviso: s.aviso,
+      // El pozo está a la vista de todos (son fichas tiradas), igual que lo que alguien levantó
+      pozo: s.descarte, levanto: s.levanto, nuevas: yo >= 0 ? (s.nuevas || {})[yo] || [] : [], nuevasDe: yo >= 0 ? (s.nuevasDe || {})[yo] : null
     };
   },
 
@@ -257,8 +260,15 @@ const Burako = {
     return `<span class="bk-f ${n === 2 ? "dos" : ""} ${cls}" style="--fc:${c[1]}" ${attrs} aria-label="${n} ${c[0]}"><b>${n}</b><i></i></span>`;
   },
   render(v, send, opts) {
-    const yo = v.yo >= 0 ? v.yo : 0, miEq = v.yo >= 0 ? v.jug[yo].eq : 0, U = UI.bk = UI.bk && UI.bk.id === v.id ? UI.bk : { id: v.id, sel: [], orden: "color" };
+    // Mientras se arrastra una ficha no se redibuja (si juega otro, se muestra al soltar)
+    if (UI.bk && UI.bk.arrastrando && UI.bk.id === v.id && byId("bkMano")) { UI.bk.pendiente = true; return; }
+    document.querySelectorAll(".bk-f.fantasma").forEach(x => x.remove());
+    const yo = v.yo >= 0 ? v.yo : 0, miEq = v.yo >= 0 ? v.jug[yo].eq : 0, U = UI.bk = UI.bk && UI.bk.id === v.id ? UI.bk : { id: v.id, sel: [], orden: store.get("bkOrden", "color"), manual: [] };
     U.sel = U.sel.filter(t => v.mano.includes(t));
+    // Orden a mano: se respeta lo que acomodó la persona; lo nuevo va al final
+    U.manual = [...U.manual.filter(t => v.mano.includes(t)), ...v.mano.filter(t => !U.manual.includes(t))];
+    const enOrden = U.orden === "mano" ? U.manual : Burako.ordenar(v.mano, U.orden);
+    const nuevas = new Set(v.fase === "jugar" && v.turno === v.yo ? v.nuevas : []);
     const miTurno = v.yo >= 0 && v.turno === v.yo && (v.fase === "robar" || v.fase === "jugar") && !v.jug[yo].cpu, jugando = miTurno && v.fase === "jugar";
     const nom = j => esc(j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name);
     const eqNom = q => v.n === 2 ? (q === miEq && v.yo >= 0 ? "Vos" : nom(v.jug.find(j => j.eq === q))) : q === miEq ? "Nosotros" : "Ellos";
@@ -275,8 +285,8 @@ const Burako = {
     const mesa = `<div class="bk-mesa" data-k="${v.mov}">
       <div class="bk-lado"><span class="label">${eqNom(1 - miEq)}</span><div class="bk-juegos">${juegos(1 - miEq)}</div></div>
       <div class="bk-centro">
-        <button class="bk-pila mazo" id="bkMazo" ${miTurno && v.fase === "robar" && v.mazo ? "" : "disabled"}><span class="bk-f dorso"></span><small>Mazo · ${v.mazo}</small></button>
-        <button class="bk-pila desc" id="bkDesc" ${miTurno && v.fase === "robar" && v.descarte ? "" : "disabled"}>${v.top ? Burako.ficha(v.top) : `<span class="bk-f vacio"></span>`}<small>${v.descarte ? `Pozo · ${v.descarte}` : "Pozo vacío"}</small></button>
+        <button class="bk-pila mazo ${U.sug && U.sug.mov === v.mov && U.sug.de === "mazo" ? "sugerida" : ""}" id="bkMazo" ${miTurno && v.fase === "robar" && v.mazo ? "" : "disabled"}><span class="bk-f dorso"></span><small>Mazo · ${v.mazo}</small></button>
+        <button class="bk-pila desc ${miTurno && v.fase === "robar" && v.descarte ? "puede" : ""} ${U.sug && U.sug.mov === v.mov && U.sug.de === "descarte" ? "sugerida" : ""}" id="bkDesc" ${v.descarte ? "" : "disabled"}>${v.top ? Burako.ficha(v.top) : `<span class="bk-f vacio"></span>`}<small>${v.descarte ? `Pozo · ${v.descarte} · 👀 ver` : "Pozo vacío"}</small></button>
       </div>
       <div class="bk-lado nuestro"><span class="label">${eqNom(miEq)}${jugando && U.sel.length ? " · tocá un juego para agregar" : ""}</span><div class="bk-juegos">${juegos(miEq)}</div></div>
     </div>`;
@@ -289,25 +299,51 @@ const Burako = {
         ${opts.local || opts.isHost ? `<div class="row">${v.fase === "fin" ? `<button class="btn" id="bkOtra">Otra partida</button><button class="btn ghost" id="bkSalir">${opts.local ? "Inicio" : "Volver a la sala"}</button>` : `<button class="btn" id="bkSig">Siguiente mano</button>`}</div>` : `<p class="sub center">El anfitrión reparte la siguiente.</p>`}`;
     } else {
       const sel = U.sel, jg = sel.length >= 3 ? Burako.analizar(sel) : null;
-      estado = !miTurno ? (v.jug[v.turno].cpu ? `🤖 ${nom(v.jug[v.turno])} está jugando…` : `Turno de <b>${nom(v.jug[v.turno])}</b>.`)
+      const sug = U.sug && U.sug.mov === v.mov ? U.sug : null;
+      estado = sug && miTurno ? `💡 ${sug.txt}` : !miTurno ? (v.jug[v.turno].cpu ? `🤖 ${nom(v.jug[v.turno])} está jugando…` : `Turno de <b>${nom(v.jug[v.turno])}</b>.`)
         : v.fase === "robar" ? "🀄 <b>Tu turno:</b> robá del mazo o levantá todo el pozo."
+        : sel.length === 0 && v.nuevas.length ? `${v.nuevasDe === "mazo" ? `Robaste ${Burako.ficha(v.nuevas[0], "mini")} del mazo` : v.nuevasDe === "muerto" ? "Tomaste el muerto: sus fichas brillan en tu mano" : v.nuevas.length === 1 ? `Levantaste ${Burako.ficha(v.nuevas[0], "mini")} del pozo` : `Levantaste ${v.nuevas.length} fichas del pozo (brillan en tu mano)`}. Elegí fichas para bajar o una para tirar.`
         : sel.length === 0 ? "Elegí fichas para bajar un juego, tocá un juego tuyo para agregar, o elegí una para tirar."
         : jg ? `✅ ${jg.tipo === "esc" ? "Escalera" : "Pierna"} de ${jg.orden.length}${jg.orden.length >= 7 ? " · ¡canasta!" : ""}` : sel.length === 1 ? "Tirala o agregala a un juego tuyo." : sel.length < 3 ? "Un juego necesita 3 fichas o más." : "Esas fichas no forman un juego.";
       botones = `<div class="bk-botones ${jugando ? "" : "oculta"}" ${jugando ? "" : `aria-hidden="true"`}><button class="btn" id="bkBajar" ${jg ? "" : "disabled"}>⬇️ Bajar</button><button class="btn danger" id="bkTirar" ${sel.length === 1 ? "" : "disabled"}>Tirar</button><button class="btn ghost chico" id="bkLimpiar" ${sel.length ? "" : "disabled"}>✕</button></div>`;
     }
-    const mano = v.yo >= 0 && v.fase !== "fin" ? `<div class="panel bk-mano-panel"><div class="headrow"><span class="label">Tu mano · ${v.mano.length} fichas</span><button class="linkish" id="bkOrden">Ordenar por ${U.orden === "color" ? "número" : "color"}</button></div>
-      <div class="bk-mano">${Burako.ordenar(v.mano, U.orden).map(t => Burako.ficha(t, `${jugando ? "toca" : ""} ${U.sel.includes(t) ? "sel" : ""}`, jugando ? `data-f="${t}" role="button" tabindex="0"` : "")).join("")}</div></div>` : "";
+    const hayJugada = jugando && !U.sel.length && (() => { const s = Burako.sugerir(v); return s && s.ids && s.ids.length && !s.tirar; })();
+    const mano = v.yo >= 0 && v.fase !== "fin" ? `<div class="panel bk-mano-panel"><div class="bk-mano-cab"><span class="label">Tu mano · ${v.mano.length} fichas</span>
+        ${miTurno ? `<button class="btn chico bk-sug ${hayJugada ? "hay" : ""}" id="bkSug">💡 ${hayJugada ? "¡Tenés jugada!" : "Sugerencia"}</button>` : ""}
+        <div class="seg bk-orden" role="radiogroup" aria-label="Ordenar la mano">${[["color", "Color"], ["num", "Número"], ["mano", "✋ A mano"]].map(([k, t]) => `<button aria-pressed="${U.orden === k}" data-bkorden="${k}">${t}</button>`).join("")}</div></div>
+      <div class="bk-mano" id="bkMano">${enOrden.map(t => Burako.ficha(t, `${jugando ? "toca" : ""} ${U.sel.includes(t) ? "sel" : ""} ${nuevas.has(t) ? "nueva" : ""}`, `data-mf="${t}" ${jugando ? `data-f="${t}" role="button" tabindex="0"` : ""}`)).join("")}</div>
+      <p class="bk-ayuda">Mantené apretada una ficha y arrastrala para acomodarla donde quieras.</p></div>` : "";
+    // Lo que levantó otro jugador del pozo (todos lo vieron)
+    // Siempre ocupa su lugar (vacío o con lo último que levantó otro) para que nada se corra
+    const levTxt = v.fase === "finMano" || v.fase === "fin" ? "" : v.levanto && v.levanto.k >= v.mov - 6 && v.levanto.i !== v.yo
+      ? `<p class="bk-levanto">${nom(v.jug[v.levanto.i])} levantó el pozo: ${v.levanto.fichas.slice(0, 10).map(f => Burako.ficha(f, "mini")).join("")}${v.levanto.fichas.length > 10 ? ` +${v.levanto.fichas.length - 10}` : ""}</p>` : `<p class="bk-levanto vacio"></p>`;
+    // Ventana para mirar el pozo antes de levantarlo
+    const puedeLevantar = miTurno && v.fase === "robar" && v.descarte;
+    const verPozo = U.verPozo && v.descarte ? `<div class="modal-fondo bk-pozo-fondo" id="bkPozoFondo"><div class="modal bk-pozo" role="dialog" aria-label="El pozo">
+        <div class="headrow"><h2>El pozo · ${v.descarte} ficha${v.descarte === 1 ? "" : "s"}</h2><button class="linkish" id="bkPozoX" aria-label="Cerrar">✕</button></div>
+        <p class="sub">De la más vieja a la última que se tiró. Si lo levantás, te llevás todas.</p>
+        <div class="bk-mano">${v.pozo.map((f, k) => Burako.ficha(f, k === v.pozo.length - 1 ? "ultima" : "")).join("")}</div>
+        <p class="summary">Suman <b>${v.pozo.reduce((t, f) => t + Burako.valor(f), 0)}</b> puntos${v.pozo.some(Burako.esComodin) ? ` · trae ${v.pozo.filter(Burako.esComodin).length} comodín${v.pozo.filter(Burako.esComodin).length > 1 ? "es" : ""}` : ""}.</p>
+        ${puedeLevantar ? `<div class="row"><button class="btn ghost" id="bkPozoNo">Mejor robo del mazo</button><button class="btn" id="bkLevantar">Levantar el pozo</button></div>` : `<button class="btn ghost" id="bkPozoNo">Cerrar</button>`}
+      </div></div>` : "";
     const aviso = v.aviso && v.aviso.k >= v.mov - 1 ? `<div class="bk-aviso ${v.aviso.eq === miEq ? "nos" : "ellos"}" data-k="${v.aviso.k}">${esc(v.aviso.txt)}</div>` : "";
     app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="screen burako">
-      ${marcador}${rivales}${aviso}${mesa}
+      ${marcador}${rivales}${aviso}${mesa}${levTxt}
       ${estado ? `<p class="aj-estado bk-estado">${estado}${v.log.length && !miTurno ? ` <small>${esc(v.log[v.log.length - 1])}.</small>` : ""}</p>` : ""}
       ${cartel}${botones}${mano}
       <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Robás del mazo o levantás todo el pozo (las fichas tiradas); bajás juegos y tirás una ficha. <b>Escalera</b>: 3 o más seguidas del mismo color (el 1 va antes del 2 o después del 13). <b>Pierna</b>: 3 o más del mismo número. Un comodín por juego (★ y los 2). Con 7 fichas es <b>canasta</b>: limpia 200, sucia 100. Al quedarte sin fichas tomás el muerto. Para cerrar hay que haber tomado el muerto y tener una canasta: cerrar suma 100. Fichas: ★ 50, 2 → 20, 1 → 15, del 8 al 13 → 10, del 3 al 7 → 5. Lo de la mano resta.</p></details>
     </section>`;
+    // La ventana del pozo va directo en la página (dentro de la pantalla se descoloca con la animación de entrada)
+    document.querySelectorAll(".bk-pozo-fondo").forEach(x => x.remove());
+    if (verPozo) document.body.insertAdjacentHTML("beforeend", verPozo);
     on("bkMazo", () => send({ t: "robar", de: "mazo" }));
-    on("bkDesc", () => send({ t: "robar", de: "descarte" }));
+    on("bkDesc", () => { U.verPozo = true; render(); });
+    on("bkLevantar", () => { U.verPozo = false; send({ t: "robar", de: "descarte" }); });
+    on("bkPozoNo", () => { U.verPozo = false; if (puedeLevantar && byId("bkLevantar")) send({ t: "robar", de: "mazo" }); else render(); });
+    on("bkPozoX", () => { U.verPozo = false; render(); });
+    const fondo = byId("bkPozoFondo"); if (fondo) fondo.onclick = e => { if (e.target === fondo) { U.verPozo = false; render(); } };
     app.querySelectorAll("[data-f]").forEach(el => {
-      const f = () => { const t = el.dataset.f; U.sel = U.sel.includes(t) ? U.sel.filter(x => x !== t) : [...U.sel, t]; if (typeof Sonido !== "undefined") Sonido.sfx("tap"); render(); };
+      const f = () => { if (Date.now() < (U.sinClick || 0)) return; U.sug = null; const t = el.dataset.f; U.sel = U.sel.includes(t) ? U.sel.filter(x => x !== t) : [...U.sel, t]; if (typeof Sonido !== "undefined") Sonido.sfx("tap"); render(); };
       el.onclick = f; el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); f(); } };
     });
     app.querySelectorAll("[data-agregar]").forEach(b => b.onclick = () => {
@@ -318,10 +354,112 @@ const Burako = {
     on("bkBajar", () => { const ids = U.sel; U.sel = []; send({ t: "bajar", ids }); });
     on("bkTirar", () => { const id = U.sel[0]; U.sel = []; send({ t: "tirar", id }); });
     on("bkLimpiar", () => { U.sel = []; render(); });
-    on("bkOrden", () => { U.orden = U.orden === "color" ? "num" : "color"; render(); });
+    on("bkSug", () => {
+      const s = Burako.sugerir(v); if (!s) return;
+      U.sug = { ...s, mov: v.mov }; if (s.ids) U.sel = s.ids.slice();
+      if (typeof Sonido !== "undefined") Sonido.sfx("tap");
+      render();
+    });
+    app.querySelectorAll("[data-bkorden]").forEach(b => b.onclick = () => {
+      if (b.dataset.bkorden === "mano" && U.orden !== "mano") U.manual = enOrden.slice();     // arranca desde lo que se ve
+      U.orden = b.dataset.bkorden; store.set("bkOrden", U.orden); render();
+    });
+    Burako.arrastrar(U, enOrden);
     on("bkSig", () => send({ t: "siguiente" }));
     on("bkOtra", () => send({ t: "again" }));
     on("bkSalir", () => opts.local ? go("home") : send({ t: "lobby" }));
+  },
+
+  /* Sugerencia para la persona (con lo que ve en su pantalla): qué robar, qué agregar, qué bajar o qué tirar */
+  sugerir(v) {
+    if (v.yo < 0) return null;
+    const q = v.jug[v.yo].eq, mano = v.mano, mesa = v.mesa[q], muertoLibre = !v.muertoTomado[q];
+    const puede = (k, m) => k >= 2 || muertoLibre || (v.muertoTomado[q] && (m || mesa).some(j => j.canasta));
+    const f = t => Burako.ficha(t, "mini"), nombre = jg => jg.tipo === "esc" ? "escalera" : "pierna";
+    if (v.fase === "robar") {
+      if (!v.descarte) return { de: "mazo", txt: "Robá del mazo: el pozo está vacío." };
+      const pozo = v.pozo, comodines = pozo.filter(Burako.esComodin).length;
+      const aMesa = pozo.filter(t => mesa.some(j => Burako.analizar([...j.fichas, t])));
+      const nuevo = Burako.buscarJuego([...mano, ...pozo]), usa = nuevo && nuevo.some(t => pozo.includes(t));
+      const razones = [comodines ? `trae ${comodines} comodín${comodines > 1 ? "es" : ""}` : "", aMesa.length ? `${aMesa.length} ficha${aMesa.length > 1 ? "s" : ""} van a tus juegos` : "", usa ? "te arma un juego nuevo" : ""].filter(Boolean);
+      if (razones.length) return { de: "descarte", txt: `Conviene levantar el pozo: ${razones.join(", ")}.` };
+      return { de: "mazo", txt: pozo.length >= 6 ? "El pozo tiene muchas fichas pero no te arma nada: igual podés levantarlo para tener más opciones." : "Mejor robá del mazo: el pozo no te arma nada." };
+    }
+    if (v.fase !== "jugar") return null;
+    // 1) Agregar a un juego propio (primero fichas naturales)
+    const fichas = Burako.ordenar(mano).sort((a, b) => Burako.esComodin(a) - Burako.esComodin(b));
+    for (let k = 0; k < mesa.length; k++) for (const t of fichas) {
+      const j = mesa[k];
+      if (Burako.esComodin(t) && (j.fichas.some(Burako.esComodin) || j.canasta && j.limpia)) continue;
+      const nuevo = Burako.juego([...j.fichas, t]);
+      if (nuevo && puede(mano.length - 1, mesa.map((x, kk) => kk === k ? nuevo : x)))
+        return { ids: [t], k, txt: `Podés agregar ${f(t)} a tu ${nombre(j)}${nuevo.canasta && !j.canasta ? " y hacer <b>canasta</b>" : ""}: ya la elegí, tocá el juego que brilla.` };
+    }
+    // 2) Bajar un juego nuevo
+    const ids = Burako.buscarJuego(mano);
+    if (ids) {
+      const jg = Burako.juego(ids);
+      if (puede(mano.length - ids.length, [...mesa, jg])) return { ids, txt: `Podés bajar una ${nombre(jg)}: ${ids.map(f).join("")}. Ya la elegí, tocá <b>Bajar</b>.` };
+      return { ids: [], txt: `Tenés una ${nombre(jg)} armada, pero si la bajás te quedás sin poder tirar. Guardala un turno más.` };
+    }
+    // 3) Qué tirar: la que menos sirve (y que no le sirva al otro equipo)
+    const falsa = { jug: [{ mano }], mesa: [mesa, v.mesa[1 - q]] };
+    const tira = mano.slice().sort((a, b) => Burako.util(falsa, 0, a) - Burako.util(falsa, 0, b) || Burako.valor(b) - Burako.valor(a))[0];
+    if (!tira) return null;
+    if (mano.length === 1 && !puede(0)) return { ids: [], txt: "Te queda una sola ficha y todavía no podés cerrar: necesitás una canasta." };
+    return { ids: [tira], tirar: true, txt: `No tenés juegos para bajar. Te conviene tirar ${f(tira)}: es la que menos te sirve. Ya la elegí, tocá <b>Tirar</b>.` };
+  },
+
+  /* Acomodar la mano arrastrando: mantener apretada una ficha (o moverla un poco) y soltarla donde va */
+  arrastrar(U, enOrden) {
+    const caja = byId("bkMano"); if (!caja) return;
+    let d = null;
+    const soltar = () => { if (!d) return; clearTimeout(d.espera); U.arrastrando = false; if (d.fantasma) d.fantasma.remove(); caja.querySelectorAll(".antes, .despues, .arrastrando").forEach(x => x.classList.remove("antes", "despues", "arrastrando")); d = null; };
+    const empezar = () => {
+      if (!d || d.fantasma) return;
+      const r = d.el.getBoundingClientRect();
+      d.fantasma = d.el.cloneNode(true); d.fantasma.className += " fantasma"; d.fantasma.removeAttribute("data-f"); d.fantasma.removeAttribute("data-mf");
+      Object.assign(d.fantasma.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+      document.body.appendChild(d.fantasma); d.el.classList.add("arrastrando"); U.arrastrando = true;
+      try { navigator.vibrate && navigator.vibrate(15); } catch {}
+    };
+    caja.querySelectorAll("[data-mf]").forEach(el => {
+      el.addEventListener("pointerdown", e => {
+        if (e.button > 0) return;
+        soltar(); d = { el, id: el.dataset.mf, x0: e.clientX, y0: e.clientY, pid: e.pointerId };
+        d.espera = setTimeout(empezar, 260);
+        try { el.setPointerCapture(e.pointerId); } catch {}
+      });
+      el.addEventListener("pointermove", e => {
+        if (!d || d.pid !== e.pointerId) return;
+        if (!d.fantasma && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) empezar();
+        if (!d.fantasma) return;
+        e.preventDefault();
+        const r = d.el.getBoundingClientRect();
+        d.fantasma.style.transform = `translate(${e.clientX - d.x0}px, ${e.clientY - d.y0}px) scale(1.12)`;
+        const bajo = document.elementFromPoint(e.clientX, e.clientY), obj = bajo && bajo.closest("#bkMano [data-mf]");
+        caja.querySelectorAll(".antes, .despues").forEach(x => x.classList.remove("antes", "despues"));
+        d.destino = null;
+        if (obj && obj !== d.el) { const ro = obj.getBoundingClientRect(), antes = e.clientX < ro.left + ro.width / 2; obj.classList.add(antes ? "antes" : "despues"); d.destino = { id: obj.dataset.mf, antes }; }
+        void r;
+      });
+      const fin = e => {
+        if (!d || d.pid !== e.pointerId) return;
+        const hubo = !!d.fantasma, destino = d.destino, id = d.id;
+        soltar();
+        if (!hubo) return;
+        U.sinClick = Date.now() + 350;                          // que soltar no cuente como tocar la ficha
+        if (!destino) { if (U.pendiente) { U.pendiente = false; render(); } return; }
+        U.pendiente = false;
+        const lista = enOrden.filter(t => t !== id), k = lista.indexOf(destino.id);
+        lista.splice(destino.antes ? k : k + 1, 0, id);
+        U.manual = lista; U.orden = "mano"; store.set("bkOrden", "mano");
+        if (typeof Sonido !== "undefined") Sonido.sfx("pieza");
+        render();
+      };
+      el.addEventListener("pointerup", fin); el.addEventListener("pointercancel", fin);
+      el.addEventListener("contextmenu", e => e.preventDefault());
+    });
   },
 
   /* Si una jugada no vale, el motor la ignora: le avisamos a la persona por qué */

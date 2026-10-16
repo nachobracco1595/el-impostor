@@ -73,6 +73,7 @@ function render() {
   if (typeof Evento !== "undefined") Evento.decorar();
   if (typeof Turno !== "undefined" && !(typeof Net !== "undefined" && Net.activo())) Turno.revisar(null);
   document.body.classList.toggle("en-ruleta", S.screen === "ruleta");
+  document.querySelectorAll(".bk-pozo-fondo").forEach(x => x.remove());   // ventanas de un juego que ya no está
   const antes = Toques.foto();
   (PANTALLAS[S.screen] || PANTALLAS.home)();
   Toques.trasRender(antes);

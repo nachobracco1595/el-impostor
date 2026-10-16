@@ -299,17 +299,36 @@ const Carrera = {
       if (Carrera.opts.local) { const J = S.car.jug.find(x => x.id === j.id); return { ...j, x: J.x, y: J.y, s: J.salto > 0, c: J.cae > 0, g: J.golpe > 0 }; }
       const o = U.otros[j.id] = U.otros[j.id] || { x: j.x, y: j.y }; o.x += (j.x - o.x) * 0.25; o.y += (j.y - o.y) * 0.25; return { ...j, x: o.x, y: o.y };
     })()).sort((a, b) => b.y - a.y);
+    const ahora = now / 1000, A = U.anim = U.anim || {};
     for (const j of lista) {
+      // Animación: se calcula con lo que se movió desde el cuadro anterior (sirve igual para mí, los bots y los demás)
+      const a = A[j.id] = A[j.id] || { x: j.x, y: j.y, t: ahora, fase: 0, vel: 0, dir: 1, salto: -9 };
+      const dt = Math.min(0.1, Math.max(0.001, ahora - a.t)), dx = j.x - a.x, dy = j.y - a.y, d = Math.hypot(dx, dy);
+      a.vel += ((d < 60 ? d / dt : 0) - a.vel) * Math.min(1, dt * 12);
+      if (d < 60) a.fase += d * 0.11;
+      if (Math.abs(dx) > 0.4) a.dir += ((dx > 0 ? 1 : -1) - a.dir) * Math.min(1, dt * 10);
+      if (j.s && !a.sal) a.salto = ahora; a.sal = j.s; a.x = j.x; a.y = j.y; a.t = ahora;
       const X = sx(j.x), Y = sy(j.y); if (Y < -60 || Y > Hp + 60) continue;
-      const alto = j.s ? 1.3 : 1, img = Mundo.muneco(j.look);
-      ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(X, Y + 10, 15 * (j.s ? 0.7 : 1), 6, 0, 0, 7); ctx.fill();
+      const anda = a.vel > 25 && !j.c, ps = Math.min(1, (ahora - a.salto) / CR.SALTO), enAire = ps < 1;
+      const alt = enAire ? Math.sin(ps * Math.PI) * 26 : 0, alto = enAire ? 1 + Math.sin(ps * Math.PI) * 0.18 : 1;
+      const rebote = anda && !enAire ? Math.abs(Math.sin(a.fase)) * 4 : Math.sin(ahora * 3 + j.x) * 0.8;
+      const pasoP = enAire ? 0.7 : anda ? Math.sin(a.fase) : 0, img = Mundo.muneco(j.look);
+      ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(X, Y + 10, 15 * (1 - alt / 60), 6 * (1 - alt / 60), 0, 0, 7); ctx.fill();
       ctx.globalAlpha = j.c ? 0.35 : 1;
-      if (img.complete && img.naturalWidth) ctx.drawImage(img, X - 22 * alto, Y - 44 * alto - (j.s ? 14 : 0), 44 * alto, 50 * alto);
+      ctx.save(); ctx.translate(X, Y - rebote - alt); ctx.scale(alto * (a.dir < 0 ? -1 : 1) * Math.max(0.85, Math.abs(a.dir)), alto * (enAire ? 1 : 1 - Math.abs(Math.cos(a.fase)) * (anda ? 0.04 : 0)));
+      if (anda && !enAire) ctx.rotate(Math.sin(a.fase) * 0.09 + Math.min(0.12, a.vel / 2000));
+      if (j.g) ctx.rotate(Math.sin(ahora * 40) * 0.15);
+      // Piernas que se cruzan al correr (y se encogen en el aire)
+      const pierna = (lado, k) => { ctx.save(); ctx.translate(lado * 7, -2); ctx.rotate(k * 0.6); ctx.fillStyle = "#1b1726"; ctx.beginPath(); ctx.roundRect(-3.5, 0, 7, enAire ? 8 : 12, 3.5); ctx.fill(); ctx.fillStyle = j.look.color || "#748ffc"; ctx.beginPath(); ctx.ellipse(0, enAire ? 8 : 12, 5, 3.5, 0, 0, 7); ctx.fill(); ctx.restore(); };
+      pierna(-1, pasoP); pierna(1, enAire ? -0.7 : -pasoP);
+      if (img.complete && img.naturalWidth) ctx.drawImage(img, -22, -44, 44, 50);
+      ctx.restore();
       ctx.globalAlpha = 1;
-      if (j.g) { ctx.font = `16px ${FE}`; ctx.fillStyle = "#000"; ctx.fillText("💫", X - 9, Y - 50); }
+      const top = Y - 50 * alto - alt - rebote;
+      if (j.g) { ctx.font = `16px ${FE}`; ctx.fillStyle = "#000"; ctx.fillText("💫", X - 9, top); }
       if (j.c) { ctx.font = `18px ${FE}`; ctx.fillStyle = "#000"; ctx.fillText("💦", X - 10, Y - 46); }
       ctx.font = "bold 11px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = j.yo ? "#ffd43b" : "#fff"; ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3;
-      const nm = (j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name).slice(0, 10); ctx.strokeText(nm, X, Y - 50 * alto - (j.s ? 14 : 0)); ctx.fillText(nm, X, Y - 50 * alto - (j.s ? 14 : 0)); ctx.textAlign = "start";
+      const nm = (j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name).slice(0, 10); ctx.strokeText(nm, X, top - (j.g ? 16 : 0)); ctx.fillText(nm, X, top - (j.g ? 16 : 0)); ctx.textAlign = "start";
     }
     // Barra de progreso a la derecha
     const bx = 12, by0 = Hp * 0.16, by1 = Hp * 0.62;

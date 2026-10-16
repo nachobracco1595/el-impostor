@@ -18,6 +18,7 @@ const S = {
   cfg: Object.assign({ impostors: 1, hint: true, complice: false, infiltrado: false, bufon: false, allImp: false, noImp: false, minutes: 3 }, store.get("cfg", {})),
   used: store.get("used", []),
   chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
+  lieCfg: Object.assign({ bots: 2, mesa: 4 }, store.get("lieCfg", {})),
   trCfg: Object.assign({ n: 2, a: 30, juntos: false }, store.get("trCfg", {})),
   pkCfg: Object.assign({ bots: 3, nivel: "normal", fichas: 1000, mesa: 4 }, store.get("pkCfg", {})),
   bkCfg: Object.assign({ n: 2, meta: 1500, juntos: false }, store.get("bkCfg", {})),
@@ -233,7 +234,7 @@ PANTALLAS.duelo = () => {
 };
 
 /* ---------- Jugadores (modo local) ---------- */
-const minJug = () => S.mode === "impostor" ? 3 : ["chinchon", "ajedrez", "naval", "truco", "burako"].includes(S.mode) ? 1 : 2;
+const minJug = () => S.mode === "impostor" ? 3 : ["chinchon", "ajedrez", "naval", "truco", "burako", "liars"].includes(S.mode) ? 1 : 2;
 PANTALLAS.players = () => {
   const n = S.players.length, min = minJug();
   app.innerHTML = `${head(1)}
@@ -245,6 +246,10 @@ PANTALLAS.players = () => {
       ${n ? `<ul class="players">${S.players.map((p, i) => `<li>${avatar(p, 38, "civ", S.mode === "casos" ? ["sombrero"] : [])}<span class="name">${esc(p)}${BD.porNombre(p) ? `<small class="suma">⭐ Suma puntos</small>` : ""}</span><button class="x" data-del="${i}" aria-label="Quitar a ${esc(p)}">×</button></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay nadie. Escribe un nombre y toca +.</p>`}
     </div>
     ${(() => { const libres = BD.usuarios().filter(u => !S.players.some(x => x.toLowerCase() === u.nombre.toLowerCase())); return libres.length ? `<div class="panel"><span class="label">Perfiles de este teléfono · toca para sumarlos</span><div class="chips-j">${libres.map(u => `<button class="chip-j" data-perfil="${esc(u.nombre)}">${personaje(u.look.color, "civ", 26, u.look.acc)}${esc(u.nombre)}</button>`).join("")}</div></div>` : ""; })()}
+    ${S.mode === "liars" ? `<div class="panel">
+      <div class="stepper"><div class="txt"><b>Bots en la mesa</b><small>Mienten, desconfían y gatillan solos. En total, de 2 a 8.</small></div>
+        <div class="ctl"><button id="lieMenos" aria-label="Menos bots" ${S.lieCfg.bots <= 0 ? "disabled" : ""}>−</button><output>${S.lieCfg.bots}</output><button id="lieMas" aria-label="Más bots" ${S.lieCfg.bots >= 5 ? "disabled" : ""}>+</button></div></div>
+    </div>` : ""}
     ${S.mode === "chinchon" ? `<div class="panel">
       <div class="stepper"><div class="txt"><b>Compus en la mesa</b><small>Jugadores de la computadora. En total, de 2 a 5.</small></div>
         <div class="ctl"><button id="cpuMenos" aria-label="Menos compus" ${S.chCfg.cpus <= 0 ? "disabled" : ""}>−</button><output>${S.chCfg.cpus}</output><button id="cpuMas" aria-label="Más compus" ${S.chCfg.cpus >= 3 ? "disabled" : ""}>+</button></div></div>
@@ -267,7 +272,7 @@ PANTALLAS.players = () => {
       ${S.bkCfg.n > 2 && n >= 2 ? `<div class="opt"><div class="txt"><b>Personas en la misma pareja</b><small>${S.bkCfg.juntos ? "Juegan juntas contra las compus." : "Se reparten en las dos parejas."}</small></div><button class="switch" role="switch" aria-checked="${S.bkCfg.juntos}" id="bkJuntos" aria-label="Personas en la misma pareja"></button></div>` : ""}
       <p class="summary">${n >= S.bkCfg.n ? "" : `${S.bkCfg.n - n} compu${S.bkCfg.n - n > 1 ? "s" : ""} completa${S.bkCfg.n - n > 1 ? "n" : ""} la mesa. `}${n > 1 ? "Cuando le toca a otra persona, se pasan el teléfono." : ""}</p>
     </div>` : ""}
-    ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : 0), max = S.mode === "chinchon" ? 5 : S.mode === "truco" ? S.trCfg.n : S.mode === "burako" ? S.bkCfg.n : S.mode === "impostor" ? 99 : 8, ok = (S.mode === "truco" || S.mode === "burako" ? n >= 1 : tot >= min) && tot <= max && (S.mode !== "chinchon" || n >= 1);
+    ${(() => { const tot = n + (S.mode === "chinchon" ? S.chCfg.cpus : S.mode === "liars" ? S.lieCfg.bots : 0), max = S.mode === "chinchon" ? 5 : S.mode === "truco" ? S.trCfg.n : S.mode === "burako" ? S.bkCfg.n : S.mode === "impostor" ? 99 : 8, ok = (S.mode === "truco" || S.mode === "burako" ? n >= 1 : tot >= min) && tot <= max && (S.mode !== "chinchon" || n >= 1);
       return `${S.mode === "burako" && n > S.bkCfg.n ? `<p class="warn">En esta mesa juegan como mucho ${S.bkCfg.n} personas.</p>` : ""}${S.mode === "truco" && n > S.trCfg.n ? `<p class="warn">En ${S.trCfg.n / 2} contra ${S.trCfg.n / 2} juegan como mucho ${S.trCfg.n} personas.</p>` : ""}${S.mode === "chinchon" && tot > 5 ? `<p class="warn">El chinchón es de 2 a 5 jugadores (contando las compus).</p>` : ""}<div class="row"><button class="btn ghost" id="back">Inicio</button><button class="btn" id="next" ${ok ? "" : "disabled"}>${S.mode === "liars" ? "¡A la mesa!" : S.mode === "casos" ? "Elegir caso" : S.mode === "chinchon" || S.mode === "truco" || S.mode === "burako" ? "¡Repartir!" : S.mode === "ajedrez" || S.mode === "naval" ? "Listo" : "Elegir temas"}</button></div>`; })()}
   </section>`;
   const inp = byId("pname");
@@ -283,6 +288,8 @@ PANTALLAS.players = () => {
   app.querySelectorAll("[data-perfil]").forEach(b => b.onclick = () => { S.players.push(b.dataset.perfil); save(); render(); });
   on("back", () => go("home"));
   on("cpuMenos", () => { S.chCfg.cpus--; store.set("chCfg", S.chCfg); render(); });
+  on("lieMenos", () => { S.lieCfg.bots--; store.set("lieCfg", S.lieCfg); render(); });
+  on("lieMas", () => { S.lieCfg.bots++; store.set("lieCfg", S.lieCfg); render(); });
   on("cpuMas", () => { S.chCfg.cpus++; store.set("chCfg", S.chCfg); render(); });
   on("chCom", () => { S.chCfg.comodines = !S.chCfg.comodines; store.set("chCfg", S.chCfg); render(); });
   on("ch89", () => { S.chCfg.con89 = !S.chCfg.con89; store.set("chCfg", S.chCfg); render(); });

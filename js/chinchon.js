@@ -255,16 +255,27 @@ const Chin = {
   },
   empezarOn(R) {
     const jug = R.players.filter(p => p.on);
-    if (jug.length < 2) return "Hacen falta al menos 2 jugadores.";
+    const cpus = Math.max(jug.length < 2 ? 1 : 0, Math.min(S.chCfg.cpus | 0, 5 - jug.length));
+    if (jug.length + cpus < 2) return "Hacen falta al menos 2 jugadores.";
     if (jug.length > 5) return "El chinchón es de 2 a 5 jugadores.";
-    R.chi = Chin.setup(jug.map(p => ({ id: p.id, name: p.name })), S.chCfg);
-    R.game = "chinchon";
+    R.chi = Chin.setup([...jug.map(p => ({ id: p.id, name: p.name })), ...CPU_NOMBRES.concat(["🤖 Cacho"]).slice(0, cpus).map((name, i) => ({ id: "c" + i, name, cpu: true }))], S.chCfg);
+    R.game = "chinchon"; Chin.programarHost(R);
     return null;
   },
   actOn(R, pid, a) {
-    if (a.t === "again" && pid === "H") { R.chi = Chin.setup(R.chi.jug.map(j => ({ id: j.id, name: j.name })), R.chi.cfg); return; }
+    if (a.t === "again" && pid === "H") { R.chi = Chin.setup(R.chi.jug.map(j => ({ id: j.id, name: j.name, cpu: j.cpu })), R.chi.cfg); Chin.programarHost(R); return; }
     if (a.t === "lobby" && pid === "H") { R.game = null; R.chi = null; return; }
     Chin.act(R.chi, pid, a);
+    Chin.programarHost(R);
+  },
+  /* Online: las compus juegan en el teléfono del anfitrión */
+  timer: null,
+  programarHost(R) {
+    const s = R.chi;
+    if (!s || !(s.fase === "robar" || s.fase === "tirar") || !s.jug[s.turno].cpu) return;
+    const k = s.id + s.ronda + s.turno + s.fase + s.mazo.length + s.descarte.length;
+    if (Chin.timer === k) return; Chin.timer = k;
+    setTimeout(() => { if (R.chi !== s || R.game !== "chinchon" || Chin.timer !== k) return; Chin.timer = null; Chin.jugarCompu(s); Net.broadcast(); Chin.programarHost(R); }, 900 + Math.random() * 500);
   }
 };
 

@@ -15,7 +15,7 @@ const Lie = {
 
   setup(players) {
     const s = {
-      players: players.map(p => ({ id: p.id, name: p.name, alive: true, hand: [], bullet: Math.floor(Math.random() * 6), pulls: 0 })),
+      players: players.map(p => ({ id: p.id, name: p.name, cpu: !!p.cpu, alive: true, hand: [], bullet: Math.floor(Math.random() * 6), pulls: 0 })),
       ronda: 0, phase: "turn", table: null, turn: 0, last: null, rev: null, winner: null, winnerId: null,
       id: "lie-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), stats: Object.fromEntries(players.map(p => [p.id, { aciertos: 0, clics: 0 }]))
     };
@@ -90,7 +90,7 @@ const Lie = {
     const v = {
       game: "liars", phase: s.phase, me: pid, ronda: s.ronda, table: s.table,
       turnId: turnP ? turnP.id : null, turnName: turnP ? turnP.name : "",
-      players: s.players.map(p => ({ id: p.id, name: p.name, alive: p.alive, n: p.hand.length, pulls: p.pulls })),
+      players: s.players.map(p => ({ id: p.id, name: p.name, cpu: !!p.cpu, alive: p.alive, n: p.hand.length, pulls: p.pulls })),
       hand: me >= 0 ? s.players[me].hand : [],
       last: s.last ? { name: s.players[s.last.i].name, n: s.last.n } : null,
       forced: Lie.obligado(s),
@@ -110,7 +110,8 @@ const Lie = {
   /* opts: { local, isHost } */
   render(v, send, opts) {
     const T = CARTA[v.table];
-    const yoTurno = opts.local || v.turnId === v.me;
+    const turnoBot = !!(v.players.find(p => p.id === v.turnId) || {}).cpu;
+    const yoTurno = opts.local ? !turnoBot : v.turnId === v.me;
     const tira = `<div class="mesa-jug">${v.players.map(p => `<div class="mj ${p.id === v.turnId && v.phase === "turn" ? "turno" : ""} ${p.alive ? "" : "muerto"}">
       ${avatar(p.name, 40, p.alive ? "civ" : "muerto")}<span class="mj-n">${esc(p.name)}${p.id === v.me && !opts.local ? " (tú)" : ""}</span>
       <span class="mj-d">${p.alive ? `${p.n} 🂠 · ${p.pulls}/6` : "Fuera"}</span></div>`).join("")}</div>`;
@@ -120,7 +121,7 @@ const Lie = {
     let body = "";
 
     if (v.phase === "turn") {
-      if (opts.local && UI.gate !== v.turnId) {
+      if (opts.local && opts.gate && !turnoBot && UI.gate !== v.turnId) {
         body = `${banner}${tira}${ultima}
           <div class="stage passto"><p class="label" style="margin:0">Pásale el teléfono a</p><div class="who">${esc(v.turnName)}</div>
           <button class="btn" id="soy">Soy ${esc(v.turnName)}, ver mis cartas</button></div>`;
@@ -135,7 +136,7 @@ const Lie = {
           </div>`;
       }
     } else if (v.phase === "reveal" || v.phase === "shot") {
-      const r = v.rev, puedeGatillar = opts.local || r.shooterId === v.me;
+      const r = v.rev, tiraBot = !!(v.players.find(p => p.id === r.shooterId) || {}).cpu, puedeGatillar = opts.local ? !tiraBot : r.shooterId === v.me;
       const chance = 6 - r.pulls;
       body = `${banner}
         <div class="acusa"><b>${esc(r.caller)}</b> acusa a <b>${esc(r.accused)}</b> de mentir</div>
@@ -174,9 +175,45 @@ const Lie = {
     on("salir", () => go("home"));
   },
 
+  /* ---- Bots ---- */
+  /* Chance de que lo último que se tiró sea verdad, con lo que el bot sabe (su mano y cuántas cartas hay de cada una) */
+  creible(s, i) {
+    const yo = s.players[i], vivos = s.players.filter(p => p.alive).length, J = Math.ceil(vivos / 2), resto = vivos * 5 - J, base = Math.floor(resto / 3);
+    const buenas = base + (["Q", "K", "A"].indexOf(s.table) < resto - base * 3 ? 1 : 0) + J;           // de la mesa + comodines en el mazo
+    const misBuenas = yo.hand.filter(c => c === s.table || c === "J").length;
+    let quedan = buenas - misBuenas, pool = vivos * 5 - yo.hand.length, p = 1;
+    for (let k = 0; k < s.last.n; k++) { p *= Math.max(0, quedan - k) / Math.max(1, pool - k); }
+    return p;
+  },
+  decidirBot(s) {
+    const i = s.turn, yo = s.players[i];
+    if (s.phase === "reveal") return s.players[s.rev.shooter].cpu ? { t: "shoot", quien: s.players[s.rev.shooter].id } : null;
+    if (s.phase !== "turn" || !yo || !yo.cpu) return null;
+    if (Lie.obligado(s)) return { t: "call" };
+    if (s.last && s.last.i !== i) {
+      // La mayoría dice la verdad si puede: se desconfía cuando es casi imposible que tenga tantas buenas
+      const p = Lie.creible(s, i), n = s.last.n, sospecha = n === 3 ? 0.35 : n === 2 ? 0.2 : 0.08;
+      if (p < sospecha || Math.random() < 0.06 || !yo.hand.length) return { t: "call" };
+    }
+    const buenas = yo.hand.map((c, k) => [c, k]).filter(([c]) => c === s.table || c === "J").sort((a, b) => (a[0] === "J") - (b[0] === "J"));
+    const malas = yo.hand.map((c, k) => [c, k]).filter(([c]) => !(c === s.table || c === "J"));
+    // Verdad: 1 o 2 de las buenas (los comodines al final). Mentira: 1 mala (o a veces se mezcla).
+    if (buenas.length && (Math.random() > 0.12 || !malas.length)) return { t: "play", cards: buenas.slice(0, Math.min(buenas.length, Math.random() < 0.5 ? 1 : 2)).map(x => x[1]) };
+    if (malas.length) return { t: "play", cards: Math.random() < 0.25 && buenas.length ? [malas[0][1], buenas[0][1]] : [malas[0][1]] };
+    return { t: "play", cards: [0] };
+  },
+  jugarBot(s, conPid) {
+    const a = Lie.decidirBot(s); if (!a) return false;
+    const quien = a.quien || s.players[s.turn].id;
+    Lie.act(s, conPid ? quien : null, a);
+    return true;
+  },
+  hayBot(s) { return s.phase === "turn" ? !!(s.players[s.turn] || {}).cpu : s.phase === "reveal" ? !!s.players[s.rev.shooter].cpu : false; },
+
   /* ---- Modo un teléfono ---- */
   empezarLocal() {
-    S.lie = Lie.setup(S.players.map((name, i) => ({ id: "p" + i, name })));
+    const bots = CPU_NOMBRES.concat(["🤖 Cacho", "🤖 Coca"]).slice(0, S.lieCfg.bots).map((name, i) => ({ id: "b" + i, name, cpu: true }));
+    S.lie = Lie.setup([...S.players.map((name, i) => ({ id: "p" + i, name })), ...bots]);
     UI.gate = null; UI.sel = [];
     go("liars");
   },
@@ -184,24 +221,43 @@ const Lie = {
   /* ---- Modo online ---- */
   empezarOn(R) {
     const jug = R.players.filter(p => p.on);
-    if (jug.length < 2) return "Hacen falta al menos 2 jugadores.";
     if (jug.length > 8) return "La mesa admite hasta 8 jugadores.";
-    R.lie = Lie.setup(jug.map(p => ({ id: p.id, name: p.name })));
-    R.game = "liars";
+    const faltan = Math.max(0, Math.min(8, Math.max(2, S.lieCfg.mesa)) - jug.length);
+    const bots = CPU_NOMBRES.concat(["🤖 Cacho", "🤖 Coca", "🤖 Lalo", "🤖 Mora"]).slice(0, faltan).map((name, i) => ({ id: "b" + i, name, cpu: true }));
+    R.lie = Lie.setup([...jug.map(p => ({ id: p.id, name: p.name })), ...bots]);
+    R.game = "liars"; Lie.programarHost(R);
     return null;
   },
+  programarHost(R) {
+    const s = R.lie;
+    if (!s || !Lie.hayBot(s)) return;
+    const k = s.id + s.ronda + s.phase + s.turn + (s.last ? s.last.n + "" + s.last.i : "") + s.players.map(p => p.hand.length).join("");
+    if (Lie.timer === k) return; Lie.timer = k;
+    setTimeout(() => { if (R.lie !== s || R.game !== "liars" || Lie.timer !== k) return; Lie.timer = null; Lie.jugarBot(s, true); Net.broadcast(); Lie.programarHost(R); }, s.phase === "reveal" ? 1600 : 1300 + Math.random() * 900);
+  },
+  timer: null,
   actOn(R, pid, a) {
     if (a.t === "again" && pid === "H") return Lie.empezarOn(R);
     if (a.t === "lobby" && pid === "H") { R.game = null; R.lie = null; return; }
     if (a.t === "next" && pid !== "H") return;
     Lie.act(R.lie, pid, a);
+    Lie.programarHost(R);
   }
 };
 
 PANTALLAS.liars = () => {
   const s = S.lie;
-  Lie.render(Lie.view(s, s.players[s.turn]?.id), a => {
+  const humanos = s.players.filter(p => !p.cpu), turno = s.players[s.turn];
+  // Con bots: se ve la mano de la persona (si hay varias, la del turno y se pasan el teléfono)
+  if (turno && !turno.cpu) UI.lieVe = turno.id;
+  const ve = humanos.length === 1 ? humanos[0].id : UI.lieVe || (humanos[0] || {}).id;
+  Lie.render(Lie.view(s, ve), a => {
     if (a.t === "again") return Lie.empezarLocal();
     Lie.act(s, null, a); render(); window.scrollTo(0, 0);
-  }, { local: true });
+  }, { local: true, gate: humanos.length > 1 });
+  // Juegan los bots
+  if (Lie.hayBot(s)) {
+    const k = s.id + s.ronda + s.phase + s.turn + (s.last ? s.last.n + "" + s.last.i : "") + s.players.map(p => p.hand.length).join("");
+    if (UI.liePens !== k) { UI.liePens = k; setTimeout(() => { if (S.screen !== "liars" || S.lie !== s || UI.liePens !== k) return; Lie.jugarBot(s, false); render(); }, s.phase === "reveal" ? 1600 : 1200 + Math.random() * 900); }
+  }
 };

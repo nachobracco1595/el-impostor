@@ -349,8 +349,9 @@ const Truco = {
 
     app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="screen truco">
       ${marcador}${mesa}
-      ${v.fase === "juego" ? `<p class="aj-estado tr-estado">${estado}</p>` : ""}${env ? `<p class="tr-env-linea">${env}</p>` : ""}
-      ${cartel}${botones}${v.fase !== "fin" ? mano : ""}
+      ${v.fase === "juego" ? `<p class="aj-estado tr-estado">${estado}</p>` : ""}
+      ${cartel}${v.fase !== "fin" ? mano : ""}
+      ${v.fase === "juego" ? `<div class="tr-botonera">${botones}</div>` : ""}${env ? `<p class="tr-env-linea">${env}</p>` : ""}
       <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">De mayor a menor: <b>1 de espadas</b>, <b>1 de bastos</b>, <b>7 de espadas</b>, <b>7 de oro</b>, los 3, los 2, el 1 de copa y de oro, los reyes (12), caballos (11), sotas (10), el 7 de copa y de basto, los 6, los 5 y los 4.<br>
         <b>Envido</b> (solo en la primera baza): dos cartas del mismo palo suman 20 más sus números (las figuras valen 0). Envido 2, real envido 3, falta envido lo que le falta al que va ganando. No querido: 1.<br>
         <b>Truco</b> 2, <b>retruco</b> 3, <b>vale cuatro</b> 4. Solo sube el equipo que quiso. Gana la mano quien gana 2 de las 3 bazas; en parda define la otra y, si son todas pardas, gana el mano. Se juega a ${v.a}.</p></details>

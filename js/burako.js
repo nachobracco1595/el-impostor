@@ -293,7 +293,7 @@ const Burako = {
         : v.fase === "robar" ? "🀄 <b>Tu turno:</b> robá del mazo o levantá todo el pozo."
         : sel.length === 0 ? "Elegí fichas para bajar un juego, tocá un juego tuyo para agregar, o elegí una para tirar."
         : jg ? `✅ ${jg.tipo === "esc" ? "Escalera" : "Pierna"} de ${jg.orden.length}${jg.orden.length >= 7 ? " · ¡canasta!" : ""}` : sel.length === 1 ? "Tirala o agregala a un juego tuyo." : sel.length < 3 ? "Un juego necesita 3 fichas o más." : "Esas fichas no forman un juego.";
-      if (jugando) botones = `<div class="bk-botones"><button class="btn" id="bkBajar" ${jg ? "" : "disabled"}>⬇️ Bajar</button><button class="btn danger" id="bkTirar" ${sel.length === 1 ? "" : "disabled"}>Tirar</button>${sel.length ? `<button class="btn ghost chico" id="bkLimpiar">✕</button>` : ""}</div>`;
+      botones = `<div class="bk-botones ${jugando ? "" : "oculta"}" ${jugando ? "" : `aria-hidden="true"`}><button class="btn" id="bkBajar" ${jg ? "" : "disabled"}>⬇️ Bajar</button><button class="btn danger" id="bkTirar" ${sel.length === 1 ? "" : "disabled"}>Tirar</button><button class="btn ghost chico" id="bkLimpiar" ${sel.length ? "" : "disabled"}>✕</button></div>`;
     }
     const mano = v.yo >= 0 && v.fase !== "fin" ? `<div class="panel bk-mano-panel"><div class="headrow"><span class="label">Tu mano · ${v.mano.length} fichas</span><button class="linkish" id="bkOrden">Ordenar por ${U.orden === "color" ? "número" : "color"}</button></div>
       <div class="bk-mano">${Burako.ordenar(v.mano, U.orden).map(t => Burako.ficha(t, `${jugando ? "toca" : ""} ${U.sel.includes(t) ? "sel" : ""}`, jugando ? `data-f="${t}" role="button" tabindex="0"` : "")).join("")}</div></div>` : "";

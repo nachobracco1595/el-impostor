@@ -32,13 +32,50 @@ const S = {
 const save = () => { store.set("players", S.players); store.set("themes", S.themes); store.set("cfg", S.cfg); };
 
 const PANTALLAS = {};
+
+/* Seguro para toques: si la pantalla cambió sola (jugó el rival o la compu, llegó la jugada online) y algo
+   tocable se corrió de lugar, un toque que llega enseguida no cuenta, porque el dedo apuntaba a lo que había antes.
+   Y si lo que se empezó a tocar desapareció en el medio del toque, tampoco. */
+const Toques = {
+  ultimoDedo: 0, quietoHasta: 0, abajo: null,
+  /* Dónde está cada jugada tocable (casilla, carta, ficha…) antes y después de redibujar */
+  foto() {
+    const m = new Map();
+    app.querySelectorAll(this.JUGADAS).forEach(el => {
+      const k = el.id || [...el.attributes].filter(x => x.name.startsWith("data-")).map(x => x.name + "=" + x.value).join("&");
+      if (k && !m.has(k)) { const r = el.getBoundingClientRect(); m.set(k, [r.left, r.top + scrollY]); }
+    });
+    return m;
+  },
+  /* Solo frena si la pantalla cambió sola y algo tocable quedó en otro lugar */
+  trasRender(antes) {
+    const t = performance.now();
+    if (!antes || !antes.size || t - this.ultimoDedo < 700) return;
+    for (const [k, [x, y]] of this.foto()) { const p = antes.get(k); if (p && (Math.abs(p[0] - x) > 8 || Math.abs(p[1] - y) > 8)) { this.quietoHasta = t + 400; return; } }
+  },
+  // Solo las jugadas dentro de los juegos (casillas, cartas, fichas, cantos); los botones de menús y del lobby no se frenan
+  JUGADAS: "[data-tiro], [data-sq], [data-f], [data-c], [data-ch], [data-ap], [data-agregar], [data-tr], [data-bin], [data-cambiar], #bkMazo, #bkDesc, #bkBajar, #bkTirar, #chMazo, #chDesc, #chTirar, #chCortar, #play, #call, #shoot",
+  esJuego(el) { return !!(el && el.closest && el.closest("#app") && el.closest(this.JUGADAS)); },
+  instalar() {
+    document.addEventListener("pointerdown", e => { this.ultimoDedo = performance.now(); this.abajo = e.target; }, true);
+    document.addEventListener("click", e => {
+      if (!e.detail || !this.esJuego(e.target)) return;          // con teclado (detail 0) no se bloquea
+      const ahora = performance.now(), tarde = ahora < this.quietoHasta, cambio = this.abajo && !this.abajo.isConnected && ahora - this.ultimoDedo < 1500;
+      if (tarde || cambio) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+  }
+};
+Toques.instalar();
+
 function render() {
   if (typeof Cuenta !== "undefined") Cuenta.prepararLooks();
   if (!S.online && !(typeof Net !== "undefined" && Net.activo())) fijarColores(S.players);
   if (typeof Evento !== "undefined") Evento.decorar();
   if (typeof Turno !== "undefined" && !(typeof Net !== "undefined" && Net.activo())) Turno.revisar(null);
   document.body.classList.toggle("en-ruleta", S.screen === "ruleta");
+  const antes = Toques.foto();
   (PANTALLAS[S.screen] || PANTALLAS.home)();
+  Toques.trasRender(antes);
   if (typeof Cuenta !== "undefined") Cuenta.revisar();
   if (typeof Sonido !== "undefined") Sonido.trasRender();
   if (typeof revisarDiario !== "undefined") revisarDiario();

@@ -529,7 +529,7 @@ label.btn { cursor: pointer; }
 .promo .pieza { width: 44px; height: 44px; }
 .casilla .lc, .casilla .lf { position: absolute; font-style: normal; font-size: 10px; font-weight: 800; color: rgba(27, 23, 38, .55); }
 .casilla .lc { right: 3px; bottom: 1px; } .casilla .lf { left: 3px; top: 1px; }
-.aj-estado { text-align: center; margin: 4px 0; }
+.aj-estado { text-align: center; margin: 4px 0; min-height: 2.9em; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 4px; }
 .aj-estado small { color: var(--muted); }
 .promo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .promo button { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 14px; background: #ecd6b4; border: 2px solid #5c3b1e; }
@@ -569,9 +569,12 @@ label.btn { cursor: pointer; }
 .flota-b { display: inline-block; width: 44px; height: 12px; }
 .flota-b svg { width: 100%; height: 100%; }
 .flota .hund { text-decoration: line-through; color: var(--red); }
-.nv-tit { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-.nv-turno { font-weight: 800; color: var(--spot); font-size: 14px; }
-.nv-aviso { text-align: center; padding: 10px 12px; border-radius: 14px; font-weight: 800; animation: aparece .3s ease; }
+.nv-tit { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: nowrap; min-height: 24px; }
+.nv-tit .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nv-turno { font-weight: 800; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-turno.mio { color: var(--spot); }
+.nv-aviso { text-align: center; padding: 0 12px; height: 44px; line-height: 44px; border-radius: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: aparece .3s ease; }
+.nv-aviso.vacio { background: rgba(255, 255, 255, .05); color: var(--muted); animation: none; }
 .nv-aviso.agua { background: #16406b; } .nv-aviso.toc { background: #7a2a12; } .nv-aviso.hund { background: var(--red); color: #fff; }
 
 /* ---------- Chinchón ---------- */
@@ -1156,3 +1159,9 @@ body.con-turno #app { padding-top: calc(56px + env(safe-area-inset-top, 0px)); }
 body.en-nave .voz-flot { bottom: auto; top: calc(246px + env(safe-area-inset-top, 0px)); left: auto; right: 14px; width: 46px; height: 46px; }
 body.en-nave .voz-panel { bottom: auto; top: calc(300px + env(safe-area-inset-top, 0px)); left: auto; right: 12px; }
 body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc(80px + env(safe-area-inset-top, 0px)); max-width: 80vw; }
+
+/* ---------- Pantallas quietas al cambiar de turno ---------- */
+.tr-botonera { min-height: 52px; display: flex; flex-direction: column; gap: 6px; }
+.bk-botones.oculta { visibility: hidden; }
+.bk-aviso { position: fixed; left: 50%; top: calc(120px + env(safe-area-inset-top, 0px)); translate: -50% 0; z-index: 40; padding: 10px 22px; pointer-events: none; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); white-space: nowrap; animation: bkAviso 2.6s ease forwards; }
+@keyframes bkAviso { 0% { opacity: 0; scale: .5; } 12% { opacity: 1; scale: 1.08; } 20% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }

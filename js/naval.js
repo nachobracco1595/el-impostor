@@ -147,9 +147,9 @@ const Naval = {
     } else {
       const miTurno = v.fase === "juego" && v.turno === yo && !Y.cpu;
       const u = v.ultimo;
-      const aviso = u ? `<div class="nv-aviso ${u.tocado ? (u.hundido ? "hund" : "toc") : "agua"}" data-n="${u.n}">${u.hundido ? `¡Hundido! ${esc(v.jug[u.por].name)} hundió el ${esc(u.hundido)}` : u.tocado ? `💥 ¡Tocado! ${esc(v.jug[u.por].name)} vuelve a disparar` : `💦 Agua. Turno de ${esc(v.jug[1 - u.por].name)}`}</div>` : "";
+      const aviso = u ? `<div class="nv-aviso ${u.tocado ? (u.hundido ? "hund" : "toc") : "agua"}" data-n="${u.n}">${u.hundido ? `¡Hundido! ${esc(v.jug[u.por].name)} hundió el ${esc(u.hundido)}` : u.tocado ? `💥 ¡Tocado! ${esc(v.jug[u.por].name)} vuelve a disparar` : `💦 Agua. Turno de ${esc(v.jug[1 - u.por].name)}`}</div>` : `<div class="nv-aviso vacio">⚓ ¡Que empiece la batalla!</div>`;
       body = `${v.fase === "fin" ? `<div class="verdict ${v.ganador === yo ? "good" : "bad"}"><div class="big">${v.ganador === yo ? "¡Ganaste la batalla!" : `Gana ${esc(v.jug[v.ganador].name)}`}</div><div class="note">Toda la flota enemiga está en el fondo del mar.</div></div>` : aviso}
-        <div class="nv-tit"><span class="label">Flota de ${esc(R.name)}${miTurno ? " · toca dónde disparar" : ""}</span>${v.fase === "juego" ? `<span class="nv-turno">${miTurno ? "🎯 Tu turno" : `Turno de ${esc(v.jug[v.turno].name)}`}</span>` : ""}</div>
+        <div class="nv-tit"><span class="label">Flota de ${esc(R.name)}</span>${v.fase === "juego" ? `<span class="nv-turno ${miTurno ? "mio" : ""}">${miTurno ? "🎯 Tu turno: tocá dónde disparar" : `Turno de ${esc(v.jug[v.turno].name)}`}</span>` : ""}</div>
         ${Naval.grilla(R, { disparo: miTurno, ultimo: u && u.por === yo ? u.c : null, cls: "enemiga" })}
         ${Naval.flotaHTML(R)}
         <div class="nv-tit"><span class="label">Tu flota</span></div>

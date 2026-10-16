@@ -43,6 +43,10 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - En cualquier sala online aparece el botón 🎙️ al lado del chat. El audio va directo de teléfono a teléfono (WebRTC con PeerJS), sin servidor propio.
 - Se puede silenciar el micrófono, se ve quién está hablando y la música del juego baja mientras hay voz. Con auriculares no hay eco.
 
+### Póker
+- Texas Hold'em en formato torneo: todos con las mismas fichas (de la mesa, no son las monedas), ciegas que suben cada 6 manos, gana el último que queda. Pozos laterales, all-in y desempates.
+- Mesa contra la máquina (1 a 5 bots, fácil/normal/difícil) u online con amigos: los lugares que sobran los ocupan bots. Los bots calculan su chance simulando manos (Monte Carlo) y algunos faroleán.
+
 ### Burako
 - Con fichas: del 1 al 13 en 4 colores (dos de cada una) y 2 comodines; los 2 también son comodín. 1 contra 1 o en parejas, con compus, en un teléfono y online.
 - Escaleras del mismo color y piernas del mismo número, un comodín por juego. Canasta (7 fichas): limpia 200, sucia 100. Muerto para cada equipo; se cierra con el muerto tomado y una canasta.
@@ -198,5 +202,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js`, `poker.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

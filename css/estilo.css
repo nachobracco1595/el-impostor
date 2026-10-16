@@ -1194,3 +1194,65 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .bk-sug.hay { background: var(--spot); border-color: var(--spot); color: #3a2400; animation: latido 1.4s ease-in-out infinite; }
 .bk-pila.sugerida small { color: var(--spot); } .bk-pila.sugerida .bk-f { box-shadow: 0 0 0 4px var(--spot), 0 0 18px rgba(255, 197, 61, .8) !important; }
 .bk-pila { width: 110px; } .bk-pila small { white-space: nowrap; }
+
+/* ---------- Póker ---------- */
+.t-pk { background: linear-gradient(150deg, #0f5132, var(--card) 70%); border-color: #1f7a4d; }
+.tb-juego.pk { background: linear-gradient(135deg, #0f5132, var(--card) 70%); border-color: #1f7a4d; }
+.pk-mini { display: flex; } .pk-mini .pk-c { width: 38px; height: 54px; } .pk-mini .pk-c em { width: 18px; height: 18px; } .pk-mini .pk-c + .pk-c { margin-left: -12px; rotate: 10deg; } .pk-mini .pk-c:first-child { rotate: -8deg; }
+.poker { gap: 10px; }
+.pk-c { --pc: #1b1726; position: relative; display: inline-flex; flex: none; width: 44px; height: 62px; border-radius: 7px; background: #fff; color: var(--pc); box-shadow: 0 2px 0 rgba(0, 0, 0, .25), 0 3px 8px rgba(0, 0, 0, .35); user-select: none; }
+.pk-c b { position: absolute; top: 3px; left: 5px; font: 900 16px/1 system-ui, sans-serif; }
+.pk-c i { position: absolute; top: 20px; left: 4px; width: 11px; height: 11px; display: block; }
+.pk-c em { position: absolute; right: 4px; bottom: 4px; width: 22px; height: 22px; display: block; }
+.pk-c svg { width: 100%; height: 100%; display: block; }
+.pk-c.dorso { background: repeating-linear-gradient(45deg, #b02a37 0 5px, #8f1f2b 5px 10px); box-shadow: inset 0 0 0 3px #fff, 0 3px 8px rgba(0, 0, 0, .35); }
+.pk-c.hueco { background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .15); }
+.pk-c.mini { width: 26px; height: 36px; border-radius: 4px; } .pk-c.mini b { font-size: 11px; top: 2px; left: 3px; } .pk-c.mini i { display: none; } .pk-c.mini em { width: 13px; height: 13px; right: 2px; bottom: 2px; }
+.pk-c.grande { width: 64px; height: 90px; border-radius: 9px; } .pk-c.grande b { font-size: 24px; } .pk-c.grande i { top: 29px; width: 15px; height: 15px; } .pk-c.grande em { width: 34px; height: 34px; right: 5px; bottom: 6px; }
+.pk-c.comun { animation: trTira .35s cubic-bezier(.2, .9, .3, 1.2); }
+.pk-c.brilla { box-shadow: 0 0 0 3px var(--spot), 0 0 14px rgba(255, 197, 61, .8); }
+.pk-info { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 700; }
+.pk-info b { color: var(--spot); }
+.pk-mesa { position: relative; width: 100%; aspect-ratio: 1 / .95; max-height: 56vh; margin-inline: auto; border-radius: 46% / 42%;
+  background: radial-gradient(ellipse at 50% 45%, #1f7a4d 0%, #136a40 55%, #0c4a2c 100%); border: 10px solid #4a2a14; box-shadow: inset 0 0 0 2px #7a4a22, inset 0 0 40px rgba(0, 0, 0, .45), 0 10px 24px rgba(0, 0, 0, .45); }
+.pk-centro { position: absolute; left: 50%; top: 48%; translate: -50% -50%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pk-comun { display: flex; gap: 3px; }
+.pk-pozo { padding: 3px 12px; border-radius: 999px; background: rgba(0, 0, 0, .4); color: #fff; font-size: 13px; font-weight: 700; } .pk-pozo b { color: var(--spot); }
+.pk-asiento { position: absolute; translate: -50% -50%; display: flex; flex-direction: column; align-items: center; gap: 1px; width: 82px; text-align: center; z-index: 5; }
+.pk-asiento b { font-size: 11px; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(0, 0, 0, .5); padding: 1px 6px; border-radius: 8px; }
+.pk-asiento small { font-size: 11px; font-weight: 800; color: var(--spot); }
+.pk-asiento.juega .pk-ava { box-shadow: 0 0 0 3px var(--spot), 0 0 14px rgba(255, 197, 61, .8); border-radius: 50%; animation: latido 1.4s ease-in-out infinite; }
+.pk-asiento.retirado { opacity: .45; } .pk-asiento.fuera { opacity: .25; }
+.pk-asiento.gana .pk-ava { box-shadow: 0 0 0 3px var(--teal), 0 0 16px rgba(61, 220, 177, .9); border-radius: 50%; }
+.pk-ava { position: relative; }
+.pk-boton { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #1b1726; font: 900 10px/1 system-ui, sans-serif; font-style: normal; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+.pk-ava .pk-boton { position: absolute; right: -10px; bottom: -2px; }
+.pk-mano-r { display: flex; gap: 2px; }
+.pk-dicho { position: absolute; bottom: calc(100% + 2px); left: 50%; translate: -50% 0; white-space: nowrap; padding: 3px 8px; border-radius: 10px; background: #fff; color: #1b1726; font-size: 11px; font-weight: 800; box-shadow: 0 2px 0 rgba(0, 0, 0, .3); z-index: 8; animation: trCanto .35s ease; }
+.pk-asiento.yo { width: 0; height: 0; } .pk-asiento.yo .pk-dicho { bottom: 6px; }
+.pk-dicho.abajo { bottom: auto; top: calc(100% + 2px); }
+.pk-est { color: #fff; opacity: .8; font-weight: 700; }
+.pk-ficha-ap { position: absolute; translate: -50% -50%; z-index: 4; padding: 1px 7px; border-radius: 999px; background: #ffd43b; color: #3a2400; font-size: 11px; font-weight: 900; box-shadow: 0 2px 0 #b98d00; white-space: nowrap; }
+.pk-yo { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: var(--felt); border: 2px solid var(--felt-line); }
+.pk-yo.juega { border-color: var(--spot); } .pk-yo.gana { border-color: var(--teal); }
+.pk-mis { display: flex; gap: 4px; }
+.pk-yo-dat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pk-fichas { font-family: var(--display); font-size: 22px; color: var(--spot); line-height: 1; }
+.pk-yo-dat small { color: #a9cfc0; font-size: 13px; } .pk-yo-dat small b { color: #fff; }
+.pk-barra { display: flex; flex-direction: column; gap: 8px; }
+.pk-subir { display: flex; flex-direction: column; gap: 6px; }
+.pk-subir input[type=range] { width: 100%; accent-color: var(--spot); height: 28px; }
+.pk-rapidos { display: flex; gap: 6px; } .pk-rapidos .btn { flex: 1; }
+.pk-acc { display: flex; gap: 6px; } .pk-acc .btn { flex: 1; padding-inline: 6px; }
+.pk-sube { background: #e8590c; border-color: #e8590c; color: #fff; }
+.pk-res { text-align: center; padding: 10px; border-radius: 16px; background: var(--card); border: 2px solid var(--teal); line-height: 1.5; animation: aparece .4s ease; }
+.pk-res i { font-style: normal; color: var(--spot); font-weight: 800; }
+.pk-mesa.n8 .pk-asiento { width: 70px; } .pk-mesa.n8 .pk-c.mini, .pk-mesa.n7 .pk-c.mini { width: 22px; height: 31px; }
+@media (max-width: 380px) { .pk-c.grande { width: 56px; height: 80px; } .pk-mesa .pk-comun .pk-c { width: 38px; height: 54px; } }
+/* Póker: la mesa respira (las cartas del centro no pisan a los de los costados) */
+.pk-comun .pk-c { width: 36px; height: 52px; border-radius: 6px; } .pk-comun .pk-c b { font-size: 14px; } .pk-comun .pk-c i { top: 18px; width: 10px; height: 10px; } .pk-comun .pk-c em { width: 18px; height: 18px; }
+.pk-comun { gap: 2px; }
+.pk-asiento .pk-c.mini { width: 18px; height: 26px; border-radius: 3px; } .pk-asiento .pk-c.mini b { font-size: 9px; top: 1px; left: 2px; } .pk-asiento .pk-c.mini em { width: 9px; height: 9px; right: 1px; bottom: 1px; }
+.pk-asiento.gana .pk-c.mini { width: 26px; height: 36px; } .pk-asiento.gana .pk-c.mini b { font-size: 11px; } .pk-asiento.gana .pk-c.mini em { width: 13px; height: 13px; }
+/* Que los controles de música no tapen los últimos botones */
+.poker, .burako, .truco, .chinchon, .bingo, .slots, .naval-screen, .ajedrez { padding-bottom: 72px; }

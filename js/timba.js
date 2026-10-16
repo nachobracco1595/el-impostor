@@ -335,11 +335,13 @@ PANTALLAS.casino = () => {
     <button class="tb-juego ru" id="tbRuleta"><span class="tb-art">🎡</span><div><b>Ruleta</b><small>Europea, con un solo cero. Plenos 35 a 1.</small></div></button>
     <span class="label">Tragamonedas</span>
     <div class="tb-maqs">${Object.entries(MAQUINAS).map(([k, m]) => `<button class="tb-juego ${m.tema}" data-maq="${k}"><span class="tb-art">${m.ic}</span><div><b>${esc(m.nombre)}</b><small>${esc(m.desc)}</small></div></button>`).join("")}</div>
+    <button class="tb-juego pk" id="tbPoker"><span class="tb-art">🃏</span><div><b>Póker</b><small>Texas Hold'em contra bots (con fichas de la mesa).</small></div></button>
     <button class="tb-juego bi" id="tbBingo"><span class="tb-art">🎱</span><div><b>Bingo</b><small>Contra compus acá, o con amigos en "Jugar online". Hasta 3 cartones.</small></div></button>
     <p class="tb-aviso">Las monedas son del juego: no se compran ni se cambian por plata. Si un día te quedas sin monedas, juega partidas, trabajos o cobra el premio diario.</p>
   </section>`;
   on("tbAtras", () => go("home"));
   on("tbRuleta", () => go("ruleta"));
   on("tbBingo", () => go("bingoSolo"));
+  on("tbPoker", () => go("pokerIntro"));
   app.querySelectorAll("[data-maq]").forEach(b => b.onclick = () => { UI.maquina = b.dataset.maq; go("slots"); });
 };

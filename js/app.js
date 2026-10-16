@@ -19,6 +19,7 @@ const S = {
   used: store.get("used", []),
   chCfg: Object.assign({ comodines: true, con89: true, cpus: 1 }, store.get("chCfg", {})),
   trCfg: Object.assign({ n: 2, a: 30, juntos: false }, store.get("trCfg", {})),
+  pkCfg: Object.assign({ bots: 3, nivel: "normal", fichas: 1000, mesa: 4 }, store.get("pkCfg", {})),
   bkCfg: Object.assign({ n: 2, meta: 1500, juntos: false }, store.get("bkCfg", {})),
   biCfg: Object.assign({ valor: 10, n: 1, cpus: 5, vel: 2500 }, store.get("biCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
@@ -159,6 +160,7 @@ function juegosMenu() {
     ["casos", "Detectives", `${CASOS.length} casos para resolver en grupo.`, personaje("#e8e8e8", "civ", 64, ["sombrero", "lupa"]), "t-cas"],
     ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
     ["truco", "Truco", "Envido, truco y vale cuatro.", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "t-tru"],
+    ["poker", "Póker", "Texas Hold'em contra bots o amigos.", `<span class="pk-mini">${Poker.carta("As")}${Poker.carta("Kh")}</span>`, "t-pk"],
     ["burako", "Burako", "Escaleras, piernas y canastas.", `<span class="bk-mini">${Burako.ficha("R07a")}${Burako.ficha("A08a")}${Burako.ficha("J00a")}</span>`, "t-bk"],
     ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
     ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
@@ -189,6 +191,7 @@ PANTALLAS.home = () => {
     if (S.mode === "nave") return go("naveIntro");
     if (S.mode === "trabajos") return go("trabajos");
     if (S.mode === "casino") return go("casino");
+    if (S.mode === "poker") return go("pokerIntro");
     if (S.mode === "arena") return go("arenaIntro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });

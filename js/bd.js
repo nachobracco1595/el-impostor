@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -25,6 +25,8 @@ const LOGROS = [
   { id: "garganta", ic: "🤫", nombre: "Garganta profunda", desc: "Gana como soplón.", ok: u => u.stats.casos.soplonG >= 1 },
   { id: "chinchon", ic: "🃏", nombre: "¡Chinchón!", desc: "Haz una escalera de siete del mismo palo.", ok: u => u.stats.chinchon.chinchones >= 1 },
   { id: "menos10", ic: "➖", nombre: "Menos diez", desc: "Corta con todas las cartas ligadas.", ok: u => u.stats.chinchon.menos10 >= 1 },
+  { id: "tiburon", ic: "🦈", nombre: "Tiburón del póker", desc: "Gana un torneo de póker.", ok: u => u.stats.poker.g >= 1 },
+  { id: "fullhouse", ic: "🃏", nombre: "Mano de lujo", desc: "Liga póker o escalera de color en el póker.", ok: u => (u.stats.poker.mejorCat ?? -1) >= 7 },
   { id: "burakero", ic: "🀄", nombre: "Burakero", desc: "Gana 5 partidas de Burako.", ok: u => u.stats.burako.g >= 5 },
   { id: "canastera", ic: "🧺", nombre: "Canasta limpia", desc: "Arma 3 canastas limpias en el Burako.", ok: u => u.stats.burako.limpias >= 3 },
   { id: "truquero", ic: "🗡️", nombre: "Truquero", desc: "Gana 10 partidas de truco.", ok: u => u.stats.truco.g >= 10 },
@@ -56,6 +58,7 @@ function statsVacias() {
     chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
     truco: { j: 0, g: 0, p: 0, envidos: 0, vale4: 0, e33: 0 },
     burako: { j: 0, g: 0, p: 0, limpias: 0, cierres: 0 },
+    poker: { j: 0, g: 0, p: 0, manos: 0, mejorCat: -1, podios: 0 },
     naval: { j: 0, g: 0, p: 0, hundidos: 0, intactaG: 0 },
     ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
     nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
@@ -171,6 +174,8 @@ const BD = {
       st.clics += res.clics; st.aciertos += res.aciertos;
     } else if (res.juego === "chinchon") {
       st.chinchones += res.chinchon ? 1 : 0; st.menos10 += res.menos10; st.cortes += res.cortes;
+    } else if (res.juego === "poker") {
+      st.manos += res.manos | 0; st.mejorCat = Math.max(st.mejorCat ?? -1, res.mejorCat ?? -1); if (res.puesto <= 3 && res.n > 3) st.podios++;
     } else if (res.juego === "burako") {
       st.limpias += res.limpias | 0; st.cierres += res.cierres | 0;
     } else if (res.juego === "truco") {
@@ -260,6 +265,8 @@ const Puntos = {
     ["Detectives: votar al culpable", "+10"],
     ["Detectives: ganar como soplón", "+35"],
     ["Chinchón: ganar la partida", "+20, +5 por rival"],
+    ["Póker: ganar el torneo (con personas / contra bots)", "+30 / +15"],
+    ["Póker: segundo puesto (mesa de 4 o más)", "+10"],
     ["Burako: ganar la partida (contra personas / la compu)", "+25 / +12"],
     ["Burako: canasta limpia / cerrar", "+4 / +5 cada vez"],
     ["Truco: ganar la partida (contra personas / la compu)", "+25 / +12"],
@@ -303,6 +310,10 @@ const Puntos = {
       const cortesComunes = r.cortes - r.menos10;
       if (cortesComunes > 0) d.push([`Cortaste ${cortesComunes} ${cortesComunes > 1 ? "veces" : "vez"}`, 3 * cortesComunes]);
       if (r.menos10) d.push([`Cortaste con −10 (${r.menos10})`, 8 * r.menos10]);
+    } else if (r.juego === "poker") {
+      if (r.manos) d.push([`Ganaste ${r.manos} mano${r.manos > 1 ? "s" : ""}`, Math.min(20, r.manos)]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Ganaste el torneo contra los bots" : "Ganaste el torneo", r.vsCompu ? 15 : 30]); }
+      else if (r.puesto === 2 && r.n >= 4) d.push(["Segundo puesto", 10]);
     } else if (r.juego === "burako") {
       if (r.limpias) d.push([`${r.limpias} canasta${r.limpias > 1 ? "s" : ""} limpia${r.limpias > 1 ? "s" : ""}`, 4 * Math.min(10, r.limpias)]);
       if (r.cierres) d.push([`Cerraron ${r.cierres} ${r.cierres > 1 ? "veces" : "vez"}`, 5 * Math.min(10, r.cierres)]);

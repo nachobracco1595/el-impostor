@@ -671,6 +671,58 @@ label.btn { cursor: pointer; }
 .tr-mini { display: flex; } .tr-mini .ce { width: 40px; height: 60px; font-size: 10px; } .tr-mini .ce + .ce { margin-left: -14px; rotate: 8deg; } .tr-mini .ce:first-child { rotate: -10deg; }
 @media (max-width: 380px) { .tr-carta .ce { width: 62px; height: 94px; } .tr-jugada .ce { width: 36px; height: 55px; } .tr-asiento { width: 70px; } }
 
+/* ---------- Burako ---------- */
+.t-bk { background: linear-gradient(150deg, #1f3b5c, var(--card) 70%); border-color: #2f5f8f; }
+.bk-mini { display: flex; } .bk-mini .bk-f { width: 30px; height: 42px; } .bk-mini .bk-f b { font-size: 18px; } .bk-mini .bk-f + .bk-f { margin-left: -6px; }
+.bk-mini .bk-f:nth-child(1) { rotate: -8deg; } .bk-mini .bk-f:nth-child(3) { rotate: 8deg; }
+.burako { gap: 10px; }
+.bk-f { --fc: #212529; position: relative; display: inline-grid; place-items: center; width: 38px; height: 54px; flex: none; border-radius: 7px;
+  background: linear-gradient(180deg, #fffdf5, #efe6cf); box-shadow: 0 3px 0 #b9ad8c, 0 4px 6px rgba(0, 0, 0, .35); color: var(--fc); user-select: none; transition: transform .12s, box-shadow .12s; }
+.bk-f b { font: 900 22px/1 system-ui, sans-serif; }
+.bk-f i { position: absolute; bottom: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--fc); opacity: .8; }
+.bk-f.joker { color: #c2255c; background: linear-gradient(180deg, #fff0f6, #f3d9fa); } .bk-f.joker b { font-size: 24px; }
+.bk-f.dos::after { content: "★"; position: absolute; top: 2px; right: 3px; font-size: 8px; color: #c2255c; }
+.bk-f.dorso { background: repeating-linear-gradient(45deg, #2f5f8f 0 5px, #24507a 5px 10px); box-shadow: 0 3px 0 #163452, 0 4px 6px rgba(0, 0, 0, .35); }
+.bk-f.vacio { background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .15); }
+.bk-f.mini { width: 22px; height: 30px; border-radius: 4px; box-shadow: 0 2px 0 #b9ad8c; } .bk-f.mini b { font-size: 13px; } .bk-f.mini i { display: none; } .bk-f.mini.dos::after { font-size: 6px; top: 0; right: 1px; }
+.bk-f.toca { cursor: pointer; }
+.bk-f.sel { transform: translateY(-9px); box-shadow: 0 0 0 3px var(--spot), 0 8px 12px rgba(0, 0, 0, .45); }
+.bk-marcador { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bk-eq { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 14px; background: var(--card); border: 2px solid var(--line); min-width: 0; }
+.bk-eq.nos { border-color: rgba(61, 220, 177, .6); } .bk-eq.ellos { border-color: rgba(255, 77, 99, .55); }
+.bk-eq b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-pts { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--spot); font-variant-numeric: tabular-nums; }
+.bk-eq small { font-size: 11px; color: var(--muted); }
+.bk-rivales { display: flex; gap: 6px; flex-wrap: wrap; }
+.bk-riv { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--card); border: 2px solid var(--line); font-size: 13px; }
+.bk-riv.nos { border-color: rgba(61, 220, 177, .5); } .bk-riv.turno { box-shadow: 0 0 0 2px var(--spot); }
+.bk-riv span { color: var(--muted); font-weight: 700; }
+.bk-mesa { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 18px; background: radial-gradient(ellipse at 50% 40%, #1f5a7a, #12384f 75%); border: 6px solid #3b2a1a; box-shadow: inset 0 0 24px rgba(0, 0, 0, .5); }
+.bk-lado .label { color: #a5d8ff; }
+.bk-juegos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; min-height: 34px; }
+.bk-juegos .empty { margin: 0; font-size: 13px; color: rgba(255, 255, 255, .45); }
+.bk-juego { position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 8px; background: rgba(0, 0, 0, .25); border: 2px solid transparent; color: inherit; font: inherit; }
+.bk-juego:disabled { opacity: 1; cursor: default; }
+.bk-juego.canasta.limpia { border-color: #ffd43b; background: rgba(255, 212, 59, .18); } .bk-juego.canasta.sucia { border-color: #adb5bd; background: rgba(173, 181, 189, .15); }
+.bk-juego em { position: absolute; top: -9px; left: 6px; padding: 0 5px; border-radius: 6px; font-style: normal; font-size: 9px; font-weight: 800; text-transform: uppercase; background: #ffd43b; color: #3a2400; }
+.bk-juego.sucia em { background: #adb5bd; color: #212529; }
+.bk-juego.acepta { border-color: var(--teal); box-shadow: 0 0 12px rgba(61, 220, 177, .7); animation: latido 1.2s ease-in-out infinite; }
+.bk-juego strong { position: absolute; right: -8px; top: -10px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: #08261c; font-size: 14px; }
+.bk-centro { display: flex; justify-content: center; gap: 22px; padding: 6px 0; border-block: 1px dashed rgba(255, 255, 255, .12); }
+.bk-pila { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: none; color: #a5d8ff; font-size: 11px; font-weight: 800; }
+.bk-pila:not(:disabled) .bk-f { animation: latido 1.4s ease-in-out infinite; box-shadow: 0 0 0 3px var(--spot), 0 4px 6px rgba(0, 0, 0, .35); }
+.bk-pila:disabled { opacity: 1; cursor: default; }
+.bk-estado { margin: 0; }
+.bk-botones { display: flex; gap: 6px; } .bk-botones .btn { flex: 1; } .bk-botones .btn.chico { flex: 0 0 48px; }
+.bk-mano-panel { background: var(--felt); border-color: var(--felt-line); }
+.bk-mano { display: flex; flex-wrap: wrap; gap: 8px 5px; padding-top: 10px; justify-content: center; }
+.bk-aviso { text-align: center; padding: 8px; border-radius: 14px; font-family: var(--display); font-size: 22px; animation: trCanto .5s cubic-bezier(.2, 1.4, .4, 1); }
+.bk-aviso.nos { background: #2b8a3e; color: #fff; } .bk-aviso.ellos { background: #c92a2a; color: #fff; }
+.bk-cuenta { width: 100%; border-collapse: collapse; font-size: 14px; }
+.bk-cuenta th, .bk-cuenta td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); } .bk-cuenta th:first-child, .bk-cuenta td:first-child { text-align: left; }
+.bk-cuenta td.neg { color: var(--red); }
+@media (max-width: 380px) { .bk-f { width: 34px; height: 48px; } .bk-f b { font-size: 19px; } }
+
 /* ---------- Casino ---------- */
 .t-casino { background: linear-gradient(150deg, #4a1238, var(--card) 70%); border-color: #8a2a5e; }
 .tb-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 6px; }

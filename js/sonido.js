@@ -256,7 +256,7 @@ const Sonido = {
     [".passto .who", "pasa"], [".expediente .exp-t", "maquina"], [".nota.nueva", "papel"],
     [".starter", "empieza"], [".tablero", "pieza"], [".casilla.jaque", "jaque"],
     [".nv-aviso.agua", "agua"], [".nv-aviso.toc", "tocado"], [".nv-aviso.hund", "hundido"],
-    [".ch-mesa", "carta"], [".tr-mesa", "carta"], [".tr-burbuja", "canto"], [".tr-fin-mano", "voltea"], [".bi-actual", "bolilla"], [".bi-canto.linea", "bien"], [".bi-canto.bingo", "victoria"], [".ch-cierre", "voltea"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
+    [".ch-mesa", "carta"], [".tr-mesa", "carta"], [".tr-burbuja", "canto"], [".tr-fin-mano", "voltea"], [".bi-actual", "bolilla"], [".bk-mesa", "pieza"], [".bk-aviso", "bien"], [".bi-canto.linea", "bien"], [".bi-canto.bingo", "victoria"], [".ch-cierre", "voltea"], [".mesa-banner", "reparte"], [".stage .who + .sub + .btn#again", "victoria"]
   ],
   firma() {
     const out = new Set();
@@ -292,7 +292,7 @@ function escenaMusical() {
   if (sc === "casos" || (sc === "casoSel")) return "noir";
   if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
-  if (sc === "chinchon" || sc === "truco") return "bar";
+  if (sc === "chinchon" || sc === "truco" || sc === "burako") return "bar";
   if (["casino", "ruleta", "slots", "bingo", "bingoSolo"].includes(sc)) return "bar";
   if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
   if (sc === "arena") return "tension";
@@ -305,7 +305,7 @@ function escenaMusical() {
     if (v.game === "ajedrez") return "ajedrez";
     if (v.game === "arena") return "tension";
     if (v.game === "naval") return "naval";
-    if (v.game === "chinchon" || v.game === "truco" || v.game === "bingo") return "bar";
+    if (v.game === "chinchon" || v.game === "truco" || v.game === "bingo" || v.game === "burako") return "bar";
     if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";
     if (v.game === "impostor") return v.phase === "roles" ? "misterio" : v.phase === "end" ? "menu" : "tension";
   }

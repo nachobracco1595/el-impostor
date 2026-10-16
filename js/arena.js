@@ -739,7 +739,7 @@ const Arena = {
     Arena.reloj = setInterval(() => {
       const s = S.arena; if (!s || S.screen !== "arena") { clearInterval(Arena.reloj); Arena.reloj = null; return; }
       const ahora = Date.now(); Arena.tick(s, (ahora - prev) / 1000); prev = ahora;
-      Arena.render(Arena.view(s, "yo"), Arena.send, { local: true });
+      Arena.render(Arena.view(s, "yo"), Arena.enviarLocal, { local: true });
       if (s.fase === "fin" && !s.contada) { s.contada = true; Cuenta.revisar(); }
     }, 50);
     go("arena");
@@ -773,11 +773,12 @@ const Arena = {
 
 PANTALLAS.arena = () => {
   const s = S.arena; if (!s) return go("arenaIntro");
-  Arena.render(Arena.view(s, "yo"), Arena.send, { local: true });
+  Arena.render(Arena.view(s, "yo"), Arena.enviarLocal, { local: true });
 };
-Arena.send = a => {
+/* Pelea en este teléfono: las acciones van directo a la partida local.
+   (Arena.send es "a dónde mando ahora" y lo pisa cada render; la pelea local siempre pasa esta función.) */
+Arena.enviarLocal = a => {
   const s = S.arena;
-  if (Net && Net.activo && Net.activo() && UI.v && UI.v.game === "arena") return Net.send(a);
   if (!s) return;
   if (a.t === "again") { Arena.parar(); const c = S.arenaCfg; return Arena.empezarLocal(c.modo, c.nivel, c.esc); }
   Arena.act(s, "yo", a);

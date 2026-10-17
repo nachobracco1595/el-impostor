@@ -2,13 +2,21 @@
    - Cada cartón tiene un valor y se pueden comprar hasta 3. Lo que se junta es el pozo:
      30% para la primera LÍNEA (una fila completa) y 70% para el BINGO (cartón lleno). Si cantan dos a la vez, se reparte.
    - Solo: contra compus (la casa paga sus cartones y se queda con el 10%). Online: entre amigos, sin comisión.
-   - Las bolillas salen solas y los números se marcan solos. */
+   - Las bolillas salen solas y los números se marcan solos (o los marca la persona, si elige "Marco yo").
+   - El teléfono canta cada número en voz alta. */
 const BI = {
   VALORES: [10, 25, 50, 100],
   VELOCIDADES: [[1500, "Rápido"], [2500, "Normal"], [4000, "Tranqui"]],
   /* Algunos números con su nombre de la quiniela */
   QUINIELA: { 1: "el agua", 2: "el niño", 3: "San Cono", 4: "la cama", 5: "el gato", 6: "el perro", 7: "el revólver", 8: "el incendio", 9: "el arroyo", 12: "el soldado", 13: "la yeta", 14: "el borracho", 15: "la niña bonita", 17: "la desgracia", 18: "la sangre", 19: "el pescado", 20: "la fiesta", 21: "la mujer", 22: "el loco", 24: "el caballo", 25: "la gallina", 27: "el peine", 32: "el dinero", 34: "la cabeza", 35: "el pajarito", 47: "el muerto", 48: "el muerto que habla", 50: "el pan", 53: "el barco", 54: "la vaca", 75: "el payaso", 79: "el ladrón", 90: "el miedo" }
 };
+
+/* iOS solo deja hablar después de un toque: se "despierta" la voz con el primero */
+document.addEventListener("pointerdown", function despertar() {
+  try { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
+  document.removeEventListener("pointerdown", despertar, true);
+}, true);
+if ("speechSynthesis" in window) try { speechSynthesis.onvoiceschanged = () => { Bingo.locutor = null; }; } catch (e) {}
 
 const Bingo = {
   /* Cartón: 3 filas de 9; en cada fila hay 5 números. La columna c lleva del c·10 al c·10+9 (la primera del 1 al 9, la última del 80 al 90). */
@@ -120,9 +128,60 @@ const Bingo = {
     return `<span class="bi-bola ${cls}" style="--bc:${col}"><b>${n}</b></span>`;
   },
   dibCarton(c, salio, opts = {}) {
-    const ultima = opts.ultima, lineaHecha = opts.linea;
-    return `<div class="bi-carton ${opts.gano ? "gano" : ""}">${opts.titulo ? `<div class="bi-cart-cab"><b>${opts.titulo}</b>${opts.extra || ""}</div>` : ""}
-      <div class="bi-grilla">${c.map((f, r) => { const llena = f.every(x => !x || salio.has(x)); return f.map(n => `<span class="bi-n ${n ? "" : "vacio"} ${n && salio.has(n) ? "marca" : ""} ${n === ultima ? "nueva" : ""} ${llena && lineaHecha ? "fila" : ""}">${n || ""}</span>`).join(""); }).join("")}</div></div>`;
+    // En modo manual se ve marcado solo lo que pintó la persona (el juego igual lleva la cuenta real por detrás)
+    const ultima = opts.ultima, lineaHecha = opts.linea, mano = opts.marcas, ve = n => mano ? mano.has(n) : salio.has(n);
+    return `<div class="bi-carton ${opts.gano ? "gano" : ""} ${mano ? "manual" : ""}">${opts.titulo ? `<div class="bi-cart-cab"><b>${opts.titulo}</b>${opts.extra || ""}</div>` : ""}
+      <div class="bi-grilla">${c.map((f, r) => { const llena = f.every(x => !x || salio.has(x)); return f.map(n => `<span class="bi-n ${n ? "" : "vacio"} ${n && ve(n) ? "marca" : ""} ${n && n === (mano ? opts.recien : ultima) ? "nueva" : ""} ${llena && lineaHecha ? "fila" : ""}" ${mano && n ? `data-bim="${n}" role="button" tabindex="0" aria-label="${n}${ve(n) ? ", marcado" : ""}"` : ""}>${n || ""}</span>`).join(""); }).join("")}</div></div>`;
+  },
+
+  /* ---------- Preferencias de cada teléfono: cantar en voz alta y marcar a mano ---------- */
+  voz: store.get("biVoz", true),
+  manual: store.get("biManual", false),
+  prefs() {
+    return `<div class="bi-prefs"><button class="bi-pref ${Bingo.voz ? "on" : ""}" id="biVoz" aria-pressed="${Bingo.voz}">${Bingo.voz ? "🗣️ Canta los números" : "🔇 Sin voz"}</button>
+      <div class="seg bi-modo" role="radiogroup" aria-label="Cómo se marca el cartón"><button aria-pressed="${!Bingo.manual}" data-bimodo="auto">🤖 Se marca solo</button><button aria-pressed="${Bingo.manual}" data-bimodo="mano">✋ Marco yo</button></div></div>`;
+  },
+  conectarPrefs() {
+    on("biVoz", () => { Bingo.voz = !Bingo.voz; store.set("biVoz", Bingo.voz); if (Bingo.voz) Bingo.decir("Bingo"); else Bingo.callar(); render(); });
+    app.querySelectorAll("[data-bimodo]").forEach(b => b.onclick = () => { Bingo.manual = b.dataset.bimodo === "mano"; store.set("biManual", Bingo.manual); render(); });
+  },
+  /* Voz del locutor (la del teléfono, en castellano si hay) */
+  locutor: null,
+  elegirVoz() {
+    const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+    const de = re => vs.find(v => re.test(v.lang.replace("_", "-")));
+    return de(/^es-AR/i) || de(/^es-(419|US|MX|UY|CL|CO)/i) || de(/^es-ES/i) || de(/^es/i) || null;
+  },
+  decir(txt) {
+    if (!("speechSynthesis" in window) || !window.SpeechSynthesisUtterance) return;
+    try {
+      if (!Bingo.locutor) Bingo.locutor = Bingo.elegirVoz();
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(txt);
+      if (Bingo.locutor) { u.voice = Bingo.locutor; u.lang = Bingo.locutor.lang; } else u.lang = "es-AR";
+      u.rate = 1.05; u.pitch = 1; u.volume = 1;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  },
+  callar() { try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) {} },
+  dicho: "",
+  cantar(v) {
+    if (v.fase === "compra") { Bingo.dicho = v.id + ":0"; return; }
+    const ultima = v.salidas[v.salidas.length - 1], k = v.id + ":" + v.salidas.length + (v.linea ? "L" : "") + (v.bingo ? "B" : "");
+    if (k === Bingo.dicho) return;
+    const antes = Bingo.dicho; Bingo.dicho = k;
+    if (!Bingo.voz || !ultima || !antes.startsWith(v.id + ":")) return;
+    const ganaron = x => x.ganadores.map(g => g.yo ? "vos" : g.name.replace(/^🤖\s*/, "")).join(" y ");
+    if (v.bingo && !antes.includes("B")) return Bingo.decir(`¡Bingo! Ganó ${ganaron(v.bingo)}`);
+    if (v.linea && !antes.includes("L")) return Bingo.decir(`¡Línea! ${ganaron(v.linea)}`);
+    if (v.fase === "fin") return;
+    const nombre = BI.QUINIELA[ultima], lento = v.cfg.vel >= 2500;
+    Bingo.decir(nombre && lento ? `${ultima}. ${nombre}` : String(ultima));
+  },
+  /* Marcas a mano de esta partida */
+  marcas(v) {
+    const M = UI.biMarcas = UI.biMarcas && UI.biMarcas.id === v.id ? UI.biMarcas : { id: v.id, set: new Set(), recien: 0 };
+    return M;
   },
 
   render(v, send, opts) {
@@ -135,6 +194,7 @@ const Bingo = {
         <p class="sub center">${valor ? `Cada cartón vale <b>${valor} 🪙</b>. Elige cuántos quieres (hasta 3).` : "Partida amistosa: los cartones son gratis y no hay premio en monedas."}${!opts.local && valor && !u ? " Necesitas un perfil con monedas para comprar cartones." : ""}</p>
         ${v.yo >= 0 ? `<div class="seg bi-cuantos">${[0, 1, 2, 3].map(n => `<button aria-pressed="${v.cartones.length === n}" data-bin="${n}" ${puede(n) ? "" : "disabled"}>${n ? `${n} cartón${n > 1 ? "es" : ""}` : "Ninguno"}</button>`).join("")}</div>` : ""}
         ${v.cartones.map((c, k) => Bingo.dibCarton(c, salio, { titulo: `Cartón ${k + 1}`, extra: `<button class="linkish" data-cambiar="${k}">🔀 Cambiar</button>` })).join("")}
+        ${v.yo >= 0 ? Bingo.prefs() : ""}
         <div class="panel"><span class="label">En la mesa</span><ul class="players">${v.jug.map(j => `<li>${j.cpu ? `<span class="cpu-ic">🤖</span>` : avatar(j.name, 34)}<span class="name">${esc(j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name)}</span><span class="badge">${j.n ? `${j.n} 🎟️` : "mirando"}</span></li>`).join("")}</ul></div>
         ${jefe ? `<button class="btn tb-girar" id="biEmpezar" ${v.pozo.cartones ? "" : "disabled"}>🎱 ¡Que empiece el bingo!</button>` : `<p class="sub center">El anfitrión arranca cuando estén todos.</p>`}
       </section>`;
@@ -142,6 +202,7 @@ const Bingo = {
       const fin = v.fase === "fin", miLinea = new Set(v.linea ? v.linea.cartones : []), miBingo = new Set(v.bingo ? v.bingo.cartones : []);
       const ganTxt = x => x.ganadores.map(g => `${g.yo ? "¡Vos!" : esc(g.name.replace(/^🤖\s*/, ""))}${valor ? ` (+${g.premio})` : ""}`).join(", ");
       const top = v.jug.filter(j => j.n).sort((a, b) => a.faltan - b.faltan).slice(0, 4);
+      const manual = Bingo.manual && v.cartones.length > 0, M = Bingo.marcas(v);
       app.innerHTML = `${cab}<section class="screen bingo">
         <div class="bi-bombo">
           <div class="bi-actual">${ultima ? Bingo.bola(ultima, "grande") : `<span class="bi-bola grande vacia"><b>?</b></span>`}<small>${ultima ? (BI.QUINIELA[ultima] ? `«${BI.QUINIELA[ultima]}»` : `Bolilla ${v.salidas.length}`) : "Mezclando…"}</small></div>
@@ -153,9 +214,12 @@ const Bingo = {
         ${v.bingo ? `<div class="bi-canto bingo" data-k="b${v.bingo.bola}"><b>¡BINGO!</b> ${ganTxt(v.bingo)}</div>` : ""}
         ${fin ? `<div class="verdict ${v.bingo && v.bingo.cartones.length ? "good" : ""}"><div class="big">${v.bingo && v.bingo.cartones.length ? "¡Cantaste bingo!" : v.bingo ? "Fin del bingo" : "Se terminaron las bolillas"}</div><div class="note">${v.miPremio ? `Ganaste <b>${v.miPremio} 🪙</b>.` : v.cartones.length ? "Esta vez no hubo suerte." : ""}</div></div>
           ${jefe ? `<div class="row"><button class="btn" id="biOtra">Otra partida</button><button class="btn ghost" id="biSalir">${opts.local ? "Casino" : "Volver a la sala"}</button></div>` : `<p class="sub center">El anfitrión puede empezar otra.</p>`}` : ""}
-        ${v.cartones.map((c, k) => { const f = Bingo.faltan(c, salio), fl = Bingo.faltanLinea(c, salio);
-          return Bingo.dibCarton(c, salio, { ultima, linea: miLinea.has(k) || (!v.linea ? false : true), gano: miBingo.has(k), titulo: `Cartón ${k + 1}`,
-            extra: `<span class="bi-faltan ${f <= 2 ? "cerca" : ""}">${miBingo.has(k) ? "🏆 ¡Bingo!" : miLinea.has(k) ? `✅ Línea · faltan ${f}` : !v.linea && fl <= 1 ? `🔥 ¡Línea a ${fl}!` : `Faltan ${f}`}</span>` }); }).join("")}
+        ${v.cartones.length && !fin ? Bingo.prefs() : ""}
+        ${v.cartones.map((c, k) => {
+          // A mano, las pistas se calculan con lo que marcó la persona (los premios se pagan igual, solos)
+          const ref = manual ? M.set : salio, f = Bingo.faltan(c, ref), fl = Bingo.faltanLinea(c, ref), sinMarcar = manual ? c.flat().filter(n => n && salio.has(n) && !M.set.has(n)).length : 0;
+          return Bingo.dibCarton(c, salio, { ultima, linea: miLinea.has(k) || (!v.linea ? false : true), gano: miBingo.has(k), titulo: `Cartón ${k + 1}`, marcas: manual ? M.set : null, recien: M.recien,
+            extra: `<span class="bi-faltan ${f <= 2 ? "cerca" : ""}">${miBingo.has(k) ? "🏆 ¡Bingo!" : miLinea.has(k) ? `✅ Línea · faltan ${f}` : !v.linea && fl <= 1 ? `🔥 ¡Línea a ${fl}!` : `Faltan ${f}`}${fin && sinMarcar ? ` · se te pasaron ${sinMarcar}` : ""}</span>` }); }).join("")}
         ${!v.cartones.length && v.yo >= 0 ? `<p class="sub center">Estás mirando esta partida.</p>` : ""}
         ${top.length ? `<div class="panel"><span class="label">Los que están más cerca</span><ul class="bi-cerca">${top.map(j => `<li><span>${esc(j.cpu ? j.name.replace(/^🤖\s*/, "") : j.name)}</span><b class="${j.faltan <= 2 ? "cerca" : ""}">${j.faltan === 0 ? "¡Bingo!" : `falta${j.faltan > 1 ? "n" : ""} ${j.faltan}`}</b></li>`).join("")}</ul></div>` : ""}
         ${jefe && !fin ? `<button class="btn ghost" id="biPausa">${v.pausa ? "▶ Seguir" : "⏸ Pausa"}</button>` : ""}
@@ -168,7 +232,16 @@ const Bingo = {
     on("biPausa", () => send({ t: "pausa" }));
     on("biOtra", () => send({ t: "again" }));
     on("biSalir", () => opts.local ? go("casino") : send({ t: "lobby" }));
-    on("tbAtras", () => { if (v.fase !== "juego" || confirm("¿Salir del bingo? Los cartones ya están pagados.")) { Bingo.parar(); go("casino"); } });
+    on("tbAtras", () => { if (v.fase !== "juego" || confirm("¿Salir del bingo? Los cartones ya están pagados.")) { Bingo.parar(); Bingo.callar(); go("casino"); } });
+    Bingo.conectarPrefs();
+    // Marcar a mano: solo se pinta si ese número ya salió
+    app.querySelectorAll("[data-bim]").forEach(el => el.onclick = () => {
+      const n = +el.dataset.bim, M = Bingo.marcas(v);
+      if (M.set.has(n)) { M.set.delete(n); M.recien = 0; render(); return; }
+      if (!salio.has(n)) { el.classList.remove("todavia"); void el.offsetWidth; el.classList.add("todavia"); if (typeof Sonido !== "undefined") Sonido.sfx("mal"); return; }
+      M.set.add(n); M.recien = n; if (typeof Sonido !== "undefined") Sonido.sfx("pieza"); render();
+    });
+    Bingo.cantar(v);
     Bingo.cuentas(v, send);
   },
 
@@ -225,7 +298,8 @@ PANTALLAS.bingoSolo = () => {
     <div class="panel"><span class="label">Valor del cartón</span><div class="seg">${BI.VALORES.map(x => `<button aria-pressed="${c.valor === x}" data-biv="${x}">${x} 🪙</button>`).join("")}</div>
       <span class="label">Tus cartones</span><div class="seg">${[1, 2, 3].map(x => `<button aria-pressed="${c.n === x}" data-bic="${x}">${x}</button>`).join("")}</div>
       <span class="label">Compus en la mesa</span><div class="seg">${[3, 5, 7].map(x => `<button aria-pressed="${c.cpus === x}" data-bip="${x}">${x}</button>`).join("")}</div>
-      <span class="label">Velocidad</span><div class="seg">${BI.VELOCIDADES.map(([ms, t]) => `<button aria-pressed="${c.vel === ms}" data-biz="${ms}">${t}</button>`).join("")}</div></div>
+      <span class="label">Velocidad</span><div class="seg">${BI.VELOCIDADES.map(([ms, t]) => `<button aria-pressed="${c.vel === ms}" data-biz="${ms}">${t}</button>`).join("")}</div>
+      <span class="label">Locutor y cartón</span>${Bingo.prefs()}</div>
     <p class="tb-linea">Pagas <b>${costo} 🪙</b> · tienes ${u.monedas} 🪙</p>
     ${ok ? "" : `<p class="warn">No te alcanzan las monedas para ${c.n} cartón${c.n > 1 ? "es" : ""} de ${c.valor}.</p>`}
     <button class="btn tb-girar" id="biJugar" ${ok ? "" : "disabled"}>🎱 Comprar y jugar</button>
@@ -237,7 +311,8 @@ PANTALLAS.bingoSolo = () => {
   app.querySelectorAll("[data-bip]").forEach(b => b.onclick = () => set("cpus", +b.dataset.bip));
   app.querySelectorAll("[data-biz]").forEach(b => b.onclick = () => set("vel", +b.dataset.biz));
   on("tbAtras", () => go("casino"));
-  on("biJugar", () => Bingo.empezarSolo(c));
+  Bingo.conectarPrefs();
+  on("biJugar", () => { if (Bingo.voz) Bingo.decir("¡Empieza el bingo!"); Bingo.empezarSolo(c); });
 };
 
 PANTALLAS.bingo = () => {

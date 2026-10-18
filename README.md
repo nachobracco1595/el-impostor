@@ -5,7 +5,7 @@
   <img alt="Mesa Loca" src="img/logo-horizontal-oscuro.png" width="420">
 </picture>
 
-Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Truco, el Casino (ruleta, tragamonedas y bingo), Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
+Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Truco, el Casino (ruleta, tragamonedas, blackjack y bingo), Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
 
 Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `logo-horizontal-oscuro.png`, `logo-vertical.png`).
 
@@ -62,11 +62,12 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - Envido, real envido y falta envido en la primera baza ("el envido está primero"); truco, retruco y vale cuatro (solo sube el equipo que quiso); irse al mazo.
 - Bazas con pardas: si empatan, define la otra; si son todas pardas gana el mano. Los puntos se marcan con fósforos.
 
-### Casino (ruleta, tragamonedas y bingo)
+### Casino (ruleta, tragamonedas, blackjack y bingo)
 - Con las monedas del juego (no se compran ni se cambian por plata). Necesita un perfil.
 - **Ruleta** europea con un solo cero: plenos, docenas, columnas, rojo/negro, par/impar y mitades. Fichas de 5 a 100.
 - **Tragamonedas**: Frutillitas (3 rodillos), Tesoro pirata (3×3, 5 líneas, comodín) y Mesa Loca Deluxe (5×3, 10 líneas, 🎉 que paga en cualquier lado). Devuelven entre 92% y 95% de lo apostado.
 - **Bingo** de 90 bolillas: hasta 3 cartones, línea 30% y bingo 70% del pozo. Solo contra compus o online con amigos (el anfitrión elige el valor del cartón, también gratis, y la velocidad).
+- **Blackjack 21** contra la banca: zapato de 6 mazos, la banca se planta en 17, blackjack paga 3 a 2, se puede doblar y separar. Solo (con hasta 3 bots de compañeros) u online con amigos, con monedas o en mesa amistosa con fichas. Las monedas se cobran al terminar la mano y un botón 💡 dice la jugada de la estrategia básica.
 - Con cuenta en la nube cada jugada pasa por `timba_jugar` en el servidor, que controla saldo y premio máximo. Desde el panel se abre o cierra el casino y se fija la apuesta máxima.
 
 ### Batalla naval
@@ -207,5 +208,5 @@ En uno o dos minutos el juego queda en la dirección de arriba.
 ## Archivos
 - `index.html`: página principal.
 - `juego.html`: la misma página sin cabecera HTML, usada para publicarla como Artifact de Claude (ahí no funciona el modo online).
-- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js`, `poker.js`, `carrera.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
+- `css/estilo.css`, `js/`: estilos y lógica (`casos-data.js` tiene los casos de Detectives, `bd.js` la base de datos y los puntos, `cuenta.js` las pantallas de perfil y ranking, `nube.js` Supabase, `ajedrez.js`, `naval.js`, `chinchon.js`, `truco.js`, `burako.js`, `poker.js`, `carrera.js` y `nave.js` los juegos nuevos, `tienda.js` la economía, `social.js` y `chat.js` los chats). `admin.html`, `js/admin.js` y `css/admin.css` son el panel, `trabajos.js` los trabajos diarios, `arena.js` la Arena, `eventos.js` los eventos de temporada y `referidos.js` las invitaciones, `voz.js` el chat de voz, `timba.js` la ruleta y las tragamonedas y `bingo.js` el bingo, `blackjack.js` el blackjack. `js/vendor/supabase.js` es supabase-js 2.117.2 (licencia MIT). `js/vendor/peerjs.min.js` es PeerJS 1.5.4 (licencia MIT).
 - Para probar online con un servidor PeerJS propio: `index.html?peer=127.0.0.1:9000`.

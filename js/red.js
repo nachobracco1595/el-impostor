@@ -120,7 +120,7 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "blackjack" ? Blackjack.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -133,6 +133,7 @@ const Net = {
       else if (R.game === "poker") Poker.actOn(R, pid, a);
       else if (R.game === "carrera") Carrera.actOn(R, pid, a);
       else if (R.game === "bingo") Bingo.actOn(R, pid, a);
+      else if (R.game === "blackjack") Blackjack.actOn(R, pid, a);
       else if (R.game === "nave") Nave.actOn(R, pid, a);
       else if (R.game === "arena") Arena.actOn(R, pid, a);
     } catch (e) { console.error(e); }
@@ -160,10 +161,11 @@ const Net = {
     if (R.game === "poker") return { ...Poker.view(R.pk, pid), isHost: pid === "H" };
     if (R.game === "carrera") return { ...Carrera.view(R.car, pid), isHost: pid === "H" };
     if (R.game === "bingo") return { ...Bingo.view(R.bin, pid), isHost: pid === "H" };
+    if (R.game === "blackjack") return { ...Blackjack.view(R.bj, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -348,6 +350,8 @@ PANTALLAS.online = () => {
   if (v.game === "carrera") return Carrera.render(v, enviar, op);
   if (UI.cr) Carrera.parar();
   if (v.game === "bingo") return Bingo.render(v, enviar, op);
+  if (v.game === "blackjack") return Blackjack.render(v, enviar, op);
+  if (UI.bj) { UI.bj = null; UI.bjEnJuego = null; UI.timbaPend = 0; Blackjack.pendientes(); }
   if (v.game === "nave") return Nave.render(v, enviar, op);
   if (v.game === "arena") return Arena.render(v, enviar, op);
   if (UI.arena) Arena.parar();
@@ -368,6 +372,7 @@ function renderLobby(v) {
     burako: ["Burako", `<span class="bk-mini">${Burako.ficha("R07a")}${Burako.ficha("J00a")}</span>`, "2 o 4"],
     truco: ["Truco", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "2 a 6"],
     bingo: ["Bingo", `<span class="nave-mini">🎱</span>`, "1 o más"],
+    blackjack: ["Blackjack 21", `<span class="pk-mini">${Poker.carta("Ah")}${Poker.carta("Ks")}</span>`, "1 a 7"],
     naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
     arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
@@ -407,6 +412,9 @@ function renderLobby(v) {
         : v.sel === "bingo" ? `<p class="summary">${v.biCfg.valor ? `Cartón a <b>${v.biCfg.valor} 🪙</b>, hasta 3 por persona. Línea se lleva el 30% del pozo y bingo el 70%. Cada uno paga con las monedas de su perfil.` : "Bingo amistoso: cartones gratis, sin premio en monedas."}</p>
           ${H ? `<span class="label">Valor del cartón</span><div class="seg">${[0, ...BI.VALORES].map(x => `<button aria-pressed="${v.biCfg.valor === x}" data-biv="${x}">${x ? x + " 🪙" : "Gratis"}</button>`).join("")}</div>
           <span class="label">Velocidad</span><div class="seg">${BI.VELOCIDADES.map(([ms, t]) => `<button aria-pressed="${v.biCfg.vel === ms}" data-biz="${ms}">${t}</button>`).join("")}</div>` : ""}`
+        : v.sel === "blackjack" ? (() => { const c = v.bjCfg, n = v.players.length, bots = Math.max(0, Math.min(c.bots, 7 - n)); return `<p class="summary">${n > 7 ? "La mesa de blackjack es de hasta 7." : `Todos contra la banca${bots ? ` · ${bots} bot${bots > 1 ? "s" : ""} en la mesa` : ""}. ${c.monedas ? "Cada uno apuesta las monedas de su perfil." : `Mesa amistosa: ${BJ.FICHAS_MESA} fichas para cada uno, sin monedas.`}`}</p>
+          ${H ? `<div class="seg">${[[true, "Con monedas 🪙"], [false, "Amistosa"]].map(([k, t]) => `<button aria-pressed="${c.monedas === k}" data-bjm="${k}">${t}</button>`).join("")}</div>
+          <span class="label">Bots en la mesa</span><div class="seg">${[0, 1, 2, 3].map(k => `<button aria-pressed="${c.bots === k}" data-bjb="${k}">${k ? k : "Ninguno"}</button>`).join("")}</div>` : ""}`; })()
         : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su clase y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
           <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
@@ -442,6 +450,8 @@ function renderLobby(v) {
   on("bkJuntos", () => { S.bkCfg.juntos = !S.bkCfg.juntos; store.set("bkCfg", S.bkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-biv]").forEach(b => b.onclick = () => { S.biCfg.valor = +b.dataset.biv; store.set("biCfg", S.biCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-biz]").forEach(b => b.onclick = () => { S.biCfg.vel = +b.dataset.biz; store.set("biCfg", S.biCfg); Net.cfgCambiada(); });
+  app.querySelectorAll("[data-bjm]").forEach(b => b.onclick = () => { S.bjCfg.monedas = b.dataset.bjm === "true"; store.set("bjCfg", S.bjCfg); Net.cfgCambiada(); });
+  app.querySelectorAll("[data-bjb]").forEach(b => b.onclick = () => { S.bjCfg.bots = +b.dataset.bjb; store.set("bjCfg", S.bjCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-tra]").forEach(b => b.onclick = () => { S.trCfg.a = +b.dataset.tra; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
@@ -458,6 +468,7 @@ const Turno = {
     if (v.game === "naval" && v.fase === "juego" && v.yo >= 0) return { mio: v.turno === v.yo, quien: v.jug[v.turno].name, que: "disparar" };
     if (v.game === "chinchon" && (v.fase === "robar" || v.fase === "tirar") && v.yo >= 0) return { mio: v.turno === v.yo && !(v.jug[v.yo] || {}).fuera, quien: v.jug[v.turno].name, que: v.fase === "robar" ? "robar una carta" : "tirar una carta" };
     if (v.game === "poker" && v.turno >= 0 && v.yo >= 0 && !v.jug[v.yo].fuera) return { mio: v.turno === v.yo, quien: v.jug[v.turno].name.replace(/^🤖\s*/, ""), que: "apostar" };
+    if (v.game === "blackjack" && v.fase === "juego" && v.turno && v.yo >= 0 && v.jug[v.yo].manos.length) return { mio: v.turno.i === v.yo, quien: v.jug[v.turno.i].name.replace(/^🤖\s*/, ""), que: "jugar tu mano" };
     if (v.game === "burako" && (v.fase === "robar" || v.fase === "jugar") && v.yo >= 0) return { mio: v.turno === v.yo, quien: v.jug[v.turno].name.replace(/^🤖\s*/, ""), que: v.fase === "robar" ? "robar" : "bajar o tirar" };
     if (v.game === "truco" && v.fase === "juego" && v.yo >= 0) return { mio: v.actor === v.yo, quien: v.jug[v.actor].name.replace(/^🤖\s*/, ""), que: v.pend && v.pend.resp === v.yo ? "responder" : "jugar" };
     if (v.game === "ajedrez" && v.s && v.miColor && !Ajedrez.terminado(v.s)) { const t = v.s.pos.turno; return { mio: v.miColor === t, quien: v.s.jug[t === "w" ? 0 : 1].name, que: "mover" }; }
@@ -474,7 +485,7 @@ const Turno = {
   },
   revisar(v) {
     const e = this.estado(v), mio = !!(e && e.mio), p = this.pill();
-    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker"].includes(v.game));
+    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker", "blackjack"].includes(v.game));
     document.body.classList.toggle("mi-turno", mio); document.body.classList.toggle("con-turno", !!e || porTurnos);
     p.hidden = !e;
     if (e) { p.classList.toggle("mio", mio); p.innerHTML = mio ? `🎯 <b>¡Es tu turno!</b> <small>Te toca ${esc(e.que)}</small>` : `⏳ Turno de <b>${esc(e.quien)}</b>`; }

@@ -45,6 +45,8 @@ const LOGROS = [
   { id: "pleno", ic: "🎡", nombre: "¡Pleno!", desc: "Acierta el número justo en la ruleta.", ok: u => (u.stats.timba || {}).plenos >= 1 },
   { id: "jackpot", ic: "🎰", nombre: "Jackpot", desc: "Saca el premio mayor de una tragamonedas.", ok: u => (u.stats.timba || {}).jackpots >= 1 },
   { id: "bingo", ic: "🎱", nombre: "¡Bingo!", desc: "Canta bingo con un cartón comprado.", ok: u => (u.stats.timba || {}).bingos >= 1 },
+  { id: "blackjack", ic: "♠️", nombre: "¡Blackjack!", desc: "Saca 21 de entrada apostando monedas.", ok: u => (u.stats.timba || {}).blackjacks >= 1 },
+  { id: "banca", ic: "🎩", nombre: "Le gané a la banca", desc: "Gana 25 manos de blackjack con monedas.", ok: u => (u.stats.timba || {}).bjGanadas >= 25 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
   { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
@@ -67,7 +69,7 @@ function statsVacias() {
     nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
     arena: { j: 0, g: 0, p: 0, elo: 1000, mejorElo: 1000, kills: 0 },
     // El casino no suma partidas ni puntos: solo lleva la cuenta
-    timba: { j: 0, g: 0, p: 0, jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0 }
+    timba: { j: 0, g: 0, p: 0, jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0, blackjacks: 0, bjGanadas: 0 }
   };
 }
 

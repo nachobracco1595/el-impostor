@@ -4,7 +4,7 @@ const CFG = EMU ? { url: "http://127.0.0.1:54321", anonKey: "anon-key" } : windo
 const app = document.getElementById("app"), tip = document.getElementById("tip");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = n => new Intl.NumberFormat("es").format(n || 0);
-const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", ruleta: "Ruleta", tragamonedas: "Tragamonedas", bingo: "Bingo", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
+const NOMBRES = { impostor: "El Impostor", liars: "Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", ruleta: "Ruleta", tragamonedas: "Tragamonedas", bingo: "Bingo", blackjack: "Blackjack", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", tala: "Tala", mina: "Mina", pesca: "Pesca", arena: "Arena", evento: "Trabajo de evento" };
 const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };
@@ -107,7 +107,7 @@ function pintar() {
       <p class="sub">${P.timba ? `En ${P.dias} días: ${num(P.timba.jugadas)} jugadas de ${num(P.timba.jugadores)} jugadores. Los jugadores ${P.timba.neto >= 0 ? "ganaron" : "perdieron"} <b>${num(Math.abs(P.timba.neto))}</b> 🪙 en total.` : "Corre el SQL nuevo para ver el casino."}</p>
       ${P.timba && Object.keys(P.timba.porJuego || {}).length ? `<ul class="tb-panel">${Object.entries(P.timba.porJuego).map(([j, x]) => `<li><b>${esc(NOMBRES[j] || j)}</b><span>${num(x.jugadas)} jugadas</span><span class="${x.neto >= 0 ? "pos" : "neg"}">${x.neto >= 0 ? "+" : "−"}${num(Math.abs(x.neto))} 🪙</span></li>`).join("")}</ul>` : ""}
       <form id="fTimba" class="ads-form">
-        <label class="opt"><span class="txt"><b>Casino abierto</b><small>Ruleta, tragamonedas y bingo con monedas. Si lo cierras, nadie puede apostar.</small></span><input type="checkbox" id="tbOn" ${P.timbaCfg.activo ? "checked" : ""}></label>
+        <label class="opt"><span class="txt"><b>Casino abierto</b><small>Ruleta, tragamonedas, blackjack y bingo con monedas. Si lo cierras, nadie puede apostar.</small></span><input type="checkbox" id="tbOn" ${P.timbaCfg.activo ? "checked" : ""}></label>
         <label class="campo-l">Apuesta máxima por tirada (ruleta y tragamonedas)<input class="campo" id="tbMax" type="number" min="10" max="5000" value="${P.timbaCfg.maxApuesta}"></label>
         <button class="btn" type="submit">Guardar</button><p class="summary" id="tbMsg"></p>
       </form>

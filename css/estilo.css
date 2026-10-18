@@ -1321,3 +1321,51 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .bi-carton.manual .bi-n:not(.vacio):active { filter: brightness(.92); }
 .bi-n.todavia { animation: biNo .35s ease; background: #ffe3e3; }
 @keyframes biNo { 0%, 100% { translate: 0 } 25% { translate: -3px 0 } 75% { translate: 3px 0 } }
+/* ---------- Blackjack ---------- */
+.tb-juego.bj { background: linear-gradient(135deg, #3b0d14, var(--card) 70%); border-color: #c92a2a; }
+.screen.blackjack { gap: 10px; padding-bottom: 72px; }
+.bj-mesa { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px; border-radius: 22px; background: radial-gradient(ellipse at 50% 20%, #1f7a4d, #0f5132 70%); border: 6px solid #4a2f1a; box-shadow: inset 0 0 30px rgba(0, 0, 0, .45); }
+.bj-banca { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 118px; }
+.bj-banca .label { color: #d3f9d8; margin: 0; }
+.bj-cartas { display: flex; justify-content: center; min-height: 90px; }
+.bj-cartas .pk-c + .pk-c { margin-left: -30px; }
+.bj-c.nueva { animation: bjLlega .38s cubic-bezier(.2, .9, .3, 1.15) both; animation-delay: calc(var(--k, 0) * 0ms); }
+@keyframes bjLlega { from { transform: translate(70px, -90px) rotate(18deg); opacity: 0; } }
+.bj-regla { margin: 0; text-align: center; font: 800 10px/1.2 system-ui, sans-serif; letter-spacing: .12em; color: #ffd43b; opacity: .8; }
+.bj-tot { display: inline-grid; place-items: center; min-width: 30px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, .45); color: #fff; font: 900 13px/1.2 system-ui, sans-serif; }
+.bj-tot.veinte { background: #ffd43b; color: #3a2400; } .bj-tot.pasa { background: #e03131; color: #fff; }
+.bj-otros { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.bj-otro { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 6px; border-radius: 12px; background: rgba(0, 0, 0, .22); border: 2px solid transparent; min-width: 84px; }
+.bj-otro.turno { border-color: var(--spot); }
+.bj-otro-cab { display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+.bj-otro-cab small { color: #b2f2bb; font-weight: 700; }
+.bj-otro .cpu-ic { font-size: 15px; }
+.bj-otro-manos { display: flex; gap: 4px; }
+.bj-mano.chica { padding: 2px; }
+.bj-mano.chica .bj-cartas { min-height: 0; }
+.bj-mano.chica .pk-c.grande { width: 30px; height: 42px; border-radius: 4px; } .bj-mano.chica .pk-c.grande b { font-size: 11px; top: 2px; left: 3px; } .bj-mano.chica .pk-c.grande i { display: none; } .bj-mano.chica .pk-c.grande em { width: 14px; height: 14px; right: 2px; bottom: 2px; }
+.bj-mano.chica .pk-c + .pk-c { margin-left: -16px; }
+.bj-mano.chica .bj-pie { gap: 3px; } .bj-mano.chica .bj-tot { font-size: 11px; min-width: 22px; padding: 1px 5px; } .bj-mano.chica .bj-ap { font-size: 10px; }
+.bj-mano.chica .bj-res { font-size: 9px; padding: 0 4px; top: -7px; }
+.bj-mias { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 140px; align-items: center; }
+.bj-vacia { color: #b2f2bb; font-weight: 700; font-size: 14px; opacity: .8; }
+.bj-mano { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 8px 6px; border-radius: 14px; border: 2px solid transparent; transition: border-color .2s, opacity .2s; }
+.bj-mano.actual { border-color: var(--spot); background: rgba(255, 212, 59, .1); box-shadow: 0 0 16px rgba(255, 212, 59, .35); }
+.bj-mano.gana { border-color: var(--teal); background: rgba(61, 220, 177, .14); }
+.bj-mano.pierde { opacity: .62; }
+.bj-pie { display: flex; align-items: center; gap: 6px; }
+.bj-ap { font: 800 12px/1 system-ui, sans-serif; color: #fff3bf; }
+.bj-res { position: absolute; top: -9px; left: 50%; translate: -50% 0; padding: 1px 8px; border-radius: 999px; white-space: nowrap; font: 900 11px/16px system-ui, sans-serif; animation: trCanto .5s cubic-bezier(.2, 1.4, .4, 1); }
+.bj-res.gana { background: var(--teal); color: #08261c; } .bj-res.empata { background: #adb5bd; color: #212529; } .bj-res.pierde { background: #e03131; color: #fff; }
+.bj-estado { min-height: 2.9em; margin: 0; }
+.bj-botonera { min-height: 116px; display: flex; flex-direction: column; gap: 8px; justify-content: flex-start; }
+.bj-fichas { display: flex; justify-content: space-between; gap: 6px; }
+.bj-fichas .ru-ficha.grande:disabled { opacity: .35; cursor: default; }
+.bj-acc { display: flex; gap: 6px; } .bj-acc .btn { flex: 1; } .bj-acc .btn.chico { flex: 0 0 48px; }
+.bj-jugar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bj-jugar .btn { min-height: 46px; padding-block: 8px; }
+.btn.sugerido { box-shadow: 0 0 0 3px var(--spot), 0 0 16px rgba(255, 212, 59, .6); }
+.bj-cons { align-self: center; font-size: 13px; }
+.bj-saldo { text-align: center; font-size: 14px; color: var(--muted); }
+.bj-aviso { position: fixed; left: 50%; top: calc(120px + env(safe-area-inset-top, 0px)); translate: -50% 0; z-index: 40; padding: 8px 18px; border-radius: 14px; background: #1c7ed6; color: #fff; font-weight: 800; pointer-events: none; animation: bkAviso 2.6s ease both; }
+@media (max-width: 370px) { .bj-mano:not(.chica) .pk-c.grande { width: 54px; height: 76px; } .bj-cartas .pk-c + .pk-c { margin-left: -28px; } }

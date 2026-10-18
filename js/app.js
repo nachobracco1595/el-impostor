@@ -23,6 +23,7 @@ const S = {
   carCfg: Object.assign({ bots: 5, nivel: "normal", mesa: 6 }, store.get("carCfg", {})),
   pkCfg: Object.assign({ bots: 3, nivel: "normal", fichas: 1000, mesa: 4 }, store.get("pkCfg", {})),
   bkCfg: Object.assign({ n: 2, meta: 1500, juntos: false }, store.get("bkCfg", {})),
+  bjCfg: Object.assign({ bots: 2, monedas: true }, store.get("bjCfg", {})),
   biCfg: Object.assign({ valor: 10, n: 1, cpus: 5, vel: 2500 }, store.get("biCfg", {})),
   casoCfg: Object.assign({ min: 5, soplon: false }, store.get("casoCfg", {})),
   casoId: store.get("casoId", "collar"),
@@ -57,7 +58,7 @@ const Toques = {
     for (const [k, [x, y]] of this.foto()) { const p = antes.get(k); if (p && (Math.abs(p[0] - x) > 8 || Math.abs(p[1] - y) > 8)) { this.quietoHasta = t + 400; return; } }
   },
   // Solo las jugadas dentro de los juegos (casillas, cartas, fichas, cantos); los botones de menús y del lobby no se frenan
-  JUGADAS: "[data-tiro], [data-sq], [data-f], [data-c], [data-ch], [data-ap], [data-agregar], [data-tr], [data-bin], [data-cambiar], #bkMazo, #bkDesc, #bkBajar, #bkTirar, #chMazo, #chDesc, #chTirar, #chCortar, #play, #call, #shoot",
+  JUGADAS: "[data-tiro], [data-sq], [data-f], [data-c], [data-ch], [data-ap], [data-agregar], [data-tr], [data-bin], [data-cambiar], #bkMazo, #bkDesc, #bkBajar, #bkTirar, #chMazo, #chDesc, #chTirar, #chCortar, #play, #call, #shoot, #bjPedir, #bjPlantar, #bjDoblar, #bjSeparar, #bjOtra, #bjRepartir, #bjListo",
   esJuego(el) { return !!(el && el.closest && el.closest("#app") && el.closest(this.JUGADAS)); },
   instalar() {
     document.addEventListener("pointerdown", e => { this.ultimoDedo = performance.now(); this.abajo = e.target; }, true);
@@ -169,7 +170,7 @@ function juegosMenu() {
     ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
     ["carrera", "Carrera Loca", "Obstáculos, saltos y a la meta.", `<span class="tr-mini">🏃💨🏁</span>`, "t-car"],
     ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
-    ["casino", "Casino", "Ruleta, tragamonedas y bingo.", `<span class="tr-mini">🎰🎡</span>`, "t-casino"],
+    ["casino", "Casino", "Ruleta, tragamonedas, blackjack y bingo.", `<span class="tr-mini">🎰🎡</span>`, "t-casino"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
   ];
 }

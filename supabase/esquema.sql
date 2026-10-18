@@ -450,11 +450,11 @@ begin
   select valor into cfg from public.config where clave = 'timba';
   if cfg is not null and not coalesce((cfg ->> 'activo')::boolean, true) then return jsonb_build_object('ok', false, 'motivo', 'cerrado'); end if;
   maxap := least(greatest(coalesce((cfg ->> 'maxApuesta')::integer, 500), 10), 5000);
-  if timba_jugar.juego not in ('ruleta', 'tragamonedas', 'bingo') or apuesta < 0 or premio < 0 or apuesta > 5000
+  if timba_jugar.juego not in ('ruleta', 'tragamonedas', 'bingo', 'blackjack') or apuesta < 0 or premio < 0 or apuesta > 5000
      or (timba_jugar.juego <> 'bingo' and (apuesta < 1 or apuesta > maxap)) then
     return jsonb_build_object('ok', false, 'motivo', 'datos');
   end if;
-  tope := case timba_jugar.juego when 'ruleta' then apuesta * 36 when 'tragamonedas' then apuesta * 1000 else 50000 end;
+  tope := case timba_jugar.juego when 'ruleta' then apuesta * 36 when 'tragamonedas' then apuesta * 1000 when 'blackjack' then apuesta * 3 else 50000 end;
   if premio > tope then return jsonb_build_object('ok', false, 'motivo', 'premio'); end if;
   select p.monedas into saldo from public.perfiles p where p.id = auth.uid() for update;
   if saldo is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;

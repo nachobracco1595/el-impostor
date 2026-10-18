@@ -11,7 +11,7 @@ const Timba = {
   /* Azar del navegador (más parejo que Math.random) */
   azar(n) { try { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; } catch { return Math.floor(Math.random() * n); } },
   stats(u) {
-    u.stats.timba = Object.assign({ jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0 }, u.stats.timba || {});
+    u.stats.timba = Object.assign({ jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0, blackjacks: 0, bjGanadas: 0 }, u.stats.timba || {});
     return u.stats.timba;
   },
   /* Lo que se ve en pantalla: mientras gira, el premio todavía no aparece */
@@ -24,7 +24,7 @@ const Timba = {
     const st = this.stats(u);
     if (apuesta > 0) { st.jugadas++; st.apostado += apuesta; }
     st.ganado += premio; st.mayor = Math.max(st.mayor, premio);
-    for (const k of ["plenos", "jackpots", "lineas", "bingos"]) st[k] += extra[k] | 0;
+    for (const k of ["plenos", "jackpots", "lineas", "bingos", "blackjacks", "bjGanadas"]) st[k] += extra[k] | 0;
     u.monedas += premio - apuesta;
     BD.guardar();
     if (u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Nube.user.id === u.id) {
@@ -33,6 +33,7 @@ const Timba = {
         if (error) { console.warn("timba", error.message); Eco.guardar(u); return; }        // sin el SQL nuevo: se sube como siempre
         if (data && data.ok) { if (!u.pendiente) { u.monedas = data.monedas; BD.guardar(); } this.subirLuego(u); }
         else if (data && data.motivo === "saldo") { u.monedas = data.monedas; BD.guardar(); Toast.mostrar(`<div class="t-ic">⚠️</div><div class="t-txt"><b>No alcanzaban las monedas</b><span>Tu saldo se corrigió con el de la nube.</span></div>`, "info"); render(); }
+        else if (data && data.motivo === "datos") Eco.guardar(u);                                   // juego que el SQL todavía no conoce: se sube como siempre
         else if (data && data.motivo === "cerrado") { u.monedas -= premio - apuesta; BD.guardar(); Toast.mostrar(`<div class="t-ic">🔒</div><div class="t-txt"><b>El casino está cerrado</b><span>Lo cerró el administrador. No se movieron monedas.</span></div>`, "info"); go("home"); }
       });
     }
@@ -329,12 +330,14 @@ PANTALLAS.slots = () => {
 /* ---------- Entrada del casino ---------- */
 PANTALLAS.casino = () => {
   if (Timba.sinPerfil("Casino")) return;
+  if (typeof Blackjack !== "undefined") Blackjack.pendientes();
   const u = BD.sesion(), st = Timba.stats(u);
   app.innerHTML = `${Timba.cabecera(u, "🎰 Casino", "inicio")}<section class="screen casino">
     <div class="tb-hero"><span class="tb-neon">CASINO</span><p class="sub">Apuesta tus monedas del juego. ${st.jugadas ? `Llevas ${st.jugadas} jugadas · tu mayor premio: <b>${st.mayor} 🪙</b>.` : "¡Que la suerte te acompañe!"}</p></div>
     <button class="tb-juego ru" id="tbRuleta"><span class="tb-art">🎡</span><div><b>Ruleta</b><small>Europea, con un solo cero. Plenos 35 a 1.</small></div></button>
     <span class="label">Tragamonedas</span>
     <div class="tb-maqs">${Object.entries(MAQUINAS).map(([k, m]) => `<button class="tb-juego ${m.tema}" data-maq="${k}"><span class="tb-art">${m.ic}</span><div><b>${esc(m.nombre)}</b><small>${esc(m.desc)}</small></div></button>`).join("")}</div>
+    <button class="tb-juego bj" id="tbBlackjack"><span class="tb-art">♠️</span><div><b>Blackjack 21</b><small>Contra la banca. Blackjack paga 3 a 2. Doblá y separá.</small></div></button>
     <button class="tb-juego pk" id="tbPoker"><span class="tb-art">🃏</span><div><b>Póker</b><small>Texas Hold'em contra bots (con fichas de la mesa).</small></div></button>
     <button class="tb-juego bi" id="tbBingo"><span class="tb-art">🎱</span><div><b>Bingo</b><small>Contra compus acá, o con amigos en "Jugar online". Hasta 3 cartones.</small></div></button>
     <p class="tb-aviso">Las monedas son del juego: no se compran ni se cambian por plata. Si un día te quedas sin monedas, juega partidas, trabajos o cobra el premio diario.</p>
@@ -343,5 +346,6 @@ PANTALLAS.casino = () => {
   on("tbRuleta", () => go("ruleta"));
   on("tbBingo", () => go("bingoSolo"));
   on("tbPoker", () => go("pokerIntro"));
+  on("tbBlackjack", () => go("blackjack"));
   app.querySelectorAll("[data-maq]").forEach(b => b.onclick = () => { UI.maquina = b.dataset.maq; go("slots"); });
 };

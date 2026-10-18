@@ -1369,3 +1369,6 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .bj-saldo { text-align: center; font-size: 14px; color: var(--muted); }
 .bj-aviso { position: fixed; left: 50%; top: calc(120px + env(safe-area-inset-top, 0px)); translate: -50% 0; z-index: 40; padding: 8px 18px; border-radius: 14px; background: #1c7ed6; color: #fff; font-weight: 800; pointer-events: none; animation: bkAviso 2.6s ease both; }
 @media (max-width: 370px) { .bj-mano:not(.chica) .pk-c.grande { width: 54px; height: 76px; } .bj-cartas .pk-c + .pk-c { margin-left: -28px; } }
+.bj-vs { font: 700 11px/1.2 system-ui, sans-serif; color: #d3f9d8; white-space: nowrap; }
+.bj-mano.chica .bj-vs { font-size: 9px; }
+.bj-mano.pierde .bj-vs { color: #ffc9c9; }

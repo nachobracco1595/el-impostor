@@ -239,6 +239,13 @@ const Blackjack = {
     return `<div class="bj-cartas">${lista.map((c, k) => Blackjack.carta(c, k >= antes, k)).join("")}</div>`;
   },
   totTxt(tt, bj, cerrada) { return bj ? "21 · BJ" : tt.blanda && tt.t < 21 && !cerrada ? `${tt.t - 10}/${tt.t}` : String(tt.t); },
+  /* "19 vs 18": cada mano contra la banca */
+  vs(m, v) {
+    const c = v.crupTot ? v.crupTot.t : 0, cBJ = v.crup.length === 2 && c === 21;
+    if (m.res === "pasa") return `${m.tot.t}: se pasó`;
+    const yo = m.bj ? "BJ" : m.tot.t, banca = cBJ ? "BJ" : c > 21 ? `${c} (se pasó)` : c;
+    return `${yo} vs ${banca} de la banca`;
+  },
   RES: { bj: ["¡Blackjack!", "gana"], gana: ["Ganaste", "gana"], empata: ["Empate", "empata"], pierde: ["Perdiste", "pierde"], pasa: ["Te pasaste", "pierde"] },
 
   render(v, send, opts) {
@@ -253,14 +260,14 @@ const Blackjack = {
       return `<div class="bj-mano ${actual ? "actual" : ""} ${r ? r[1] : ""} ${grande ? "" : "chica"}">
         ${Blackjack.cartas(m.c, `${i}:${k}`)}
         <div class="bj-pie"><span class="bj-tot ${m.tot.t > 21 ? "pasa" : m.tot.t === 21 ? "veinte" : ""}">${Blackjack.totTxt(m.tot, m.bj, m.lista || v.fase === "fin")}</span><span class="bj-ap">${m.ap}${v.cfg.monedas ? " 🪙" : ""}${m.doblada ? " ×2" : ""}</span></div>
-        ${r ? `<span class="bj-res ${r[1]}">${r[0]}${m.premio ? ` +${m.premio}` : ""}</span>` : ""}</div>`;
+        ${r ? `<span class="bj-res ${r[1]}">${r[0]}${m.premio ? ` +${m.premio}` : ""}</span><span class="bj-vs">${Blackjack.vs(m, v)}</span>` : ""}</div>`;
     };
     const otros = v.jug.map((J, i) => i === yo ? "" : `<div class="bj-otro ${v.turno && v.turno.i === i ? "turno" : ""}">
         <div class="bj-otro-cab">${J.cpu ? `<span class="cpu-ic">🤖</span>` : avatar(J.name, 22)}<b>${nom(J)}</b><small>${v.fase === "apuestas" ? (J.listo ? `✅ ${J.apuesta}` : J.apuesta ? `${J.apuesta}…` : "eligiendo") : J.manos.length ? "" : "mira"}</small></div>
         ${J.manos.length ? `<div class="bj-otro-manos">${J.manos.map((m, k) => manoHTML(J, i, m, k, false)).join("")}</div>` : ""}</div>`).join("");
-    const crupTot = v.crupTot ? Blackjack.totTxt(v.crupTot, v.crup.length === 2 && v.crupTot.t === 21 && !!v.crup[1], v.fase === "fin") : "";
+    const crupTot = v.crupTot ? Blackjack.totTxt(v.crupTot, v.crup.length === 2 && v.crupTot.t === 21 && !!v.crup[1], true) : "";
     const mesa = `<div class="bj-mesa">
-      <div class="bj-banca"><span class="label">Banca${crupTot ? ` · <b class="bj-tot ${v.crupTot.t > 21 ? "pasa" : ""}">${crupTot}</b>` : ""}</span>
+      <div class="bj-banca"><span class="label">🎩 Banca · juega contra todos${crupTot ? ` · <b class="bj-tot ${v.crupTot.t > 21 ? "pasa" : ""}">${crupTot}</b>` : ""}</span>
         ${v.crup.length ? Blackjack.cartas(v.crup, "c") : `<div class="bj-cartas"><span class="pk-c grande hueco"></span><span class="pk-c grande hueco"></span></div>`}</div>
       <p class="bj-regla">BLACKJACK PAGA 3 A 2 · LA BANCA SE PLANTA EN 17</p>
       ${otros ? `<div class="bj-otros">${otros}</div>` : ""}

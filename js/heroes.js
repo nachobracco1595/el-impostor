@@ -236,6 +236,24 @@ const Heroes = {
   }
 };
 
+/* ---------- Elegir con qué personaje pelear (también desde la sala online, sin salir) ---------- */
+Heroes.selector = () => {
+  const u = BD.sesion(); if (!u) return "";
+  const a = Heroes.datos(u);
+  return `<div class="he-elige"><span class="label">Tu héroe</span><div class="he-tabs">${Object.entries(AR.CLASES).map(([k, X]) => { const q = a.pj[k], l = Heroes.nivel(q.xp), e = q.evo.length ? Heroes.evoDe(k, q.evo[q.evo.length - 1]) : null;
+    return `<button class="he-tab ${k === a.clase ? "on" : ""}" data-heroe="${k}" aria-pressed="${k === a.clase}"><span class="ic">${e ? e.ic : X.ic}</span><b>${esc(e ? e.nombre : X.nombre)}</b><small>Nv ${l.n}</small></button>`; }).join("")}</div></div>`;
+};
+Heroes.conectarSelector = (raiz = app) => {
+  raiz.querySelectorAll("[data-heroe]").forEach(b => b.onclick = () => {
+    const u = BD.sesion(); if (!u) return;
+    Heroes.datos(u).clase = b.dataset.heroe; Eco.guardar(u);
+    if (typeof Sonido !== "undefined") Sonido.sfx("clic");
+    // Online: el anfitrión toma su perfil al empezar; los demás se lo mandan
+    if (Net.rol && Net.rol !== "host") Net.send({ t: "arenaPerfil", p: Arena.miPerfil() });
+    raiz.querySelectorAll("[data-heroe]").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on); });
+  });
+};
+
 /* ---------- Armería: personajes, evoluciones, puntos, equipo y a pelear ---------- */
 PANTALLAS.arenaIntro = () => {
   const u = BD.sesion();

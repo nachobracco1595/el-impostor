@@ -415,7 +415,8 @@ function renderLobby(v) {
         : v.sel === "blackjack" ? (() => { const c = v.bjCfg, n = v.players.length, bots = Math.max(0, Math.min(c.bots, 7 - n)); return `<p class="summary">${n > 7 ? "La mesa de blackjack es de hasta 7." : `Todos contra la banca${bots ? ` · ${bots} bot${bots > 1 ? "s" : ""} en la mesa` : ""}. ${c.monedas ? "Cada uno apuesta las monedas de su perfil." : `Mesa amistosa: ${BJ.FICHAS_MESA} fichas para cada uno, sin monedas.`}`}</p>
           ${H ? `<div class="seg">${[[true, "Con monedas 🪙"], [false, "Amistosa"]].map(([k, t]) => `<button aria-pressed="${c.monedas === k}" data-bjm="${k}">${t}</button>`).join("")}</div>
           <span class="label">Bots en la mesa</span><div class="seg">${[0, 1, 2, 3].map(k => `<button aria-pressed="${c.bots === k}" data-bjb="${k}">${k ? k : "Ninguno"}</button>`).join("")}</div>` : ""}`; })()
-        : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su clase y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
+        : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su héroe y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
+          ${Heroes.selector()}
           <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
         : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
@@ -455,6 +456,7 @@ function renderLobby(v) {
   app.querySelectorAll("[data-tra]").forEach(b => b.onclick = () => { S.trCfg.a = +b.dataset.tra; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
+  Heroes.conectarSelector();
   if (!H && v.sel === "arena" && UI.arenaPerfil !== v.code) { UI.arenaPerfil = v.code; Net.send({ t: "arenaPerfil", p: Arena.miPerfil() }); }
   on("invitar", () => invitarAmigos());
 }

@@ -1416,3 +1416,5 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .he-item.puesto { background: rgba(61, 220, 177, .12); }
 .he-item.bloq { opacity: .5; }
 .he-item .btn.chico { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.he-elige { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ar-fin-caja .he-elige { margin: 6px 0 4px; text-align: left; }

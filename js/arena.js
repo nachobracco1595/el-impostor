@@ -28,7 +28,8 @@ const AR = {
   CPU_ELO: { facil: 900, normal: 1100, dificil: 1300 },
   NOMBRES_CPU: ["Brutus", "Sombra", "Merlina", "Robin", "Tormenta", "Kira", "Goliat"],
   DURA_SUBITA: 90000,
-  DANO: 0.4           // ajuste general del daño (para que las peleas duren)
+  DANO: 0.4,          // ajuste general del daño (para que las peleas duren)
+  FRENO: 0.15         // cuánto frena el hielo y las flechas del Cazador: 15% menos de velocidad
 };
 
 const Arena = {
@@ -234,7 +235,7 @@ const Arena = {
     else if (d < 150 && C.atk.tipo !== "melee") { mx = -dx / d * 0.6; my = -dy / d * 0.6; }   // retrocede poco y lento
     mx += -dy / d * 0.5 * j.giro; my += dx / d * 0.5 * j.giro;
     const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
-    const vel = j.st.vel * ritmo * (s.t < j.lento ? 0.5 : 1);
+    const vel = j.st.vel * ritmo * (s.t < j.lento ? 1 - AR.FRENO : 1);
     let nx = j.x + mx * vel * dt, ny = j.y + my * vel * dt;
     const enLava = (x, y) => E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 10) || (s.rayosOn && E.rayos && E.rayos.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
     if (enLava(nx, ny) && !enLava(j.x, j.y)) { nx = j.x - my * vel * dt * j.giro; ny = j.y + mx * vel * dt * j.giro; }
@@ -374,7 +375,7 @@ const Arena = {
     for (const [dx, dy] of Object.values(n.teclas)) { mx += dx; my += dy; }
     const d = Math.hypot(mx, my); if (d > 1) { mx /= d; my /= d; }
     if (d > 0.05) {
-      const E = AR.ESCENARIOS[v.esc], vel = yo.vel * (v.t < yo.lento ? 0.5 : 1);
+      const E = AR.ESCENARIOS[v.esc], vel = yo.vel * (v.t < yo.lento ? 1 - AR.FRENO : 1);
       const nx = n.x + mx * vel * dt, ny = n.y + my * vel * dt;
       if (Arena.libre(E, nx, n.y)) n.x = nx; if (Arena.libre(E, n.x, ny)) n.y = ny;
       n.dir = { x: mx / Math.max(d, 0.001), y: my / Math.max(d, 0.001) };

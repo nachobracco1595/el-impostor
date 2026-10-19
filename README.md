@@ -88,7 +88,7 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 
 ### Arena (peleas con clases, equipo y ELO)
 - Peleas en tiempo real: te mueves con el joystick (o flechas), atacas con el botón grande (o espacio) y usas la habilidad especial con el chico (o E). El ataque apunta solo al rival más cercano.
-- Personajes: cada clase es un personaje propio (todas gratis): **Guerrero** (espada en abanico y Giro), **Arquero** (flechas y Lluvia de flechas), **Mago** (bolas de fuego en área y Nova de hielo) y **Asesino** (golpes críticos y Paso sombra). Cada uno tiene su nivel, sus puntos, su evolución y su equipo.
+- Personajes: cada clase es un personaje propio (todas gratis): **Guerrero** (espada en abanico y Giro), **Arquero** (flechas y Lluvia de flechas), **Mago** (bolas de fuego en área y Nova de hielo) y **Asesino** (golpes críticos e Invisible: 4 s sin que lo apunten y el primer golpe hace el doble). Cada uno tiene su nivel, sus puntos, su evolución y su equipo.
 - Niveles: la experiencia se gana peleando con ese personaje (más por ganar y eliminar). Nivel máximo 30; después la experiencia da puntos de maestría (hasta 30 más).
 - Puntos: 3 por nivel para repartir a mano en Fuerza, Vida, Agilidad y Defensa. Reiniciarlos es gratis.
 - Evoluciones: en el nivel 10 se elige un camino y en el 20 se evoluciona otra vez (Caballero → Paladín o Bárbaro → Berserker; Cazador → Montaraz o Tirador → Francotirador; Piromante → Señor del fuego o Criomante → Glacial; Ninja → Maestro ninja o Sicario → Parca). Cada evolución tiene su pasiva.

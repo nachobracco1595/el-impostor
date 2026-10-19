@@ -254,7 +254,8 @@ const Arena = {
     for (const a of s.jug) {
       let d = 0;
       for (const b of s.jug) if (b !== a) { const S = a.lugar < b.lugar ? 1 : a.lugar > b.lugar ? 0 : 0.5, E = 1 / (1 + Math.pow(10, (b.elo - a.elo) / 400)); d += (S - E); }
-      a.dElo = Math.round(K * d / Math.max(1, n - 1));
+      // El ELO solo se mueve en peleas online entre personas (contra la compu no cuenta)
+      a.dElo = s.online ? Math.round(K * d / Math.max(1, n - 1)) : 0;
       const mult = s.online ? 1.3 : { facil: 0.6, normal: 1, dificil: 1.4 }[s.nivelCpu] || 1;
       a.monedas = Math.min(120, Math.round((8 + a.kills * 4 + (a.lugar === 1 ? 25 : a.lugar === 2 && n > 2 ? 10 : 0)) * mult * Evento.multiplicador()));
       const multXp = s.online ? 1.2 : { facil: 0.6, normal: 1, dificil: 1.3 }[s.nivelCpu] || 1;
@@ -698,8 +699,8 @@ const Arena = {
       Sonido.sfx(mio && mio.lugar === 1 ? "victoria" : "derrota");
       fin.innerHTML = `<div class="ar-fin-caja">
         <h2>${mio ? (mio.lugar === 1 ? "🏆 ¡Ganaste!" : `Quedaste ${mio.lugar}°`) : "Fin de la pelea"}</h2>
-        ${mio ? `<div class="tr-premio"><div><b>${mio.dElo >= 0 ? "+" : ""}${mio.dElo}</b><small>ELO</small></div><div><b>+${mio.monedas}</b><small>monedas</small></div><div><b>+${mio.xp || 0}</b><small>XP de ${esc(AR.CLASES[mio.clase].nombre)}</small></div><div><b>${mio.kills}</b><small>eliminaciones</small></div></div>` : ""}
-        <ol class="ar-tabla">${orden.map(j => `<li class="${j.id === v.me ? "yo" : ""}"><span>${j.lugar}°</span><b>${j.evoIc || AR.CLASES[j.clase].ic} ${esc(j.name)}${j.lv ? ` <small>Nv ${j.lv}</small>` : ""}</b><small>${j.kills} ⚔️ · ${j.dElo >= 0 ? "+" : ""}${j.dElo} ELO</small></li>`).join("")}</ol>
+        ${mio ? `<div class="tr-premio">${v.online ? `<div><b>${mio.dElo >= 0 ? "+" : ""}${mio.dElo}</b><small>ELO</small></div>` : ""}<div><b>+${mio.monedas}</b><small>monedas</small></div><div><b>+${mio.xp || 0}</b><small>XP de ${esc(AR.CLASES[mio.clase].nombre)}</small></div><div><b>${mio.kills}</b><small>eliminaciones</small></div></div>` : ""}
+        <ol class="ar-tabla">${orden.map(j => `<li class="${j.id === v.me ? "yo" : ""}"><span>${j.lugar}°</span><b>${j.evoIc || AR.CLASES[j.clase].ic} ${esc(j.name)}${j.lv ? ` <small>Nv ${j.lv}</small>` : ""}</b><small>${j.kills} ⚔️${v.online ? ` · ${j.dElo >= 0 ? "+" : ""}${j.dElo} ELO` : ""}</small></li>`).join("")}</ol>
         <div class="row">${Arena.opts.local || v.isHost ? `<button class="btn" id="arOtra">Otra pelea</button>` : `<p class="sub">El anfitrión elige si juegan otra.</p>`}<button class="btn ghost" id="arVolver">${Arena.opts.local ? "Armería" : v.isHost ? "Volver a la sala" : "Salir"}</button></div></div>`;
       on("arOtra", () => Arena.send({ t: "again" }));
       on("arVolver", () => { if (Arena.opts.local) { Arena.parar(); go("arenaIntro"); } else if (v.isHost) Arena.send({ t: "lobby" }); else { UI.confirmSalir = true; render(); } });

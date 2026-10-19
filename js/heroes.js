@@ -297,7 +297,7 @@ PANTALLAS.arenaIntro = () => {
       <li><span>🕹️ Moverse</span><b>Arrastra el dedo (o flechas)</b></li><li><span>⚔️ Atacar</span><b>Botón grande (o espacio): apunta solo al más cercano</b></li>
       <li><span>✨ Especial</span><b>Botón chico (o E), cuando se llena</b></li><li><span>🧪 Pociones</span><b>Pásales por encima: +35 de vida</b></li>
       <li><span>⭐ Experiencia</span><b>Cada pelea sube de nivel al personaje que usaste</b></li><li><span>🔥 Muerte súbita</span><b>A los 90 s todos pierden vida</b></li>
-      <li><span>🏆 ELO</span><b>Es uno solo para todos tus personajes</b></li></ul></details>
+      <li><span>🏆 ELO</span><b>Solo cambia en peleas online con amigos (contra la compu no cuenta). Es uno para todos tus personajes</b></li></ul></details>
     <button class="btn ghost" id="volver">Inicio</button>
   </section>`;
   Cuenta.conectarBarra();

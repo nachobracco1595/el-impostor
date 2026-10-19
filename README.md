@@ -95,7 +95,7 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - Equipo de cada personaje: arma, ropa, cabeza y pies, en 2 estilos (por ejemplo espada o hacha, arco o ballesta, bastón o varita, dagas o katana) y 9 materiales (madera → de los creadores). Cada material se compra con monedas al llegar a su nivel y lo comprado se cambia cuando quieras. El equipo de antes pasó a todos los personajes.
 - Escenarios: Ring, Coliseo (columnas), Volcán (lava que quema) y Nave espacial (cajas y rayos que se prenden). Hay pociones de vida y, a los 90 s, muerte súbita.
 - Contra la compu (1 contra 1 o todos contra todos, fácil, normal o difícil) u online de 2 a 8 en una sala (el anfitrión elige el escenario).
-- Cada pelea cambia tu **ELO** (sube más si le ganas a alguien con más ELO) y da monedas. Hay ranking de la Arena por ELO.
+- Las peleas **online con amigos** cambian tu **ELO** (sube más si le ganas a alguien con más ELO); contra la compu el ELO no se mueve, pero igual da monedas y experiencia. Todas las peleas dan monedas. Hay ranking de la Arena por ELO.
 
 ### Trabajos diarios: Tala, Mina y Pesca
 - Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.

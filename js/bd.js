@@ -195,7 +195,7 @@ const BD = {
       if (res.tablas) st.tablas++; if (res.mate) st.mates++; if (calc.gano && res.nivel === "dificil") st.dificilG++;
     } else if (res.juego === "arena") {
       st.kills += res.kills | 0;
-      st.elo = Math.max(0, (st.elo || 1000) + Math.max(-60, Math.min(60, res.dElo | 0)));
+      if (!res.vsCompu) st.elo = Math.max(0, (st.elo || 1000) + Math.max(-60, Math.min(60, res.dElo | 0)));
       st.mejorElo = Math.max(st.mejorElo || 1000, st.elo);
       if (typeof Heroes !== "undefined" && res.clase) Heroes.ganarXp(u, res.clase, res.xp | 0);
     } else if (res.juego === "casos") {

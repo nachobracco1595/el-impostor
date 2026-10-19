@@ -32,62 +32,11 @@ const AR = {
 };
 
 const Arena = {
-  /* ---------- Equipo guardado en el perfil (u.diario.arena) ---------- */
-  datos(u) {
-    Eco.completar(u);
-    const a = u.diario.arena = Object.assign({ clase: "guerrero", clases: ["guerrero"], eq: {} }, u.diario.arena || {});
-    a.eq = Object.assign({ casco: 0, armadura: 0, botas: 0, arma: 0 }, a.eq);
-    if (!a.clases.includes(a.clase)) a.clase = "guerrero";
-    return a;
-  },
+  /* ---------- Personajes: los arma heroes.js (nivel, puntos, evoluciones y equipo de cada clase) ---------- */
+  datos(u) { return Heroes.datos(u); },
   elo(u) { return (u && u.stats && u.stats.arena && u.stats.arena.elo) || 1000; },
-  miPerfil() {
-    const u = BD.sesion(); if (!u) return null;
-    const a = this.datos(u);
-    return { clase: a.clase, eq: { ...a.eq }, elo: this.elo(u) };
-  },
-  validar(p) {
-    const ok = p && typeof p === "object";
-    const n = v => Math.max(0, Math.min(8, v | 0));
-    return {
-      clase: ok && AR.CLASES[p.clase] ? p.clase : "guerrero",
-      eq: { casco: n(ok && p.eq && p.eq.casco), armadura: n(ok && p.eq && p.eq.armadura), botas: n(ok && p.eq && p.eq.botas), arma: n(ok && p.eq && p.eq.arma) },
-      elo: Math.max(0, Math.min(4000, ok ? (p.elo | 0) || 1000 : 1000))
-    };
-  },
-  nombrePieza(pieza, clase, n) {
-    const [nom, gen] = pieza === "arma" ? AR.CLASES[clase].arma : AR.PIEZAS[pieza], N = TR.NIVELES[n];
-    let sufijo = gen === "m" ? N.m : N.f;
-    if (N.id === "encantado") sufijo = { m: "encantado", f: "encantada", fp: "encantadas" }[gen];
-    return `${nom} ${sufijo}`;
-  },
-  stats(clase, eq) {
-    const C = AR.CLASES[clase];
-    return {
-      hp: Math.round(C.hp + eq.armadura * 9 + eq.casco * 5),
-      vel: C.vel * (1 + eq.botas * 0.035),
-      mult: 1 + eq.arma * 0.12,
-      def: 1 - Math.min(0.55, eq.casco * 0.025 + eq.armadura * 0.04)
-    };
-  },
-  comprarClase(c) {
-    const u = BD.sesion(); if (!u) return;
-    const a = this.datos(u), C = AR.CLASES[c];
-    if (a.clases.includes(c) || u.monedas < C.precio) return;
-    u.monedas -= C.precio; a.clases.push(c); a.clase = c;
-    Eco.guardar(u); if (u.nube) Nube.actividad("compra", "arena", 0, -C.precio);
-    Sonido.sfx("logro"); render();
-  },
-  mejorar(pieza) {
-    const u = BD.sesion(); if (!u) return;
-    const a = this.datos(u), n = a.eq[pieza];
-    if (n >= 8 || u.monedas < AR.COSTO[n + 1]) return;
-    u.monedas -= AR.COSTO[n + 1]; a.eq[pieza] = n + 1;
-    Eco.guardar(u); if (u.nube) Nube.actividad("compra", "arena", 0, -AR.COSTO[n + 1]);
-    Sonido.sfx(n + 1 === 8 ? "logro" : "monedas");
-    Toast.mostrar(`<div class="t-ic">${AR.PIEZAS[pieza][2]}</div><div class="t-txt"><small>Equipo mejorado</small><b>${esc(this.nombrePieza(pieza, a.clase, n + 1))}</b></div>`, "logro");
-    render();
-  },
+  miPerfil() { const u = BD.sesion(); return u ? Heroes.perfil(u) : null; },
+  validar(p) { return Heroes.validar(p); },
 
   /* ---------- Mapa ---------- */
   esc: s => AR.ESCENARIOS[s.esc],
@@ -112,8 +61,8 @@ const Arena = {
       id: "ar-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), esc, online: !!cfg.online, nivelCpu: cfg.nivel || "normal",
       t: 0, fase: "cuenta", inicio: 3000, proy: [], fx: [], pociones: [], prox: 12000, muertes: [], feed: [], sub: false, nP: 0,
       jug: jug.map((j, i) => {
-        const p = this.validar(j.arena), st = this.stats(p.clase, p.eq);
-        return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: p.eq, elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo,
+        const p = this.validar(j.arena), st = Heroes.stats(p);
+        return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, lv: p.lv, elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
           x: pos[i].x, y: pos[i].y, dx: 1, dy: 0, cara: pos[i].x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, critSig: false, golpe: -9999, esp: -9999,
           kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0 };
       })
@@ -135,10 +84,15 @@ const Arena = {
     }
     const d = Math.hypot(dx, dy); return d > 0.1 ? { x: dx / d, y: dy / d } : { x: a.cara, y: 0 };
   },
-  pegar(s, a, b, dano, crit) {
+  pegar(s, a, b, dano, crit, efecto = true) {
     if (!b.vivo || s.t < b.invul) return;
-    if (a.clase === "asesino" && (crit || a.critSig || Math.random() < AR.CLASES.asesino.atk.crit)) { dano *= 2; crit = true; a.critSig = false; }
+    const chance = (a.clase === "asesino" ? AR.CLASES.asesino.atk.crit : 0) + (a.st.crit || 0);
+    if (crit || a.critSig || Math.random() < chance) { dano *= a.st.critX || 2; crit = true; a.critSig = false; }
+    if (a.st.furia && a.hp < a.max * 0.4) dano *= 1 + a.st.furia;
     dano = Math.max(1, Math.round(dano * AR.DANO * a.st.mult * b.st.def));
+    // Evoluciones: frenar y quemar
+    if (efecto && a.st.lento) b.lento = Math.max(b.lento, s.t + a.st.lento);
+    if (efecto && a.st.quema) b.quema = { hasta: s.t + 3000, dps: dano * a.st.quema, de: a.id };
     b.hp -= dano; a.dano += dano; b.hit = s.t;
     s.fx.push({ k: ++s.nP, tipo: "num", x: b.x, y: b.y - 40, txt: (crit ? "💥" : "") + "-" + dano, color: crit ? "#ffd43b" : "#ff6b7d", t: s.t });
     if (b.hp <= 0) this.morir(s, b, a);
@@ -153,37 +107,40 @@ const Arena = {
   atacar(s, a, dx, dy) {
     if (s.fase !== "pelea" || !a.vivo || s.t < a.cdA) return;
     const C = AR.CLASES[a.clase], A = C.atk;
-    a.cdA = s.t + A.cd; a.golpe = s.t;
-    const dir = this.apuntar(s, a, dx, dy, (A.alcance || 80) + 40, A.tipo === "melee" ? 0 : A.vel);
+    a.cdA = s.t + A.cd * a.st.cd; a.golpe = s.t;
+    const alc = (A.alcance || 80) * a.st.alc;
+    const dir = this.apuntar(s, a, dx, dy, alc + 40, A.tipo === "melee" ? 0 : A.vel);
     a.dx = dir.x; a.dy = dir.y; if (Math.abs(dir.x) > 0.1) a.cara = dir.x < 0 ? -1 : 1;
     if (A.tipo === "melee") {
       for (const b of s.jug) {
         if (b === a || !b.vivo) continue;
         const ddx = b.x - a.x, ddy = b.y - a.y, d = Math.hypot(ddx, ddy);
-        if (d > A.alcance + AR.R) continue;
+        if (d > alc + AR.R) continue;
         const ang = Math.acos(Math.max(-1, Math.min(1, (ddx * dir.x + ddy * dir.y) / (d || 1))));
         if (d < 30 || ang < A.arco / 2) this.pegar(s, a, b, A.dano);
       }
-      s.fx.push({ k: ++s.nP, tipo: "tajo", x: a.x, y: a.y, dx: dir.x, dy: dir.y, r: A.alcance, arco: A.arco, color: TR.NIVELES[a.eq.arma].color, t: s.t });
+      s.fx.push({ k: ++s.nP, tipo: "tajo", x: a.x, y: a.y, dx: dir.x, dy: dir.y, r: alc, arco: A.arco, color: TR.NIVELES[a.eq.arma].color, t: s.t });
     } else this.disparar(s, a, dir, A);
   },
   disparar(s, a, dir, A, extra = {}) {
-    s.proy.push({ k: ++s.nP, tipo: A.tipo, dueno: a.id, x: a.x + dir.x * 26, y: a.y - 10 + dir.y * 26, vx: dir.x * A.vel, vy: dir.y * A.vel, dano: A.dano * (extra.mult || 1), hasta: s.t + (A.alcance / A.vel) * 1000, area: A.area || 0, color: TR.NIVELES[a.eq.arma].color });
+    s.proy.push({ k: ++s.nP, tipo: A.tipo, dueno: a.id, x: a.x + dir.x * 26, y: a.y - 10 + dir.y * 26, vx: dir.x * A.vel, vy: dir.y * A.vel, dano: A.dano * (extra.mult || 1), hasta: s.t + (A.alcance * a.st.alc / A.vel) * 1000, area: (A.area || 0) * a.st.area, color: TR.NIVELES[a.eq.arma].color });
   },
   especial(s, a, dx, dy) {
     if (s.fase !== "pelea" || !a.vivo || s.t < a.cdE) return;
     const C = AR.CLASES[a.clase];
-    a.cdE = s.t + C.esp.cd; a.esp = s.t;
+    a.cdE = s.t + C.esp.cd * a.st.espCd; a.esp = s.t;
     const dir = this.apuntar(s, a, dx, dy, 600, a.clase === "arquero" ? C.atk.vel : 0);
     if (a.clase === "guerrero") {
       for (const b of s.jug) if (b !== a && b.vivo && Math.hypot(b.x - a.x, b.y - a.y) < 120) this.pegar(s, a, b, C.atk.dano * 1.6);
       s.fx.push({ k: ++s.nP, tipo: "onda", x: a.x, y: a.y, r: 120, color: "#ffd43b", t: s.t });
     } else if (a.clase === "arquero") {
       const base = Math.atan2(dir.y, dir.x);
-      for (let i = -2; i <= 2; i++) this.disparar(s, a, { x: Math.cos(base + i * 0.22), y: Math.sin(base + i * 0.22) }, C.atk);
+      const n = a.st.flechas || 5, abre = n > 5 ? 0.17 : 0.22;
+      for (let i = 0; i < n; i++) { const k = i - (n - 1) / 2; this.disparar(s, a, { x: Math.cos(base + k * abre), y: Math.sin(base + k * abre) }, C.atk); }
     } else if (a.clase === "mago") {
-      for (const b of s.jug) if (b !== a && b.vivo && Math.hypot(b.x - a.x, b.y - a.y) < 175) { this.pegar(s, a, b, C.atk.dano * 1.1); b.lento = s.t + 2200; }
-      s.fx.push({ k: ++s.nP, tipo: "onda", x: a.x, y: a.y, r: 175, color: "#74c0fc", t: s.t });
+      const r = 175 * a.st.nova;
+      for (const b of s.jug) if (b !== a && b.vivo && Math.hypot(b.x - a.x, b.y - a.y) < r) { this.pegar(s, a, b, C.atk.dano * 1.1); b.lento = s.t + 2200; }
+      s.fx.push({ k: ++s.nP, tipo: "onda", x: a.x, y: a.y, r, color: "#74c0fc", t: s.t });
     } else if (a.clase === "asesino") {
       a.invul = s.t + 450; a.critSig = true;
       if (a.cpu || !s.online || a.id === "H") this.saltar(s, a, dir);   // los jugadores online se mueven solos (ver Arena.local)
@@ -241,7 +198,10 @@ const Arena = {
       for (const l of E.lava) if (Math.hypot(j.x - l.x, j.y - l.y) < l.r) d += 22 * dt;
       if (rayosOn) for (const r of E.rayos) if (j.x > r.x && j.x < r.x + r.w && j.y > r.y && j.y < r.y + r.h) d += 30 * dt;
       if (s.sub) d += 5 * dt;
-      if (d) { j.hp -= d; if (j.hp <= 0) this.morir(s, j, null); }
+      if (j.st.regen && j.hp < j.max) j.hp = Math.min(j.max, j.hp + j.max * j.st.regen * dt);
+      let quien = null;
+      if (j.quema && s.t < j.quema.hasta) { d += j.quema.dps * dt; quien = s.jug.find(x => x.id === j.quema.de) || null; if (quien) quien.dano += j.quema.dps * dt; }
+      if (d) { j.hp -= d; if (j.hp <= 0) this.morir(s, j, quien); }
     }
     // Pociones de vida
     if (s.t > s.prox && s.pociones.length < 2) {
@@ -279,7 +239,7 @@ const Arena = {
     if (this.libre(E, nx, j.y)) j.x = nx; else j.giro *= -1;
     if (this.libre(E, j.x, ny)) j.y = ny;
     if (Math.abs(mx) > 0.1) j.cara = mx < 0 ? -1 : 1;
-    const alcance = (C.atk.alcance || 80) + (C.atk.tipo === "melee" ? 10 : 0);
+    const alcance = (C.atk.alcance || 80) * j.st.alc + (C.atk.tipo === "melee" ? 10 : 0);
     if (d < alcance && Math.random() < ritmo * 0.3) this.atacar(s, j, dx, dy);
     if (s.t > j.cdE && Math.random() < ritmo * 0.02 && d < (j.clase === "arquero" ? 500 : j.clase === "asesino" ? 260 : 150)) this.especial(s, j, dx, dy);
   },
@@ -297,20 +257,22 @@ const Arena = {
       a.dElo = Math.round(K * d / Math.max(1, n - 1));
       const mult = s.online ? 1.3 : { facil: 0.6, normal: 1, dificil: 1.4 }[s.nivelCpu] || 1;
       a.monedas = Math.min(120, Math.round((8 + a.kills * 4 + (a.lugar === 1 ? 25 : a.lugar === 2 && n > 2 ? 10 : 0)) * mult * Evento.multiplicador()));
+      const multXp = s.online ? 1.2 : { facil: 0.6, normal: 1, dificil: 1.3 }[s.nivelCpu] || 1;
+      a.xp = Math.min(250, Math.round((20 + a.kills * 12 + (a.lugar === 1 ? 30 : a.lugar === 2 && n > 2 ? 12 : 0)) * multXp));
     }
   },
 
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;
     const j = s.jug.find(x => x.id === pid); if (!j || j.cpu) return null;
-    return { juego: "arena", id: s.id, gano: j.lugar === 1, lugar: j.lugar, n: s.jug.length, kills: j.kills, dElo: j.dElo, monedas: j.monedas, vsCompu: !s.online };
+    return { juego: "arena", id: s.id, gano: j.lugar === 1, lugar: j.lugar, n: s.jug.length, kills: j.kills, dElo: j.dElo, monedas: j.monedas, vsCompu: !s.online, clase: j.clase, xp: j.xp | 0 };
   },
 
   view(s, pid) {
     const yo = s.jug.findIndex(j => j.id === pid);
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
-      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
+      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, lv: j.lv, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
         golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed
@@ -447,15 +409,15 @@ const Arena = {
     if (img.complete) ctx.drawImage(img, -30, -46, 60, 67);
     if (golpeado) { const b = this.blanco(look); if (b) { ctx.globalAlpha = 0.85 * (1 - (vt - j.hit) / 160); ctx.drawImage(b, -30, -46, 60, 67); ctx.globalAlpha = vt < j.invul ? 0.45 : 1; } }
     // Botas
-    if (j.eq.botas) { ctx.fillStyle = N("botas").color; ctx.beginPath(); ctx.roundRect(-17, 9, 14, 9, 3); ctx.roundRect(3, 9, 14, 9, 3); ctx.fill(); ctx.strokeStyle = "#0007"; ctx.lineWidth = 1.2; ctx.stroke(); }
+    if (j.eq.botas >= 0) { ctx.fillStyle = N("botas").color; ctx.beginPath(); ctx.roundRect(-17, 9, 14, 9, 3); ctx.roundRect(3, 9, 14, 9, 3); ctx.fill(); ctx.strokeStyle = "#0007"; ctx.lineWidth = 1.2; ctx.stroke(); }
     // Armadura (pechera con brillo)
-    if (j.eq.armadura) {
+    if (j.eq.armadura >= 0) {
       const c = N("armadura").color, g = ctx.createLinearGradient(-17, -8, 17, 14); g.addColorStop(0, "#fff8"); g.addColorStop(0.35, c); g.addColorStop(1, oscurecer(c, 0.6));
       ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(-17, -7, 34, 19, 7); ctx.fill(); ctx.strokeStyle = "#0008"; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.strokeStyle = "#0004"; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 11); ctx.stroke();
     }
     // Casco con visera
-    if (j.eq.casco) {
+    if (j.eq.casco >= 0) {
       const c = N("casco").color, g = ctx.createLinearGradient(0, -48, 0, -24); g.addColorStop(0, "#fff9"); g.addColorStop(0.3, c); g.addColorStop(1, oscurecer(c, 0.65));
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -28, 21, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#0008"; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = oscurecer(c, 0.55); ctx.beginPath(); ctx.roundRect(-22, -31, 44, 6, 3); ctx.fill();
@@ -464,17 +426,41 @@ const Arena = {
     // Arma
     const col = N("arma").color, golpe = vt - j.golpe < 250 ? (vt - j.golpe) / 250 : -1;
     ctx.translate(20, -6);
+    const est = (j.estilo && j.estilo.arma) || 0, hoja = (largo, ancho) => { const g = ctx.createLinearGradient(-ancho, 0, ancho, 0); g.addColorStop(0, oscurecer(col, 0.7)); g.addColorStop(0.5, "#fff"); g.addColorStop(1, col); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-ancho, -5); ctx.lineTo(-ancho + 1, -4 - largo + 6); ctx.lineTo(0, -5 - largo); ctx.lineTo(ancho - 1, -4 - largo + 6); ctx.lineTo(ancho, -5); ctx.fill(); };
     if (j.clase === "guerrero" || j.clase === "asesino") {
       ctx.rotate(golpe >= 0 ? -1.9 + golpe * 3.0 : -0.5 + Math.sin(t * 3) * 0.05);
-      ctx.fillStyle = "#5c3b1e"; ctx.fillRect(-2.5, -2, 5, 12); ctx.fillStyle = "#c9a227"; ctx.fillRect(-8, -5, 16, 4);
-      const largo = j.clase === "guerrero" ? 38 : 22, g = ctx.createLinearGradient(-4, 0, 4, 0); g.addColorStop(0, oscurecer(col, 0.7)); g.addColorStop(0.5, "#fff"); g.addColorStop(1, col);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-4, -5); ctx.lineTo(-3, -4 - largo + 6); ctx.lineTo(0, -5 - largo); ctx.lineTo(3, -4 - largo + 6); ctx.lineTo(4, -5); ctx.fill();
-      if (j.clase === "asesino") { ctx.translate(-34, 6); ctx.beginPath(); ctx.moveTo(-3, -4); ctx.lineTo(0, -24); ctx.lineTo(3, -4); ctx.fill(); }
+      if (j.clase === "guerrero" && est === 1) {
+        // Hacha: mango largo y hoja curva
+        ctx.fillStyle = "#5c3b1e"; ctx.fillRect(-2.5, -36, 5, 46);
+        const g = ctx.createLinearGradient(0, -40, 18, -24); g.addColorStop(0, "#fff"); g.addColorStop(0.4, col); g.addColorStop(1, oscurecer(col, 0.6));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(2, -40); ctx.quadraticCurveTo(24, -38, 20, -18); ctx.quadraticCurveTo(12, -24, 2, -22); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#0007"; ctx.lineWidth = 1.2; ctx.stroke();
+      } else if (j.clase === "asesino" && est === 1) {
+        // Katana: una sola hoja larga y fina
+        ctx.fillStyle = "#1b1726"; ctx.fillRect(-2, -2, 4, 13); ctx.fillStyle = "#c9a227"; ctx.beginPath(); ctx.ellipse(0, -4, 6, 2.5, 0, 0, 7); ctx.fill();
+        hoja(42, 2.6);
+      } else {
+        ctx.fillStyle = "#5c3b1e"; ctx.fillRect(-2.5, -2, 5, 12); ctx.fillStyle = "#c9a227"; ctx.fillRect(-8, -5, 16, 4);
+        hoja(j.clase === "guerrero" ? 38 : 22, 4);
+        if (j.clase === "asesino") { ctx.translate(-34, 6); ctx.beginPath(); ctx.moveTo(-3, -4); ctx.lineTo(0, -24); ctx.lineTo(3, -4); ctx.fill(); }
+      }
+    } else if (j.clase === "arquero" && est === 1) {
+      // Ballesta: culata horizontal con el arco cruzado adelante
+      const tens = golpe >= 0 ? Math.max(0, 1 - golpe * 2) : 0.3;
+      ctx.fillStyle = "#6b4423"; ctx.beginPath(); ctx.roundRect(-10, -7, 30, 6, 2); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(14, -4, 13, -1.9 + Math.PI / 2 - 1.2, -1.9 + Math.PI / 2 + 1.2 + Math.PI); ctx.stroke();
+      ctx.strokeStyle = "#eee"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(14, -17); ctx.lineTo(6 - tens * 8, -4); ctx.lineTo(14, 9); ctx.stroke();
     } else if (j.clase === "arquero") {
       const tens = golpe >= 0 ? Math.max(0, 1 - golpe * 2) : 0.2;
       ctx.strokeStyle = oscurecer(col, 0.8); ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -4, 19, -1.3, 1.3); ctx.stroke();
       ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, -4, 19, -1.25, 1.25); ctx.stroke();
       ctx.strokeStyle = "#eee"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Math.cos(-1.3) * 19, -4 + Math.sin(-1.3) * 19); ctx.lineTo(-tens * 10 + 4, -4); ctx.lineTo(Math.cos(1.3) * 19, -4 + Math.sin(1.3) * 19); ctx.stroke();
+    } else if (est === 1) {
+      // Varita: corta, con una estrella en la punta
+      ctx.rotate(golpe >= 0 ? -0.9 + golpe * 1.2 : -0.35 + Math.sin(t * 3) * 0.06);
+      ctx.strokeStyle = "#2b1a3a"; ctx.lineWidth = 3.5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(0, -16); ctx.stroke(); ctx.lineCap = "butt";
+      const r = 5 + (golpe >= 0 ? 4 * (1 - golpe) : Math.sin(t * 5)), g = ctx.createRadialGradient(0, -20, 1, 0, -20, r * 2.4);
+      g.addColorStop(0, "#fff"); g.addColorStop(0.35, col); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -20, r * 2.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 2.5 : 6; ctx.lineTo(Math.cos(ang) * rr, -20 + Math.sin(ang) * rr); } ctx.fill();
     } else {
       ctx.strokeStyle = "#6b4423"; ctx.lineWidth = 4.5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -30); ctx.stroke(); ctx.lineCap = "butt";
       const r = 7 + (golpe >= 0 ? 4 * (1 - golpe) : Math.sin(t * 4)), g = ctx.createRadialGradient(0, -34, 1, 0, -34, r * 2.2);
@@ -483,11 +469,12 @@ const Arena = {
     }
     ctx.restore(); ctx.globalAlpha = 1;
     if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = TR.NIVELES[Math.max(j.eq.arma, j.eq.armadura)].color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (j.quema) { ctx.font = "15px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("🔥", x - 22, y - 44); }
     if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("❄️", x + 22, y - 44); }
     if (!j.name) return;
     // Nombre y vida (barra redondeada con borde)
     ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
-    const nom = `${AR.CLASES[j.clase].ic} ${j.name}`; ctx.strokeText(nom, x, y - 68); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, y - 68);
+    const nom = `${j.evoIc || AR.CLASES[j.clase].ic} ${j.name}${j.lv ? ` · ${j.lv}` : ""}`; ctx.strokeText(nom, x, y - 68); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, y - 68);
     const p = Math.max(0, j.hp / j.max);
     ctx.fillStyle = "#000c"; ctx.beginPath(); ctx.roundRect(x - 28, y - 62, 56, 9, 4.5); ctx.fill();
     ctx.fillStyle = p > 0.5 ? "#3ddcb1" : p > 0.25 ? "#ffc53d" : "#ff4d63"; ctx.beginPath(); ctx.roundRect(x - 27, y - 61, Math.max(3, 54 * p), 7, 3.5); ctx.fill();
@@ -698,7 +685,7 @@ const Arena = {
   hud() {
     const v = Arena.v, yo = v.jug[v.yo];
     const top = byId("arTop"); if (!top) return;
-    top.innerHTML = v.jug.map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`).join("");
+    top.innerHTML = v.jug.map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`).join("");
     byId("arFeed").innerHTML = v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : "");
     if (yo) byId("arEspIc").textContent = AR.CLASES[yo.clase].esp.ic;
     const c = byId("arCentro");
@@ -711,8 +698,8 @@ const Arena = {
       Sonido.sfx(mio && mio.lugar === 1 ? "victoria" : "derrota");
       fin.innerHTML = `<div class="ar-fin-caja">
         <h2>${mio ? (mio.lugar === 1 ? "🏆 ¡Ganaste!" : `Quedaste ${mio.lugar}°`) : "Fin de la pelea"}</h2>
-        ${mio ? `<div class="tr-premio"><div><b>${mio.dElo >= 0 ? "+" : ""}${mio.dElo}</b><small>ELO</small></div><div><b>+${mio.monedas}</b><small>monedas</small></div><div><b>${mio.kills}</b><small>eliminaciones</small></div></div>` : ""}
-        <ol class="ar-tabla">${orden.map(j => `<li class="${j.id === v.me ? "yo" : ""}"><span>${j.lugar}°</span><b>${AR.CLASES[j.clase].ic} ${esc(j.name)}</b><small>${j.kills} ⚔️ · ${j.dElo >= 0 ? "+" : ""}${j.dElo} ELO</small></li>`).join("")}</ol>
+        ${mio ? `<div class="tr-premio"><div><b>${mio.dElo >= 0 ? "+" : ""}${mio.dElo}</b><small>ELO</small></div><div><b>+${mio.monedas}</b><small>monedas</small></div><div><b>+${mio.xp || 0}</b><small>XP de ${esc(AR.CLASES[mio.clase].nombre)}</small></div><div><b>${mio.kills}</b><small>eliminaciones</small></div></div>` : ""}
+        <ol class="ar-tabla">${orden.map(j => `<li class="${j.id === v.me ? "yo" : ""}"><span>${j.lugar}°</span><b>${j.evoIc || AR.CLASES[j.clase].ic} ${esc(j.name)}${j.lv ? ` <small>Nv ${j.lv}</small>` : ""}</b><small>${j.kills} ⚔️ · ${j.dElo >= 0 ? "+" : ""}${j.dElo} ELO</small></li>`).join("")}</ol>
         <div class="row">${Arena.opts.local || v.isHost ? `<button class="btn" id="arOtra">Otra pelea</button>` : `<p class="sub">El anfitrión elige si juegan otra.</p>`}<button class="btn ghost" id="arVolver">${Arena.opts.local ? "Armería" : v.isHost ? "Volver a la sala" : "Salir"}</button></div></div>`;
       on("arOtra", () => Arena.send({ t: "again" }));
       on("arVolver", () => { if (Arena.opts.local) { Arena.parar(); go("arenaIntro"); } else if (v.isHost) Arena.send({ t: "lobby" }); else { UI.confirmSalir = true; render(); } });
@@ -722,15 +709,14 @@ const Arena = {
 
   /* ---------- Contra la compu ---------- */
   empezarLocal(modo, nivel, esc) {
-    const u = BD.sesion(), yo = this.miPerfil() || { clase: "guerrero", eq: { casco: 0, armadura: 0, botas: 0, arma: 0 }, elo: 1000 };
-    const tier = Object.values(yo.eq).reduce((a, b) => a + b, 0) / 4;
-    const base = { facil: Math.max(0, tier - 2), normal: tier, dificil: Math.min(8, tier + 1.5) }[nivel];
+    const u = BD.sesion(), yo = this.miPerfil() || Heroes.validar(null);
+    const base = { facil: yo.lv - 4, normal: yo.lv, dificil: yo.lv + 3 }[nivel];
     const cpus = modo === "duelo" ? 1 : 3;
     const nombres = AR.NOMBRES_CPU.slice().sort(() => Math.random() - 0.5);
     const jug = [{ id: "yo", name: u ? u.nombre : "Tú", look: u ? u.look : null, arena: yo }];
     for (let i = 0; i < cpus; i++) {
-      const n = () => Math.max(0, Math.min(8, Math.round(base + (Math.random() - 0.5) * 1.5)));
-      jug.push({ id: "cpu" + i, name: "🤖 " + nombres[i], cpu: true, nivel, look: { color: COLORES[(i * 3 + 2) % COLORES.length], acc: [] }, arena: { clase: pick(Object.keys(AR.CLASES)), eq: { casco: n(), armadura: n(), botas: n(), arma: n() } } });
+      const lv = Math.max(1, Math.min(HE.MAX, Math.round(base + (Math.random() - 0.5) * 3)));
+      jug.push({ id: "cpu" + i, name: "🤖 " + nombres[i], cpu: true, nivel, look: { color: COLORES[(i * 3 + 2) % COLORES.length], acc: [] }, arena: Heroes.cpu(lv) });
     }
     S.arena = this.setup(jug, { esc, nivel });
     S.arenaCfg = { modo, nivel, esc };
@@ -782,57 +768,4 @@ Arena.enviarLocal = a => {
   if (!s) return;
   if (a.t === "again") { Arena.parar(); const c = S.arenaCfg; return Arena.empezarLocal(c.modo, c.nivel, c.esc); }
   Arena.act(s, "yo", a);
-};
-
-/* ---------- Armería: clases, equipo, escenario y modo ---------- */
-PANTALLAS.arenaIntro = () => {
-  const u = BD.sesion();
-  if (!u) {
-    app.innerHTML = `${head(0)}<section class="stage">${personaje("#ff4d63", "civ", 110, ["casco"])}<h2>Arena</h2><p class="sub">Necesitas un perfil para guardar tu clase, tu equipo y tu ELO.</p><button class="btn" id="arPerfil">Crear o elegir perfil</button><button class="btn ghost" id="volver">Volver</button></section>`;
-    on("arPerfil", () => go("cuenta")); on("volver", () => go("home")); return;
-  }
-  const a = Arena.datos(u), st = Arena.stats(a.clase, a.eq), elo = Arena.elo(u), sa = u.stats.arena || {};
-  const cfg = S.arenaCfg || { modo: "duelo", nivel: "normal", esc: "ring" };
-  app.innerHTML = `${Cuenta.barra()}<section class="screen">
-    <div class="headrow"><h1 class="titulo chico">La <span>Arena</span></h1><span class="chip-mon">🪙 ${u.monedas}</span></div>
-    <div class="ar-perfil">
-      <div class="ar-retrato"><canvas id="arPrev" width="160" height="170"></canvas></div>
-      <div class="ar-datos"><span class="label">ELO</span><b class="ar-elo">${elo}</b><small>${sa.g || 0} victorias · ${sa.j || 0} peleas · ${sa.kills || 0} ⚔️</small>
-        <div class="ar-st"><span>❤️ ${st.hp}</span><span>👟 ${Math.round(st.vel)}</span><span>💥 ×${st.mult.toFixed(2)}</span><span>🛡️ ${Math.round((1 - st.def) * 100)}%</span></div></div>
-    </div>
-    <div class="panel"><span class="label">Clase</span>
-      <div class="ar-clases">${Object.entries(AR.CLASES).map(([k, C]) => { const tengo = a.clases.includes(k); return `<button class="ar-clase ${a.clase === k ? "on" : ""}" data-clase="${k}" ${!tengo && u.monedas < C.precio ? "disabled" : ""}>
-        <span class="ic">${C.ic}</span><b>${C.nombre}</b><small>${C.desc}</small><small class="esp">${C.esp.ic} ${C.esp.nombre}</small>${tengo ? "" : `<span class="precio">🪙 ${C.precio}</span>`}</button>`; }).join("")}</div></div>
-    <div class="panel"><span class="label">Equipo</span>
-      ${Object.keys(AR.PIEZAS).map(p => { const n = a.eq[p]; return `<div class="ar-pieza"><span class="ic">${AR.PIEZAS[p][2]}</span><div><b>${esc(Arena.nombrePieza(p, a.clase, n))}</b>
-        <span class="tr-pasos">${TR.NIVELES.map((N, k) => `<i style="--c:${N.color}" class="${k <= n ? "on" : ""}"></i>`).join("")}</span></div>
-        ${n >= 8 ? `<span class="ok">👑 Tope</span>` : `<button class="btn chico" data-mej="${p}" ${u.monedas < AR.COSTO[n + 1] ? "disabled" : ""}>⬆️ ${AR.COSTO[n + 1]} 🪙</button>`}</div>`; }).join("")}
-    </div>
-    <div class="panel"><span class="label">Escenario</span>
-      <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${cfg.esc === k ? "on" : ""}" data-esc="${k}">${E.ic} ${E.nombre}</button>`).join("")}</div>
-      <span class="label">Contra la compu</span>
-      <div class="tabs">${[["duelo", "1 contra 1"], ["todos", "Todos contra todos (4)"]].map(([k, n]) => `<button data-modo="${k}" aria-pressed="${cfg.modo === k}">${n}</button>`).join("")}</div>
-      <div class="tabs">${[["facil", "Fácil"], ["normal", "Normal"], ["dificil", "Difícil"]].map(([k, n]) => `<button data-niv="${k}" aria-pressed="${cfg.nivel === k}">${n}</button>`).join("")}</div>
-      <button class="btn" id="arJugar">⚔️ ¡A pelear!</button>
-      <button class="btn ghost" id="arAmigos">Pelear con amigos (crear sala)</button>
-    </div>
-    <details class="panel"><summary class="label">Cómo se juega</summary><ul class="reglas-pts">
-      <li><span>🕹️ Moverse</span><b>Arrastra el dedo (o flechas)</b></li><li><span>⚔️ Atacar</span><b>Botón grande (o espacio): apunta solo al más cercano</b></li>
-      <li><span>✨ Especial</span><b>Botón chico (o E), cuando se llena</b></li><li><span>🧪 Pociones</span><b>Pásales por encima: +35 de vida</b></li>
-      <li><span>🔥 Muerte súbita</span><b>A los 90 s todos pierden vida</b></li><li><span>🏆 ELO</span><b>Sube si le ganas a alguien con más ELO</b></li></ul></details>
-    <button class="btn ghost" id="volver">Inicio</button>
-  </section>`;
-  Cuenta.conectarBarra();
-  // Vista previa del personaje con el equipo
-  const cv = byId("arPrev"), ctx = cv.getContext("2d");
-  const pintar = () => { ctx.clearRect(0, 0, 160, 170); ctx.save(); ctx.scale(1.7, 1.7); Arena.dibujarLuchador(ctx, { name: "", look: u.look, clase: a.clase, eq: a.eq, cara: 1, hp: 1, max: 1, invul: 0, lento: 0, golpe: -9999 }, 47, 75, performance.now() / 1000, false, 0); ctx.restore(); };
-  pintar(); setTimeout(pintar, 300);
-  app.querySelectorAll("[data-clase]").forEach(b => b.onclick = () => { const k = b.dataset.clase; if (a.clases.includes(k)) { a.clase = k; Eco.guardar(u); render(); } else if (confirm(`¿Comprar la clase ${AR.CLASES[k].nombre} por ${AR.CLASES[k].precio} monedas?`)) Arena.comprarClase(k); });
-  app.querySelectorAll("[data-mej]").forEach(b => b.onclick = () => Arena.mejorar(b.dataset.mej));
-  app.querySelectorAll("[data-esc]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, esc: b.dataset.esc }; S.arenaEsc = b.dataset.esc; render(); });
-  app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, modo: b.dataset.modo }; render(); });
-  app.querySelectorAll("[data-niv]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, nivel: b.dataset.niv }; render(); });
-  on("arJugar", () => Arena.empezarLocal(cfg.modo, cfg.nivel, cfg.esc));
-  on("arAmigos", () => { S.arenaEsc = cfg.esc; go("onCrear"); });
-  on("volver", () => go("home"));
 };

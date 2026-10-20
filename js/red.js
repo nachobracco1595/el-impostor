@@ -76,7 +76,7 @@ const Net = {
       }
       p.on = true;
       p.look = Cuenta.lookValido(m.look);
-      p.arena = Arena.validar(m.arena);
+      p.arena = Arena.validar(m.arena); p.torre = Torre.validarInfo(m.torre);
       this.conns[cid] = c; c.cid = cid;
       this.broadcast();
       if (R.chat && R.chat.length) c.send({ t: "chat", lista: R.chat });
@@ -115,12 +115,12 @@ const Net = {
       this.enviarVoz();
       return;
     }
-    if (a.t === "arenaPerfil") { const quien = R.players.find(x => x.id === pid); if (quien) quien.arena = Arena.validar(a.p); return; }
+    if (a.t === "arenaPerfil") { const quien = R.players.find(x => x.id === pid); if (quien) { quien.arena = Arena.validar(a.p); if (a.torre) quien.torre = Torre.validarInfo(a.torre); } return; }
     try {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "blackjack" ? Blackjack.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "blackjack" ? Blackjack.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : R.sel === "torre" ? Torre.empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -166,7 +166,7 @@ const Net = {
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     return {
       game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
-      players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H" })),
+      players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H", torre: p.id === "H" ? Torre.info() : p.torre || null })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
   },
@@ -209,7 +209,7 @@ const Net = {
 
   conectar() {
     const c = this.conn = this.peer.connect(PREFIJO + this.code, { reliable: true });
-    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil() }); keepAwake(); if (Voz.activo) setTimeout(() => Voz.anunciar(), 300); });
+    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil(), torre: Torre.info() }); keepAwake(); if (Voz.activo) setTimeout(() => Voz.anunciar(), 300); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
       if (m.t === "chat") Chat.recibir(m.lista || []);
@@ -376,6 +376,7 @@ function renderLobby(v) {
     naval: ["Batalla naval", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "2 jugadores"],
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
     arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
+    torre: ["Torre de hordas", `<span class="nave-mini">🗼</span>`, "1 a 4"],
     ajedrez: ["Ajedrez", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "2 jugadores"]
   };
   app.innerHTML = `${Net.cabecera()}
@@ -415,6 +416,10 @@ function renderLobby(v) {
         : v.sel === "blackjack" ? (() => { const c = v.bjCfg, n = v.players.length, bots = Math.max(0, Math.min(c.bots, 7 - n)); return `<p class="summary">${n > 7 ? "La mesa de blackjack es de hasta 7." : `Todos contra la banca${bots ? ` · ${bots} bot${bots > 1 ? "s" : ""} en la mesa` : ""}. ${c.monedas ? "Cada uno apuesta las monedas de su perfil." : `Mesa amistosa: ${BJ.FICHAS_MESA} fichas para cada uno, sin monedas.`}`}</p>
           ${H ? `<div class="seg">${[[true, "Con monedas 🪙"], [false, "Amistosa"]].map(([k, t]) => `<button aria-pressed="${c.monedas === k}" data-bjm="${k}">${t}</button>`).join("")}</div>
           <span class="label">Bots en la mesa</span><div class="seg">${[0, 1, 2, 3].map(k => `<button aria-pressed="${c.bots === k}" data-bjb="${k}">${k ? k : "Ninguno"}</button>`).join("")}</div>` : ""}`; })()
+        : v.sel === "torre" ? (() => { const ps = v.players.slice(0, 4), base = Math.min(...ps.map(p => (p.torre && p.torre.base) || 1));
+            return `<p class="summary">${v.players.length > 4 ? "La torre en grupo es de hasta 4. " : ""}Suben juntos contra olas de monstruos (más y más fuertes cuantos más son). Arrancan en el <b>piso ${base}</b>, el guardado más bajo del grupo. El que cae vuelve en el piso siguiente; el intento termina cuando caen todos. Cada uno usa uno de sus intentos del día y guarda su propio progreso.</p>
+            <ul class="to-lobby">${ps.map(p => `<li><b>${esc(p.name)}</b><span>${p.torre ? `🚩 piso ${p.torre.base} · ${p.torre.quedan ? `${p.torre.quedan} intento${p.torre.quedan > 1 ? "s" : ""}` : "sin intentos (juega sin premio)"}` : "sin perfil (juega sin premio)"}</span></li>`).join("")}</ul>
+            ${Heroes.selector()}`; })()
         : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su héroe y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
           ${Heroes.selector()}
           <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
@@ -457,7 +462,7 @@ function renderLobby(v) {
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
   Heroes.conectarSelector();
-  if (!H && v.sel === "arena" && UI.arenaPerfil !== v.code) { UI.arenaPerfil = v.code; Net.send({ t: "arenaPerfil", p: Arena.miPerfil() }); }
+  if (!H && (v.sel === "arena" || v.sel === "torre") && UI.arenaPerfil !== v.code + v.sel) { UI.arenaPerfil = v.code + v.sel; Net.send({ t: "arenaPerfil", p: Arena.miPerfil(), torre: Torre.info() }); }
   on("invitar", () => invitarAmigos());
 }
 

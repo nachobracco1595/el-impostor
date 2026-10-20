@@ -3,7 +3,10 @@
    - Un intento: subís pisos seguidos hasta que caés (entre piso y piso recuperás algo de vida).
    - Cada 5 pisos queda guardado: el próximo intento arranca desde ahí.
    - 3 intentos por día. Cada piso superado da monedas y experiencia al héroe que usaste.
-   - La torre se reinicia sola cada 28 días (temporada) o cuando el admin la reinicia desde el panel. */
+   - La torre se reinicia sola cada 28 días (temporada) o cuando el admin la reinicia desde el panel.
+   - En grupo (online, hasta 4): arrancan en el piso guardado más bajo del grupo, los monstruos son más y más fuertes,
+     el que cae espera y vuelve en el piso siguiente; el intento termina cuando caen todos.
+     Cada uno usa uno de sus intentos del día (sin intentos juega igual, pero sin premio) y guarda su propio progreso. */
 const TO = {
   INTENTOS: 3, DIAS: 28, INICIO: "2026-10-20T00:00:00Z",
   MONSTRUOS: [["Esqueleto", "💀", "#dee2e6"], ["Goblin", "👺", "#82c91e"], ["Zombi", "🧟", "#5c940d"], ["Lobo", "🐺", "#868e96"], ["Bruja", "🧙", "#9c36b5"], ["Orco", "👹", "#2b8a3e"], ["Gólem", "🗿", "#adb5bd"], ["Vampiro", "🦇", "#c92a2a"], ["Demonio", "😈", "#e03131"]],
@@ -28,10 +31,10 @@ const Torre = {
   quedan(u) { const t = this.datos(u); return Math.max(0, (this.cfg().intentos | 0 || TO.INTENTOS) - (t.hoy === hoyStr() ? t.usados : 0)); },
 
   /* ---------- Cómo es cada piso ---------- */
-  piso(f) {
-    const olas = Math.min(4, 1 + Math.floor((f - 1) / 4)), porOla = Math.min(5, 1 + Math.ceil(f / 3)), jefe = f % 5 === 0;
+  piso(f, n = 1) {
+    const olas = Math.min(4, 1 + Math.floor((f - 1) / 4)), porOla = Math.min(8, Math.min(5, 1 + Math.ceil(f / 3)) + (n - 1)), jefe = f % 5 === 0;
     const lv = Math.min(40, 1 + Math.floor(f * 0.9)), pre = Math.min(10, Math.floor(f / 10));
-    const fuerza = { hp: 0.7 + f * 0.045, dano: 0.65 + f * 0.028 };
+    const fuerza = { hp: (0.7 + f * 0.045) * (1 + 0.35 * (n - 1)), dano: 0.65 + f * 0.028 };
     let k = 0;
     const mon = (extra = {}) => {
       const M = TO.MONSTRUOS[(f + k) % TO.MONSTRUOS.length];
@@ -53,15 +56,20 @@ const Torre = {
     const t = this.datos(u);
     if (t.hoy !== hoyStr()) { t.hoy = hoyStr(); t.usados = 0; }
     t.usados++; Eco.guardar(u);
-    S.torre = { piso: t.base, hp: 1, clase: Heroes.datos(u).clase };
+    S.torre = { piso: t.base, hp: 1, clase: Heroes.datos(u).clase, run: "tl-" + Date.now().toString(36) };
+    store.set("torreRun", { [S.torre.run]: true });
     this.jugarPiso();
+  },
+  /* Arma el piso f para los que pelean (h = [{ id, name, look, arena, hp }]) */
+  armar(f, h, opts = {}) {
+    const P = this.piso(f, h.length);
+    const s = Arena.setup([...h.map(x => ({ ...x, equipo: "h" })), ...P.olas[0]], { esc: P.esc, nivel: "normal", online: !!opts.online, horda: { piso: f, ola: 1, olas: P.olas.length, resto: P.olas.slice(1), jefe: P.jefe, gano: null, run: opts.run, n: h.length } });
+    s.jug.forEach(j => { if (j.equipo === "h") { const d = h.find(x => x.id === j.id); j.hp = Math.max(1, Math.round(j.max * ((d && d.hp) || 1))); } else { const d = P.olas[0].find(x => x.id === j.id); if (d) j.evoIc = d.ic; } });
+    return s;
   },
   jugarPiso() {
     const u = BD.sesion(), R = S.torre; if (!u || !R) return;
-    const P = this.piso(R.piso), yo = { id: "yo", name: u.nombre, look: u.look, arena: Arena.miPerfil(), equipo: "h" };
-    const s = Arena.setup([yo, ...P.olas[0]], { esc: P.esc, nivel: "normal", horda: { piso: R.piso, ola: 1, olas: P.olas.length, resto: P.olas.slice(1), jefe: P.jefe, gano: null, premio: null } });
-    const J = s.jug[0]; J.hp = Math.max(1, Math.round(J.max * R.hp));
-    s.jug.slice(1).forEach(m => { const d = P.olas[0].find(x => x.id === m.id); if (d) m.evoIc = d.ic; });
+    const s = this.armar(R.piso, [{ id: "yo", name: u.nombre, look: u.look, arena: Arena.miPerfil(), hp: R.hp }], { run: R.run });
     S.arena = s; S.arenaCfg = S.arenaCfg || { modo: "duelo", nivel: "normal", esc: "ring" };
     clearInterval(Arena.reloj);
     let prev = Date.now();
@@ -74,8 +82,8 @@ const Torre = {
   },
   /* Lo llama Arena.tick: nuevas olas y fin del piso */
   tick(s) {
-    const H = s.horda, yo = s.jug.find(j => j.equipo === "h");
-    if (!yo.vivo) return this.cerrar(s, false);
+    const H = s.horda, humanos = s.jug.filter(j => j.equipo === "h"), yo = humanos.find(j => j.vivo) || humanos[0];
+    if (!humanos.some(j => j.vivo)) return this.cerrar(s, false);
     if (s.jug.some(j => j.equipo === "m" && j.vivo)) return;
     if (!H.resto.length) return this.cerrar(s, true);
     // Próxima ola: aparecen lejos tuyo
@@ -92,48 +100,96 @@ const Torre = {
   cerrar(s, gano) {
     if (s.fase === "fin") return;
     s.fase = "fin"; s.horda.gano = gano;
-    const u = BD.sesion(), R = S.torre, yo = s.jug.find(j => j.equipo === "h"), f = s.horda.piso;
-    if (!u || !R) return;
-    const t = this.datos(u);
-    if (gano) {
-      const p = this.premio(f, yo.st);
+    s.horda.premio = gano ? this.premio(s.horda.piso) : null;
+    if (typeof Sonido !== "undefined") Sonido.sfx(gano ? "victoria" : "derrota");
+    if (!s.online) {
+      const R = S.torre, yo = s.jug.find(j => j.equipo === "h");
+      this.cobrar(this.vista(s), yo.clase, yo.st);
+      if (gano && R) R.hp = Math.min(1, yo.hp / yo.max + 0.35); else S.torre = null;
+    }
+  },
+  /* Cada teléfono cobra el piso que ganó (una sola vez) y guarda su progreso */
+  cobrar(H, clase, st) {
+    const u = BD.sesion(); if (!u || !H) return null;
+    const hechos = store.get("torreCobrado", {}), k = `${H.id}`;
+    if (hechos[k]) return hechos[k];
+    const runs = store.get("torreRun", {}), conPremio = !!runs[H.run], t = this.datos(u), f = H.piso;
+    let r = { sinPremio: !conPremio };
+    if (H.gano && conPremio) {
+      const p = this.premio(f, st);
       Eco.completar(u); u.monedas += p.monedas;
-      Heroes.ganarXp(u, R.clase, p.xp);
+      Heroes.ganarXp(u, clase, p.xp);
       t.mejor = Math.max(t.mejor | 0, f);
       if (f % 5 === 0) t.base = Math.max(t.base | 0, f + 1);
-      const st = u.stats.arena = u.stats.arena || {}; st.torreMejor = Math.max(st.torreMejor | 0, f);
-      s.horda.premio = p; s.horda.base = t.base;
-      R.hp = Math.min(1, yo.hp / yo.max + 0.35);
-      if (typeof Sonido !== "undefined") Sonido.sfx("victoria");
-    } else {
-      s.horda.base = t.base; S.torre = null;
-      if (typeof Sonido !== "undefined") Sonido.sfx("derrota");
+      const sa = u.stats.arena = u.stats.arena || {}; sa.torreMejor = Math.max(sa.torreMejor | 0, f);
+      r = { ...p, sinPremio: false };
     }
-    s.horda.quedan = this.quedan(u);
+    r.base = t.base; r.quedan = this.quedan(u);
+    hechos[k] = r; store.set("torreCobrado", Object.fromEntries(Object.entries(hechos).slice(-30)));
     Eco.guardar(u);
+    return r;
   },
   seguir() { if (!S.torre) return; S.torre.piso++; Arena.parar(); this.jugarPiso(); },
   salir() { Arena.parar(); S.torre = null; S.arena = null; go("arenaIntro"); },
 
   /* ---------- Pantalla de pelea ---------- */
-  vista(s) { const H = s.horda; return { piso: H.piso, ola: H.ola, olas: H.olas, gano: H.gano, premio: H.premio, base: H.base, quedan: H.quedan, jefe: H.jefe, vivos: s.jug.filter(j => j.equipo === "m" && j.vivo).length }; },
+  vista(s) { const H = s.horda; return { id: s.id, run: H.run, n: H.n, piso: H.piso, ola: H.ola, olas: H.olas, gano: H.gano, jefe: H.jefe, vivos: s.jug.filter(j => j.equipo === "m" && j.vivo).length, caidos: s.jug.filter(j => j.equipo === "h" && !j.vivo).length }; },
+  /* Online: al ver un intento nuevo, cada teléfono usa uno de sus intentos del día (si no le quedan, juega sin premio) */
+  unirse(v) {
+    const H = v.horda; if (!H || !v.online || !H.run) return;
+    const runs = store.get("torreRun", {});
+    if (H.run in runs) return;
+    const u = BD.sesion(); let ok = false;
+    if (u && this.quedan(u)) { const t = this.datos(u); if (t.hoy !== hoyStr()) { t.hoy = hoyStr(); t.usados = 0; } t.usados++; Eco.guardar(u); ok = true; }
+    runs[H.run] = ok; store.set("torreRun", Object.fromEntries(Object.entries(runs).slice(-20)));
+  },
   barra(v) {
-    const yo = v.jug[v.yo], H = v.horda;
-    return `${yo ? `<span class="ar-chip yo">${yo.evoIc || AR.CLASES[yo.clase].ic}<b>${esc(yo.name)}</b><i style="width:${Math.max(0, yo.hp / yo.max) * 100}%"></i></span>` : ""}
-      <span class="ar-chip to-chip"><b>🗼 Piso ${H.piso}${H.jefe ? " · Jefe" : ""}</b></span><span class="ar-chip to-chip"><b>🌊 ${H.ola}/${H.olas} · 👹 ${H.vivos}</b></span>`;
+    this.unirse(v);
+    const yo = v.jug[v.yo], H = v.horda, humanos = v.jug.filter(j => j.equipo === "h");
+    const chip = j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`;
+    return `${humanos.map(chip).join("")}<span class="ar-chip to-chip"><b>🗼 Piso ${H.piso}${H.jefe ? " · Jefe" : ""}</b></span><span class="ar-chip to-chip"><b>🌊 ${H.ola}/${H.olas} · 👹 ${H.vivos}</b></span>
+      ${yo && !yo.vivo && v.fase !== "fin" && humanos.some(j => j.vivo) ? `<span class="ar-chip to-chip"><b>💀 Caíste: volvés en el próximo piso</b></span>` : ""}`;
   },
   fin(v, el) {
-    const H = v.horda, f = H.piso;
+    const H = v.horda, f = H.piso, yo = v.jug[v.yo], jefe = !v.online || v.isHost;
+    const r = yo ? this.cobrar(H, yo.clase, Heroes.stats(Heroes.validar(Arena.miPerfil()))) || {} : {};
+    const premio = r.sinPremio ? `<p class="sub">Jugás sin premio: no te quedaban intentos hoy.</p>` : r.monedas ? `<div class="tr-premio"><div><b>+${r.monedas}</b><small>monedas</small></div><div><b>+${r.xp}</b><small>XP</small></div></div>` : "";
     el.innerHTML = `<div class="ar-fin-caja">${H.gano
-      ? `<h2>🏆 ¡Piso ${f} superado!</h2>
-         <div class="tr-premio"><div><b>+${H.premio.monedas}</b><small>monedas</small></div><div><b>+${H.premio.xp}</b><small>XP</small></div></div>
-         ${f % 5 === 0 ? `<p class="sub">🚩 ¡Guardado! Tus próximos intentos arrancan en el piso ${f + 1}.</p>` : `<p class="sub">El próximo guardado es en el piso ${Math.ceil((f + 1) / 5) * 5}. Recuperás algo de vida entre piso y piso.</p>`}
-         <div class="row"><button class="btn" id="toSeguir">⬆️ Seguir al piso ${f + 1}</button><button class="btn ghost" id="toSalir">Terminar acá</button></div>`
-      : `<h2>💀 Caíste en el piso ${f}</h2>
-         <p class="sub">Tu próximo intento arranca en el piso ${H.base}. ${H.quedan ? `Te quedan ${H.quedan} intento${H.quedan > 1 ? "s" : ""} hoy.` : "Ya usaste los intentos de hoy: volvé mañana."}</p>
-         <div class="row"><button class="btn" id="toSalir">Volver a la Arena</button></div>`}</div>`;
-    on("toSeguir", () => Torre.seguir());
-    on("toSalir", () => Torre.salir());
+      ? `<h2>🏆 ¡Piso ${f} superado!</h2>${premio}
+         ${f % 5 === 0 && !r.sinPremio ? `<p class="sub">🚩 ¡Guardado! Tus próximos intentos arrancan en el piso ${f + 1}.</p>` : `<p class="sub">El próximo guardado es en el piso ${Math.ceil((f + 1) / 5) * 5}. ${v.online ? "Los que cayeron vuelven en el próximo piso y todos recuperan algo de vida." : "Recuperás algo de vida entre piso y piso."}</p>`}
+         ${jefe ? `<div class="row"><button class="btn" id="toSeguir">⬆️ Seguir al piso ${f + 1}</button><button class="btn ghost" id="toSalir">${v.online ? "Volver a la sala" : "Terminar acá"}</button></div>` : `<p class="sub">El anfitrión elige si siguen al piso ${f + 1}.</p><button class="btn ghost" id="toIrme">Salir</button>`}`
+      : `<h2>💀 ${v.online ? `Cayeron en el piso ${f}` : `Caíste en el piso ${f}`}</h2>
+         <p class="sub">Tu próximo intento arranca en el piso ${r.base || 1}. ${r.quedan ? `Te quedan ${r.quedan} intento${r.quedan > 1 ? "s" : ""} hoy.` : "Ya usaste los intentos de hoy: volvé mañana."}</p>
+         ${jefe ? `<div class="row"><button class="btn" id="toSalir">${v.online ? "Volver a la sala" : "Volver a la Arena"}</button></div>` : `<button class="btn ghost" id="toIrme">Salir</button>`}`}</div>`;
+    on("toSeguir", () => v.online ? Arena.send({ t: "torreSeguir" }) : Torre.seguir());
+    on("toSalir", () => v.online ? Arena.send({ t: "lobby" }) : Torre.salir());
+    on("toIrme", () => { UI.confirmSalir = true; render(); });
+  },
+
+  /* ---------- En grupo (online): el anfitrión arma cada piso ---------- */
+  info() { const u = BD.sesion(); if (!u) return null; const t = this.datos(u); return { base: t.base | 0 || 1, quedan: this.quedan(u), mejor: t.mejor | 0 }; },
+  validarInfo(x) { return x && typeof x === "object" ? { base: Math.max(1, Math.min(100000, x.base | 0 || 1)), quedan: Math.max(0, Math.min(20, x.quedan | 0)), mejor: Math.max(0, x.mejor | 0) } : null; },
+  empezarOn(R) {
+    const jug = R.players.filter(p => p.on);
+    if (jug.length > 4) return "La torre en grupo es de hasta 4.";
+    const infos = jug.map(p => (p.id === "H" ? this.info() : p.torre) || { base: 1, quedan: 0 });
+    R.torreRun = { run: "tg-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), piso: Math.min(...infos.map(x => x.base || 1)), hp: {} };
+    this.pisoOn(R);
+    return null;
+  },
+  pisoOn(R) {
+    const T = R.torreRun, jug = R.players.filter(p => p.on).slice(0, 4);
+    const h = jug.map(p => ({ id: p.id, name: p.name, look: p.look, arena: p.id === "H" ? Arena.miPerfil() : p.arena, hp: T.hp[p.id] || 1 }));
+    R.arena = this.armar(T.piso, h, { online: true, run: T.run });
+    R.game = "arena";
+    Arena.relojHost(R);
+  },
+  seguirOn(R) {
+    const s = R.arena, T = R.torreRun;
+    if (!s || !T || s.fase !== "fin" || !s.horda.gano) return;
+    s.jug.filter(j => j.equipo === "h").forEach(j => { T.hp[j.id] = j.vivo ? Math.min(1, j.hp / j.max + 0.35) : 0.4; });
+    T.piso++;
+    this.pisoOn(R);
   },
 
   /* ---------- Panel en la Arena ---------- */

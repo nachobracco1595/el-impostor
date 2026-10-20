@@ -288,7 +288,7 @@ Heroes.conectarSelector = (raiz = app) => {
     Heroes.datos(u).clase = b.dataset.heroe; Eco.guardar(u);
     if (typeof Sonido !== "undefined") Sonido.sfx("clic");
     // Online: el anfitrión toma su perfil al empezar; los demás se lo mandan
-    if (Net.rol && Net.rol !== "host") Net.send({ t: "arenaPerfil", p: Arena.miPerfil() });
+    if (Net.rol && Net.rol !== "host") Net.send({ t: "arenaPerfil", p: Arena.miPerfil(), torre: Torre.info() });
     raiz.querySelectorAll("[data-heroe]").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on); });
   });
 };

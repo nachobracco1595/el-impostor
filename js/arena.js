@@ -809,6 +809,8 @@ const Arena = {
     }, 50);
   },
   actOn(R, pid, a) {
+    if (a.t === "torreSeguir" && pid === "H") return Torre.seguirOn(R);
+    if (a.t === "again" && R.arena && R.arena.horda) return;
     if (a.t === "again" && pid === "H") { const e = Arena.empezarOn(R); R.err = e || ""; return; }
     if (a.t === "lobby" && pid === "H") { R.game = null; R.arena = null; return; }
     Arena.act(R.arena, pid, a);

@@ -242,6 +242,11 @@ const BD = {
   },
 
   ranking(juego) {
+    if (juego === "torre") {
+      // Torre: el mejor piso de la temporada actual
+      const key = Torre.temporada().key;
+      return this.usuarios().map(u => { const t = (u.diario || {}).torre; return t && t.key === key && t.mejor > 0 ? { u, puntos: t.mejor, base: t.base, j: 0, g: 0 } : null; }).filter(Boolean).sort((a, b) => b.puntos - a.puntos);
+    }
     return this.usuarios().map(u => {
       const s = juego ? u.stats[juego] : null;
       return { u, puntos: s ? (juego === "arena" ? s.elo : s.p) : u.puntos, j: s ? s.j : total(u, "j"), g: s ? s.g : total(u, "g") };

@@ -340,19 +340,19 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}
   <section class="screen">
-    <div><h2>Ranking</h2><p class="sub">${enNube ? "Todos los jugadores con cuenta en la nube." : "Perfiles guardados en este teléfono."}</p></div>
+    <div><h2>Ranking</h2><p class="sub">${tab === "torre" ? (() => { const d = Math.max(0, Math.ceil((Torre.temporada().fin - Date.now()) / 864e5)); return `El piso más alto de cada uno en esta temporada de la torre. Se reinicia en ${d} día${d === 1 ? "" : "s"}.`; })() : enNube ? "Todos los jugadores con cuenta en la nube." : "Perfiles guardados en este teléfono."}</p></div>
     ${Nube.config() ? `<div class="tabs dos">${[["nube", "☁️ Mundial"], ["local", "📱 Este teléfono"]].map(([k, n]) => `<button data-scope="${k}" aria-pressed="${(UI.rankScope || "nube") === k}">${n}</button>`).join("")}</div>` : ""}
     <div class="tabs scroll">${tabs.map(([k, n]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
     ${aviso ? `<div class="panel center"><p class="empty">${esc(aviso)}</p></div>` : filas.length ? `
       <div class="podio">${orden.map(i => { const f = podio[i]; return `<div class="podio-p p${i + 1}">
         ${i === 0 ? `<span class="corona">👑</span>` : ""}${retrato(f.u.look, i === 0 ? 86 : 66)}
-        <b>${esc(f.u.nombre)}</b><small>${f.puntos} ${tab === "arena" ? "ELO" : "pts"}</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
-      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas</small></span><strong>${f.puntos}</strong></li>`).join("")}</ol>`
+        <b>${esc(f.u.nombre)}</b><small>${tab === "torre" ? `piso ${f.puntos}` : `${f.puntos} ${tab === "arena" ? "ELO" : "pts"}`}</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
+      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>${tab === "torre" ? `🚩 guardado en el piso ${Math.max(1, f.base || 1)}` : `Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas`}</small></span><strong>${tab === "torre" ? `🗼 ${f.puntos}` : f.puntos}</strong></li>`).join("")}</ol>`
       : `<div class="panel center"><p class="empty">Todavía no hay nadie en este ranking. Crea tu perfil y jueguen para aparecer acá.</p><button class="btn" id="crear">Crear perfil</button></div>`}
     <details class="panel"><summary class="label">¿Cómo se ganan puntos?</summary>
       <ul class="reglas-pts">${Puntos.REGLAS.map(([t, p]) => `<li><span>${esc(t)}</span><b>${esc(p)}</b></li>`).join("")}</ul>

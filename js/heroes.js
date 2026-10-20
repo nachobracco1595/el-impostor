@@ -381,6 +381,7 @@ PANTALLAS.arenaIntro = () => {
   app.querySelectorAll("[data-niv]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, nivel: b.dataset.niv }; render(); });
   on("arJugar", () => Arena.empezarLocal(cfg.modo, cfg.nivel, cfg.esc));
   on("toEntrar", () => Torre.entrar());
+  on("toRank", () => { UI.tabRank = "torre"; go("ranking"); });
   on("arAmigos", () => { S.arenaEsc = cfg.esc; go("onCrear"); });
   on("volver", () => go("home"));
 };

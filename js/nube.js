@@ -192,11 +192,24 @@ const Nube = {
     BD.guardar();
   },
 
+  /* Torre de hordas: los que llegaron más alto en la temporada actual */
+  async rankingTorre() {
+    const { data, error } = await this.sb.from("perfiles").select("id,nombre,look,puntos,diario->torre")
+      .eq("diario->torre->>key", Torre.temporada().key).order("diario->torre->mejor", { ascending: false }).limit(60);
+    if (error) { console.error(error); this.ranking.torre = { filas: null, cargando: false, error: "No se pudo cargar el ranking de la torre.", t: Date.now() }; }
+    else {
+      const filas = data.filter(row => row.torre && row.torre.mejor > 0).map(row => ({ u: { id: row.id, nombre: row.nombre, look: row.look, puntos: row.puntos, stats: statsVacias() }, puntos: row.torre.mejor | 0, base: row.torre.base | 0, j: 0, g: 0 }))
+        .filter(f => Cuenta.lookValido(f.u.look)).sort((a, b) => b.puntos - a.puntos).slice(0, 50);
+      this.ranking.torre = { filas, cargando: false, error: "", t: Date.now() };
+    }
+    if (S.screen === "ranking") render();
+  },
   async cargarRanking(juego = "") {
     if (this.estado !== "lista") return;
     const r = this.ranking[juego];
     if (r && (r.cargando || Date.now() - r.t < 30000)) return;
     this.ranking[juego] = { filas: r ? r.filas : null, cargando: true, error: "", t: Date.now() };
+    if (juego === "torre") return this.rankingTorre();
     const { data, error } = await this.sb.from("perfiles").select("id,nombre,look,puntos,stats")
       .order(juego === "arena" ? "elo_arena" : juego ? "pts_" + juego : "puntos", { ascending: false }).limit(50);
     if (error) {

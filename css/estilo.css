@@ -1430,3 +1430,4 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .he-pre.ok { opacity: 1; border: 1px solid var(--spot); }
 .he-pre .ic { font-size: 18px; text-align: center; } .he-pre b { font-size: 13px; } .he-pre small { display: block; font-size: 11px; color: var(--muted); }
 .he-pp { font-style: normal; font-size: 11px; color: var(--teal); margin-left: 6px; }
+.to-rank { align-self: center; font-size: 13px; margin-bottom: 4px; }

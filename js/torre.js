@@ -143,6 +143,7 @@ const Torre = {
     return `<div class="panel to-panel"><div class="headrow"><span class="label">🗼 Torre de hordas</span><small class="sub">Se reinicia en ${dias} día${dias === 1 ? "" : "s"}</small></div>
       <div class="to-datos"><div><b>${t.base}</b><small>arrancás en el piso</small></div><div><b>${t.mejor || 0}</b><small>tu mejor piso</small></div><div><b>${q}/${this.cfg().intentos | 0 || TO.INTENTOS}</b><small>intentos hoy</small></div></div>
       <p class="sub he-nota">Pasá olas de monstruos piso por piso: cada uno es más difícil y cada 5 hay un jefe y queda guardado. Cada piso da monedas y experiencia.</p>
+      <button class="linkish to-rank" id="toRank">🏆 Ver el ranking de la torre</button>
       <button class="btn tb-girar" id="toEntrar" ${q ? "" : "disabled"}>${q ? `🗼 Subir desde el piso ${t.base} con ${esc(e ? e.nombre : C.nombre)}` : "Volvé mañana: ya usaste los 3 intentos"}</button></div>`;
   }
 };

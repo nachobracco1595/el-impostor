@@ -254,10 +254,15 @@ const Burako = {
   },
 
   /* ---------- Dibujo ---------- */
+  /* Cada ficha es un dibujo (SVG) que escala con su tamaño: el número queda siempre centrado
+     y los de dos cifras se ajustan al ancho, sea cual sea la letra del teléfono */
+  ESTRELLA: "M0-5l1.5 3.2 3.5.4-2.6 2.4.7 3.5L0 2.8-3.1 4.5l.7-3.5L-5-1.4l3.5-.4z",
   ficha(t, cls = "", attrs = "") {
-    if (Burako.esJoker(t)) return `<span class="bk-f joker ${cls}" ${attrs}><b>★</b></span>`;
-    const n = Burako.num(t), c = BK.COLORES[t[0]];
-    return `<span class="bk-f ${n === 2 ? "dos" : ""} ${cls}" style="--fc:${c[1]}" ${attrs} aria-label="${n} ${c[0]}"><b>${n}</b><i></i></span>`;
+    if (Burako.esJoker(t)) return `<span class="bk-f joker ${cls}" ${attrs} aria-label="comodín"><svg viewBox="0 0 40 56" aria-hidden="true"><path d="${Burako.ESTRELLA}" transform="translate(20 27) scale(2.6)" fill="#c2255c"/><text class="cl" x="20" y="49" text-anchor="middle" font-size="7" font-weight="900" fill="#c2255c" letter-spacing=".5">COMODÍN</text></svg></span>`;
+    const n = Burako.num(t), c = BK.COLORES[t[0]], dos = n >= 10;
+    return `<span class="bk-f ${n === 2 ? "dos" : ""} ${cls}" style="--fc:${c[1]}" ${attrs} aria-label="${n} ${c[0]}"><svg viewBox="0 0 40 56" aria-hidden="true">
+      <text x="20" y="35" text-anchor="middle" font-size="${dos ? 25 : 27}" font-weight="900" fill="${c[1]}" ${dos ? `textLength="29" lengthAdjust="spacingAndGlyphs"` : ""}>${n}</text>
+      <circle class="pt" cx="20" cy="46.5" r="3.4" fill="${c[1]}" opacity=".85"/>${n === 2 ? `<path d="${Burako.ESTRELLA}" transform="translate(33 8) scale(.9)" fill="#c2255c"/>` : ""}</svg></span>`;
   },
   render(v, send, opts) {
     // Mientras se arrastra una ficha no se redibuja (si juega otro, se muestra al soltar)

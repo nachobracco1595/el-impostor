@@ -178,6 +178,9 @@ const Carrera = {
       <button class="md-accion cr-saltar" id="crSaltar" aria-label="Saltar">⤴️</button>
       <button class="nv-salir" id="crSalir" aria-label="Salir">✕</button>
       <div class="ar-fin" id="crFin" hidden></div></div>`;
+    if (CarreraPixi.activo) CarreraPixi.desmontar();
+    ArenaFX.cargar();
+    if (ArenaPixi.listo) CarreraPixi.montar(byId("crCanvas")); else ArenaPixi.cargar();
     UI.cr = { id: v.id, obst: p.obst, cps: p.cps, off: performance.now() / 1000 - v.t, yo: { ...yo, vx: 0, vy: 0, salto: 0, esperaSalto: 0, aturdido: 0, cae: 0, golpe: 0, cp: 0, meta: null },
       mov: { x: 0, y: 0 }, teclas: {}, salta: false, ultEnvio: 0, otros: {}, chocadas: new Set() };
     Carrera.joystick();
@@ -214,7 +217,7 @@ const Carrera = {
       window.addEventListener("keyup", e => { if (!UI.cr) return; if (e.key === " ") UI.cr.salta = false; delete UI.cr.teclas[e.key]; });
     }
   },
-  parar() { cancelAnimationFrame(Carrera.raf); Carrera.raf = null; clearInterval(Carrera.reloj); Carrera.reloj = null; document.body.classList.remove("en-nave"); UI.cr = null; const r = byId("crRoot"); if (r) r.remove(); },
+  parar() { if (CarreraPixi.activo) CarreraPixi.desmontar(); cancelAnimationFrame(Carrera.raf); Carrera.raf = null; clearInterval(Carrera.reloj); Carrera.reloj = null; document.body.classList.remove("en-nave"); UI.cr = null; const r = byId("crRoot"); if (r) r.remove(); },
   loop() {
     let prev = performance.now();
     const paso = now => {
@@ -222,7 +225,8 @@ const Carrera = {
       const cv = byId("crCanvas"); if (!cv || !UI.cr || !Carrera.v) { if (!cv) Carrera.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Carrera.moverYo(dt, now);
-      dibujarSeguro(cv, () => Carrera.dibujar(cv, now));
+      if (CarreraPixi.activo) { try { CarreraPixi.dibujar(now); } catch (e) { if (!Carrera.errPixi) { Carrera.errPixi = true; console.error(e); } } }
+      else dibujarSeguro(cv, () => Carrera.dibujar(cv, now));
     };
     Carrera.raf = requestAnimationFrame(paso);
   },
@@ -334,7 +338,10 @@ const Carrera = {
     const bx = 12, by0 = Hp * 0.16, by1 = Hp * 0.62;
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.roundRect(bx - 4, by0, 8, by1 - by0, 4); ctx.fill();
     lista.forEach(j => { const yy = by1 - (Math.min(CR.LARGO, j.y) / CR.LARGO) * (by1 - by0); ctx.fillStyle = j.yo ? "#ffd43b" : j.look.color || "#fff"; ctx.beginPath(); ctx.arc(bx, yy, j.yo ? 7 : 5, 0, 7); ctx.fill(); });
-    // Cuenta regresiva
+    Carrera.cuenta(v, yo, t);
+  },
+  /* Cuenta regresiva y "¡Al agua!" (HTML, igual para los dos dibujos) */
+  cuenta(v, yo, t) {
     const c = byId("crCentro");
     if (c) { const falta = Math.ceil(-t); const txt = v.fase === "cuenta" || t < 0 ? (falta > 0 ? String(falta) : "¡YA!") : t < 0.8 ? "¡YA!" : yo.cae > 0 ? "¡Al agua!" : ""; c.hidden = !txt; if (c.textContent !== txt) { c.textContent = txt; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
   },
@@ -406,6 +413,7 @@ PANTALLAS.carrera = () => {
 };
 
 PANTALLAS.carreraIntro = () => {
+  ArenaPixi.cargar();
   const c = S.carCfg;
   app.innerHTML = `${head(0)}<section class="screen">
     <div class="tb-hero"><span class="tb-neon">CARRERA LOCA</span><p class="sub">Llegá primero a la meta esquivando barras, péndulos, bloques, pozos, cintas y puertas falsas. Movete con el dedo y saltá con ⤴️.</p></div>

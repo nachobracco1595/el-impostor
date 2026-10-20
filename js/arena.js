@@ -68,7 +68,7 @@ const Arena = {
   luchador(j, pos) {
     const p = this.validar(j.arena), st = Heroes.stats(p);
     if (j.fuerza) { st.hp = Math.round(st.hp * j.fuerza.hp); st.mult *= j.fuerza.dano; }
-    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
+    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
       elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
@@ -298,7 +298,7 @@ const Arena = {
     const yo = s.jug.findIndex(j => j.id === pid);
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
-      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
+      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
         golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed, horda: s.horda ? Torre.vista(s) : null
@@ -317,6 +317,7 @@ const Arena = {
   montar() {
     document.body.classList.add("en-nave");
     ArenaFX.cargar();
+    if (!ArenaPixi.listo) ArenaPixi.cargar();      // queda lista para la próxima pelea
     app.innerHTML = `<div class="nave arena" id="arRoot">
       <canvas id="arCanvas"></canvas>
       <div class="ar-top" id="arTop"></div>
@@ -329,6 +330,8 @@ const Arena = {
       <div class="ar-fin" id="arFin" hidden></div>
     </div>`;
     const v = Arena.v, yo = v.jug[v.yo];
+    if (ArenaPixi.activo) ArenaPixi.desmontar();
+    if (ArenaPixi.listo && ArenaPixi.soporta()) ArenaPixi.montar(byId("arCanvas"));
     UI.arena = { partida: v.id, x: yo ? yo.x : 700, y: yo ? yo.y : 500, tp: yo ? yo.tp : 0, cara: 1, dir: { x: 1, y: 0 }, mov: { x: 0, y: 0 }, teclas: {}, atk: false, ultEnvio: 0, otros: {} };
     Arena.joystick();
     const boton = (id, fn) => { const b = byId(id); b.onpointerdown = e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {} fn(true); }; const f = () => fn(false); b.onpointerup = f; b.onpointercancel = f; b.onlostpointercapture = f; b.oncontextmenu = e => e.preventDefault(); };
@@ -374,7 +377,7 @@ const Arena = {
       window.addEventListener("keyup", e => { if (!UI.arena) return; if (e.key === " ") UI.arena.atk = false; delete UI.arena.teclas[e.key]; });
     }
   },
-  parar() { cancelAnimationFrame(Arena.raf); Arena.raf = null; document.body.classList.remove("en-nave"); clearInterval(Arena.reloj); Arena.reloj = null; UI.arena = null; const r = byId("arRoot"); if (r) r.remove(); },
+  parar() { if (ArenaPixi.activo) ArenaPixi.desmontar(); cancelAnimationFrame(Arena.raf); Arena.raf = null; document.body.classList.remove("en-nave"); clearInterval(Arena.reloj); Arena.reloj = null; UI.arena = null; const r = byId("arRoot"); if (r) r.remove(); },
   pulsarAtaque() { const n = UI.arena, v = Arena.v; if (!n || !v || v.fase !== "pelea") return; const yo = v.jug[v.yo]; if (!yo || !yo.vivo || v.t < yo.cdA || v.t < yo.giro) return; const a = n.apunta; Arena.send(a ? { t: "atk", dx: a.x, dy: a.y, m: 1 } : { t: "atk", dx: n.dir.x, dy: n.dir.y }); },
   usarEspecial() {
     const n = UI.arena, v = Arena.v; if (!n || !v || v.fase !== "pelea") return;
@@ -397,7 +400,8 @@ const Arena = {
       const cv = byId("arCanvas"); if (!cv || !UI.arena || !Arena.v) { if (!cv) Arena.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Arena.moverYo(dt, now);
-      dibujarSeguro(cv, () => Arena.dibujar(cv, now));
+      if (ArenaPixi.activo) { try { ArenaPixi.dibujar(now); } catch (e) { if (!Arena.errPixi) { Arena.errPixi = true; console.error(e); } } }
+      else dibujarSeguro(cv, () => Arena.dibujar(cv, now));
     };
     Arena.raf = requestAnimationFrame(paso);
   },
@@ -443,7 +447,7 @@ const Arena = {
     // Sombra y anillo de la clase
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 16, 24, 9, 0, 0, 7); ctx.fill();
     if (vt < j.invul || invis) ctx.globalAlpha = invis ? 0.4 : 0.45;
-    const salto = anda ? Math.abs(Math.sin(t * 11)) * 4 : Math.sin(t * 3) * 1;
+    const fest = j.festeja, salto = fest ? Math.abs(Math.sin(t * 7)) * 22 : anda ? Math.abs(Math.sin(t * 11)) * 4 : Math.sin(t * 3) * 1;
     const temblor = golpeado ? Math.sin(vt / 12) * 4 : 0;
     // Giro del guerrero: la espada da vueltas alrededor
     if (vt < j.giro) {
@@ -535,6 +539,56 @@ const Arena = {
     ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - 25, yb + 2, Math.max(0, 50 * p), 2);
   },
 
+  /* Cámara (la usan el dibujo de siempre y el de PixiJS): se aleja o se acerca sola para que veas a tu personaje y al rival más cercano */
+  camara(v, n, W, H, now) {
+    const yo = v.jug[v.yo];
+    const mx = yo ? (yo.vivo ? n.x : yo.x) : 700, my = yo ? (yo.vivo ? n.y : yo.y) : 500;
+    const rival = v.jug.filter(j => j.vivo && j.id !== v.me).sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my))[0];
+    const escMax = Math.max(0.6, Math.min(1.1, Math.max(W, H) / 1050));
+    let escObj = escMax, cx = mx, cy = my;
+    if (rival && yo && yo.vivo) {
+      const ax = Math.abs(rival.x - mx) + 220, ay = Math.abs(rival.y - my) + 300;
+      escObj = Math.max(0.42, Math.min(escMax, W / ax, H / ay));
+      cx = mx + (rival.x - mx) * 0.45; cy = my + (rival.y - my) * 0.45;
+    }
+    n.esc = n.esc ? n.esc + (escObj - n.esc) * 0.06 : escObj;
+    const esc = n.esc;
+    const objx = Math.max(W / 2 / esc - 200, Math.min(AR.W + 200 - W / 2 / esc, cx)), objy = Math.max(H / 2 / esc - 200, Math.min(AR.H + 200 - H / 2 / esc, cy));
+    if (n.camx === undefined) { n.camx = objx; n.camy = objy; }
+    n.camx += (objx - n.camx) * 0.12; n.camy += (objy - n.camy) * 0.12;
+    if (v.t !== n.vtBase) { n.vtBase = v.t; n.vtLocal = now; }
+    const vt = v.t + (v.fase === "pelea" ? Math.min(200, now - (n.vtLocal || now)) : 0);
+    // Temblor de pantalla cuando te pegan
+    if (yo && yo.hit !== undefined && yo.hit !== n.ultHit) { n.ultHit = yo.hit; if (vt - yo.hit < 300) n.temblor = now + 180; }
+    const sh = now < (n.temblor || 0) ? 6 : 0;
+    return { yo, esc, vt, sh };
+  },
+  /* Botón del especial y cuenta regresiva (son HTML, iguales para los dos dibujos) */
+  interfaz(v, yo, vt) {
+    if (yo) {
+      const C = AR.CLASES[yo.clase], falta = Math.max(0, yo.cdE - vt), p = falta / C.esp.cd;
+      const cdEl = byId("arEspCd"); if (cdEl) { cdEl.style.height = p * 100 + "%"; byId("arEsp").classList.toggle("listo", falta <= 0 && v.fase === "pelea"); }
+    }
+    if (v.fase === "cuenta") { const c = byId("arCentro"); if (c) { const num = Math.max(1, Math.ceil((v.inicio - vt) / 1000)); c.hidden = false; if (c.textContent !== String(num)) { c.textContent = num; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } } }
+  },
+  /* Animación al caer: se desploma, sale el fantasmita y queda la lápida */
+  dibujarCaido(ctx, j, x, y, t, k) {
+    if (k < 1) {
+      ctx.save(); ctx.globalAlpha = 1 - k * 0.7; ctx.translate(x, y + 10); ctx.rotate((j.cara < 0 ? -1 : 1) * Math.min(1, k * 1.6) * 1.45); ctx.translate(-x, -(y + 10));
+      Arena.dibujarLuchador(ctx, { ...j, name: "", hit: undefined, invis: 0, giro: 0, vivo: true }, x, y, t, false, -1e9); ctx.restore();
+      const look = j.look || { color: colorDe(j.name || "x"), acc: [] }, b = j.sprite ? ArenaFX.blanco(j.sprite) : this.blanco(look);
+      if (b) { ctx.globalAlpha = 0.55 * (1 - k); ctx.drawImage(b, x - 18, y - 60 - k * 70, 36, 40); ctx.globalAlpha = 1; }
+    }
+    if (k > 0.55) {
+      const a = Math.min(1, (k - 0.55) / 0.3), cae = (1 - a) * 30;
+      ctx.globalAlpha = a; ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(x, y + 14, 20, 7, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#8a8f98"; ctx.beginPath(); ctx.roundRect(x - 14, y - 20 - cae, 28, 34, [14, 14, 3, 3]); ctx.fill(); ctx.fillStyle = "#5c616b"; ctx.font = "bold 10px Figtree, " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("RIP", x, y - 4 - cae); ctx.globalAlpha = 1;
+    }
+  },
+  /* Hace cuánto cayó (0 a 1 durante la animación) */
+  caida(n, j, now) { n.cayo = n.cayo || {}; if (!n.cayo[j.id]) n.cayo[j.id] = now; return Math.min(1, (now - n.cayo[j.id]) / 1100); },
+  /* ¿Festeja? El ganador de la pelea (o los que pasaron el piso de la torre) */
+  festeja(v, j) { return v.fase === "fin" && j.vivo && (v.horda ? v.horda.gano && j.equipo === "h" : j.lugar === 1); },
   /* Decoración fija de cada escenario (público, grietas, estrellas…) */
   decoracion(esc) {
     this.deco = this.deco || {};
@@ -560,27 +614,7 @@ const Arena = {
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const ctx = cv.getContext("2d"), t = now / 1000;
     n.part = n.part || []; n.vistos = n.vistos || new Set();
-    // Cámara: se aleja o se acerca sola para que veas a tu personaje y al rival más cercano
-    const yo = v.jug[v.yo];
-    const mx = yo ? (yo.vivo ? n.x : yo.x) : 700, my = yo ? (yo.vivo ? n.y : yo.y) : 500;
-    const rival = v.jug.filter(j => j.vivo && j.id !== v.me).sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my))[0];
-    const escMax = Math.max(0.6, Math.min(1.1, Math.max(W, H) / 1050));
-    let escObj = escMax, cx = mx, cy = my;
-    if (rival && yo && yo.vivo) {
-      const ax = Math.abs(rival.x - mx) + 220, ay = Math.abs(rival.y - my) + 300;
-      escObj = Math.max(0.42, Math.min(escMax, W / ax, H / ay));
-      cx = mx + (rival.x - mx) * 0.45; cy = my + (rival.y - my) * 0.45;
-    }
-    n.esc = n.esc ? n.esc + (escObj - n.esc) * 0.06 : escObj;
-    const esc = n.esc;
-    const objx = Math.max(W / 2 / esc - 200, Math.min(AR.W + 200 - W / 2 / esc, cx)), objy = Math.max(H / 2 / esc - 200, Math.min(AR.H + 200 - H / 2 / esc, cy));
-    if (n.camx === undefined) { n.camx = objx; n.camy = objy; }
-    n.camx += (objx - n.camx) * 0.12; n.camy += (objy - n.camy) * 0.12;
-    if (v.t !== n.vtBase) { n.vtBase = v.t; n.vtLocal = now; }
-    const vt = v.t + (v.fase === "pelea" ? Math.min(200, now - (n.vtLocal || now)) : 0);
-    // Temblor de pantalla cuando te pegan
-    if (yo && yo.hit !== undefined && yo.hit !== n.ultHit) { n.ultHit = yo.hit; if (vt - yo.hit < 300) n.temblor = now + 180; }
-    const sh = now < (n.temblor || 0) ? 6 : 0;
+    const { yo, esc, vt, sh } = Arena.camara(v, n, W, H, now);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     // Fondo de cada escenario
     const fondo = { ring: ["#1a1730", "#08070d"], coliseo: ["#3a2a1a", "#120c08"], volcan: ["#3a120a", "#0a0405"], nave: ["#0b1030", "#020309"] }[v.esc];
@@ -666,7 +700,7 @@ const Arena = {
       return { j, o, esYo, anda };
     }).sort((a, b) => a.o.y - b.o.y);
     lista.forEach(({ j, o, esYo, anda }) => {
-      if (!j.vivo) { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(o.x, o.y + 14, 20, 7, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#8a8f98"; ctx.beginPath(); ctx.roundRect(o.x - 14, o.y - 20, 28, 34, [14, 14, 3, 3]); ctx.fill(); ctx.fillStyle = "#5c616b"; ctx.font = "bold 10px Figtree, " + FE; ctx.fillText("RIP", o.x, o.y - 4); return; }
+      if (!j.vivo) { Arena.dibujarCaido(ctx, j, o.x, o.y, t, Arena.caida(n, j, now)); return; }
       if (esYo) { ctx.strokeStyle = "#3ddcb1"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(o.x, o.y + 16, 28, 11, 0, 0, 7); ctx.stroke(); }
       if (esYo && n.apunta) {
         // Línea de puntería
@@ -675,7 +709,7 @@ const Arena = {
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + n.apunta.x * largo, ay + n.apunta.y * largo); ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = "rgba(255,212,59,.9)"; ctx.beginPath(); ctx.arc(ax + n.apunta.x * largo, ay + n.apunta.y * largo, 7, 0, 7); ctx.fill(); ctx.restore();
       }
-      Arena.dibujarLuchador(ctx, esYo ? { ...j, cara: n.cara, esYo } : j, o.x, o.y, t, anda, vt);
+      Arena.dibujarLuchador(ctx, { ...j, cara: esYo ? n.cara : j.cara, esYo, festeja: Arena.festeja(v, j) }, o.x, o.y, t, anda, vt);
     });
     // Proyectiles con estela
     const dtv = Math.min(0.2, (now - (n.vtLocal || now)) / 1000);
@@ -738,12 +772,7 @@ const Arena = {
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     if (v.sub) { ctx.fillStyle = `rgba(255,0,40,${0.12 + Math.sin(t * 4) * 0.06})`; ctx.fillRect(0, 0, W, H); }
     if (yo && yo.vivo && yo.hp / yo.max < 0.3) { const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7); g.addColorStop(0, "rgba(255,0,40,0)"); g.addColorStop(1, `rgba(255,0,40,${0.25 + Math.sin(t * 6) * 0.1})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
-    // Botón especial: tiempo de espera
-    if (yo) {
-      const C = AR.CLASES[yo.clase], falta = Math.max(0, yo.cdE - vt), p = falta / C.esp.cd;
-      const cdEl = byId("arEspCd"); if (cdEl) { cdEl.style.height = p * 100 + "%"; byId("arEsp").classList.toggle("listo", falta <= 0 && v.fase === "pelea"); }
-    }
-    if (v.fase === "cuenta") { const c = byId("arCentro"); if (c) { const num = Math.max(1, Math.ceil((v.inicio - vt) / 1000)); c.hidden = false; if (c.textContent !== String(num)) { c.textContent = num; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } } }
+    Arena.interfaz(v, yo, vt);
   },
 
   hud() {

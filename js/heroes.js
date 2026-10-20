@@ -195,7 +195,7 @@ const Heroes = {
       area: 1 + (pas.area || 0), nova: 1 + (pas.nova || 0), lento: pas.lento || 0, quema: pas.quema || 0, regen: pas.regen || 0, furia: pas.furia || 0,
       espCd: (1 - (pas.espCd || 0)) * (1 - (pr.espCd || 0)), flechas: pas.flechas || 5,
       monedas: pr.monedas || 0, pocion: 1 + (pr.pocion || 0), robo: pr.robo || 0, revive: !!pr.revive,
-      ver, estilo, evoIc: p.evo.length ? this.evoDe(p.clase, p.evo[p.evo.length - 1]).ic : null, lv: p.lv, pre: p.pre | 0
+      ver, estilo, evoIc: p.evo.length ? this.evoDe(p.clase, p.evo[p.evo.length - 1]).ic : null, evoId: p.evo.length ? p.evo[p.evo.length - 1] : null, lv: p.lv, pre: p.pre | 0
     };
   },
   /* Compu de un nivel dado, con puntos, evolución y equipo que le corresponden */
@@ -354,6 +354,7 @@ PANTALLAS.arenaIntro = () => {
       <span class="label">Contra la compu</span>
       <div class="tabs">${[["duelo", "1 contra 1"], ["todos", "Todos contra todos (4)"]].map(([k, n]) => `<button data-modo="${k}" aria-pressed="${cfg.modo === k}">${n}</button>`).join("")}</div>
       <div class="tabs">${[["facil", "Fácil"], ["normal", "Normal"], ["dificil", "Difícil"]].map(([k, n]) => `<button data-niv="${k}" aria-pressed="${cfg.nivel === k}">${n}</button>`).join("")}</div>
+      <div class="opt"><div class="txt"><b>✨ Gráficos mejorados</b><small>Luces, antorchas y partículas (usa la placa de video). Apagalo si el teléfono va lento.</small></div><button class="switch" role="switch" aria-checked="${store.get("arenaPixi", true) !== false}" id="arPixi"></button></div>
       <button class="btn" id="arJugar">⚔️ ¡A pelear con ${esc(nombrePj)}!</button>
       <button class="btn ghost" id="arAmigos">Pelear con amigos (crear sala)</button>
     </div>
@@ -379,6 +380,8 @@ PANTALLAS.arenaIntro = () => {
   app.querySelectorAll("[data-esc]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, esc: b.dataset.esc }; S.arenaEsc = b.dataset.esc; render(); });
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, modo: b.dataset.modo }; render(); });
   app.querySelectorAll("[data-niv]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, nivel: b.dataset.niv }; render(); });
+  ArenaPixi.cargar();
+  on("arPixi", () => { store.set("arenaPixi", store.get("arenaPixi", true) === false); render(); });
   on("arJugar", () => Arena.empezarLocal(cfg.modo, cfg.nivel, cfg.esc));
   on("toEntrar", () => Torre.entrar());
   on("toRank", () => { UI.tabRank = "torre"; go("ranking"); });

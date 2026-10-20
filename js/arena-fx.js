@@ -79,7 +79,7 @@ const ArenaFX = {
   },
   /* Brillo y estela de cada proyectil (se dibuja antes que el proyectil) */
   proyectil(ctx, n, p, x, y, a) {
-    const g = this.tex("light_01", p.tipo === "flecha" ? "#fff3bf" : "#ff9f1c");
+    const g = ctx && this.tex("light_01", p.tipo === "flecha" ? "#fff3bf" : "#ff9f1c");
     if (g) { const modo = ctx.globalCompositeOperation; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = p.tipo === "flecha" ? 0.3 : 0.55; const s = p.tipo === "flecha" ? 36 : 62; ctx.drawImage(g, x - s / 2, y - s / 2, s, s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = modo; }
     if (p.tipo !== "flecha" && Math.random() < 0.6) this.emitir(n, { x, y, tex: Math.random() < 0.5 ? "flame_03" : "fire_01", color: "#ff9f1c", vida: 380, tam: 26, crece: 0.4, vx: -Math.cos(a) * 60 + (Math.random() - 0.5) * 40, vy: -Math.sin(a) * 60 + (Math.random() - 0.5) * 40 });
     if (p.tipo === "flecha" && Math.random() < 0.35) this.emitir(n, { x, y, tex: "trace_04", color: "#ffffff", vida: 220, tam: 28, crece: 0.7, rot: a + Math.PI / 2, alfa: 0.5 });

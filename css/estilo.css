@@ -1418,3 +1418,15 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .he-item .btn.chico { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 .he-elige { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ar-fin-caja .he-elige { margin: 6px 0 4px; text-align: left; }
+/* Torre de hordas y prestigio */
+.to-panel { background: linear-gradient(160deg, #2a1d45, var(--card) 70%); border-color: #7048e8; }
+.to-datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 6px; }
+.to-datos div { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 12px; background: rgba(0, 0, 0, .25); }
+.to-datos b { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--spot); }
+.to-datos small { font-size: 11px; color: var(--muted); text-align: center; }
+.ar-chip.to-chip { background: rgba(112, 72, 232, .5); }
+.he-pres { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.he-pre { display: grid; grid-template-columns: 28px 1fr auto; gap: 6px; align-items: center; padding: 5px 8px; border-radius: 10px; background: var(--card-2); opacity: .55; }
+.he-pre.ok { opacity: 1; border: 1px solid var(--spot); }
+.he-pre .ic { font-size: 18px; text-align: center; } .he-pre b { font-size: 13px; } .he-pre small { display: block; font-size: 11px; color: var(--muted); }
+.he-pp { font-style: normal; font-size: 11px; color: var(--teal); margin-left: 6px; }

@@ -28,7 +28,8 @@ async function cambiar(user) {
 async function cargar() {
   P.cargando = true; pintar();
   const [r, u, ev, rf, rc] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle(), P.sb.rpc("panel_referidos"), P.sb.from("config").select("valor").eq("clave", "referidos").maybeSingle()]);
-  const [tb, tc] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle()]);
+  const [tb, tc, to] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle(), P.sb.from("config").select("valor").eq("clave", "torre").maybeSingle()]);
+  P.torre = Object.assign({ inicio: "2026-10-20T00:00:00Z", dias: 28, intentos: 3 }, (to.data && to.data.valor) || {});
   P.timba = tb.error ? null : tb.data;
   P.timbaCfg = Object.assign({ activo: true, maxApuesta: 500 }, (tc.data && tc.data.valor) || {});
   P.refs = rf.error ? null : rf.data;
@@ -113,6 +114,17 @@ function pintar() {
       </form>
     </article>
     <article class="tarjeta">
+      <h2>🗼 Torre de hordas</h2>
+      ${(() => { const T = P.torre, ini = Date.parse(T.inicio), largo = Math.max(1, T.dias | 0) * 864e5, n = Math.max(0, Math.floor((Date.now() - ini) / largo)), desde = ini + n * largo, hasta = desde + largo, f = x => new Date(x).toLocaleDateString("es-AR", { day: "numeric", month: "long" });
+        return `<p class="sub">Temporada actual: del <b>${f(desde)}</b> al <b>${f(hasta)}</b> (se reinicia sola cada ${T.dias} días). Al reiniciar, todos vuelven al piso 1.</p>`; })()}
+      <form id="fTorre" class="ads-form">
+        <label class="campo-l">Días que dura cada temporada<input class="campo" id="toDias" type="number" min="1" max="120" value="${P.torre.dias}"></label>
+        <label class="campo-l">Intentos por día<input class="campo" id="toInt" type="number" min="1" max="20" value="${P.torre.intentos}"></label>
+        <button class="btn" type="submit">Guardar</button>
+        <button class="btn ghost" type="button" id="toReset">🔄 Reiniciar la torre ahora</button><p class="summary" id="toMsg"></p>
+      </form>
+    </article>
+    <article class="tarjeta">
       <h2>Anuncios con recompensa</h2>
       <p class="sub">Los jugadores con cuenta ven "Mirar un anuncio" en la tienda. El servidor controla el máximo por día.</p>
       <form id="fAds" class="ads-form">
@@ -178,6 +190,25 @@ function pintar() {
     document.getElementById("rfMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";
     if (!error) P.refCfg = valor;
   };
+  const guardarTorre = async valor => {
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "torre").select("clave");
+    if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "torre", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
+    if (!error) P.torre = valor;
+    return error;
+  };
+  const fto = document.getElementById("fTorre");
+  if (fto) {
+    fto.onsubmit = async e => {
+      e.preventDefault();
+      const error = await guardarTorre({ ...P.torre, dias: Math.max(1, Math.min(120, Math.round(+document.getElementById("toDias").value || 28))), intentos: Math.max(1, Math.min(20, Math.round(+document.getElementById("toInt").value || 3))) });
+      document.getElementById("toMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";
+    };
+    document.getElementById("toReset").onclick = async () => {
+      if (!confirm("¿Reiniciar la torre ahora? Todos vuelven al piso 1 y arranca una temporada nueva.")) return;
+      const error = await guardarTorre({ ...P.torre, inicio: new Date().toISOString() });
+      document.getElementById("toMsg").textContent = error ? "No se pudo reiniciar: " + error.message : "¡Listo! La torre arrancó de nuevo.";
+    };
+  }
   const ft = document.getElementById("fTimba");
   if (ft) ft.onsubmit = async e => {
     e.preventDefault();

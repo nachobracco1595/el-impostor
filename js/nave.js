@@ -256,6 +256,9 @@ const Nave = {
       <button class="nv-salir" id="nvSalir" aria-label="Salir">✕</button>
     </div>`;
     const v = Nave.v;
+    if (NavePixi.activo) NavePixi.desmontar();
+    ArenaFX.cargar();
+    if (ArenaPixi.listo) NavePixi.montar(byId("naveCanvas")); else ArenaPixi.cargar();
     UI.nave = { x: v.yo.x, y: v.yo.y, tp: v.yo.tp, dir: 1, mov: { x: 0, y: 0 }, otros: {}, ultEnvio: 0, teclas: {} };
     Nave.joystick();
     byId("nvSalir").onclick = () => { if (Nave.opts.local) { Nave.parar(); go("home"); } else UI.confirmSalir = true, render(); };
@@ -289,7 +292,7 @@ const Nave = {
     }
   },
 
-  parar() { cancelAnimationFrame(Nave.raf); Nave.raf = null; document.body.classList.remove("en-nave"); UI.naveCapa = null; clearInterval(Nave.hostTimer); Nave.hostTimer = null; },
+  parar() { if (NavePixi.activo) NavePixi.desmontar(); cancelAnimationFrame(Nave.raf); Nave.raf = null; document.body.classList.remove("en-nave"); UI.naveCapa = null; clearInterval(Nave.hostTimer); Nave.hostTimer = null; },
 
   loop() {
     let prev = performance.now();
@@ -299,7 +302,8 @@ const Nave = {
       if (!cv || !UI.nave || !Nave.v || !Nave.v.yo) { if (!cv) Nave.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Nave.moverYo(dt);
-      dibujarSeguro(cv, () => Nave.dibujar(cv));
+      if (NavePixi.activo) { try { NavePixi.dibujar(now); } catch (e) { if (!Nave.errPixi) { Nave.errPixi = true; console.error(e); } } }
+      else dibujarSeguro(cv, () => Nave.dibujar(cv));
     };
     Nave.raf = requestAnimationFrame(paso);
   },
@@ -383,7 +387,10 @@ const Nave = {
       g.addColorStop(0, "rgba(3,2,8,0)"); g.addColorStop(1, "rgba(3,2,8,.93)");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
-    // Minimapa
+    Nave.minimapa(v, n, mias);
+  },
+  /* Minimapa (canvas chico aparte, igual para los dos dibujos) */
+  minimapa(v, n, mias) {
     const mm = byId("naveMini");
     if (mm) {
       const m = mm.getContext("2d"), k = mm.width / NV.W;

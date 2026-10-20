@@ -384,6 +384,7 @@ PANTALLAS.arenaIntro = () => {
   on("arPixi", () => { store.set("arenaPixi", store.get("arenaPixi", true) === false); render(); });
   on("arJugar", () => Arena.empezarLocal(cfg.modo, cfg.nivel, cfg.esc));
   on("toEntrar", () => Torre.entrar());
+  on("toComprar", () => { if (confirm(`¿Comprar una vida por ${Torre.precioVida(u)} monedas?`) && Torre.comprarVida(u)) render(); });
   on("toRank", () => { UI.tabRank = "torre"; go("ranking"); });
   on("arAmigos", () => { S.arenaEsc = cfg.esc; go("onCrear"); });
   on("volver", () => go("home"));

@@ -334,6 +334,11 @@ const Arena = {
     if (ArenaPixi.listo && ArenaPixi.soporta()) ArenaPixi.montar(byId("arCanvas"));
     UI.arena = { partida: v.id, x: yo ? yo.x : 700, y: yo ? yo.y : 500, tp: yo ? yo.tp : 0, cara: 1, dir: { x: 1, y: 0 }, mov: { x: 0, y: 0 }, teclas: {}, atk: false, ultEnvio: 0, otros: {} };
     Arena.joystick();
+    // Si PixiJS todavía se estaba bajando, cuando llega se cambia al dibujo nuevo sin cortar la pelea
+    if (!ArenaPixi.activo) ArenaPixi.cargar().then(ok => {
+      const cv = byId("arCanvas"); if (!ok || !cv || ArenaPixi.activo || !UI.arena || UI.arena.partida !== v.id) return;
+      const nuevo = cv.cloneNode(false); cv.replaceWith(nuevo); if (ArenaPixi.montar(nuevo)) Arena.joystick();
+    });
     const boton = (id, fn) => { const b = byId(id); b.onpointerdown = e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {} fn(true); }; const f = () => fn(false); b.onpointerup = f; b.onpointercancel = f; b.onlostpointercapture = f; b.oncontextmenu = e => e.preventDefault(); };
     // Ataque: tocar = apunta solo al más cercano; arrastrar el botón = apuntar a mano (se ve una línea)
     const atk = byId("arAtk"); let ini = null;

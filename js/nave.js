@@ -261,6 +261,10 @@ const Nave = {
     if (ArenaPixi.listo) NavePixi.montar(byId("naveCanvas")); else ArenaPixi.cargar();
     UI.nave = { x: v.yo.x, y: v.yo.y, tp: v.yo.tp, dir: 1, mov: { x: 0, y: 0 }, otros: {}, ultEnvio: 0, teclas: {} };
     Nave.joystick();
+    if (!NavePixi.activo) ArenaPixi.cargar().then(ok => {
+      const cv = byId("naveCanvas"); if (!ok || !cv || NavePixi.activo || !UI.nave) return;
+      const nuevo = cv.cloneNode(false); cv.replaceWith(nuevo); if (NavePixi.montar(nuevo)) Nave.joystick();
+    });
     byId("nvSalir").onclick = () => { if (Nave.opts.local) { Nave.parar(); go("home"); } else UI.confirmSalir = true, render(); };
     if (!Nave.raf) Nave.loop();
   },

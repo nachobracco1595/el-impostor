@@ -2,13 +2,14 @@
    - Cada piso son olas de monstruos que pelean juntos contra vos; cada piso es más difícil y cada 5 hay un jefe.
    - Un intento: subís pisos seguidos hasta que caés (entre piso y piso recuperás algo de vida).
    - Cada 5 pisos queda guardado: el próximo intento arranca desde ahí.
-   - 3 intentos por día. Cada piso superado da monedas y experiencia al héroe que usaste.
+   - 5 vidas por día: cada vez que caés perdés una. Cada 5 pisos superados se recuperan todas, y también se compran con monedas.
+     Cada piso superado da monedas y experiencia al héroe que usaste.
    - La torre se reinicia sola cada 28 días (temporada) o cuando el admin la reinicia desde el panel.
    - En grupo (online, hasta 4): arrancan en el piso guardado más bajo del grupo, los monstruos son más y más fuertes,
      el que cae espera y vuelve en el piso siguiente; el intento termina cuando caen todos.
-     Cada uno usa uno de sus intentos del día (sin intentos juega igual, pero sin premio) y guarda su propio progreso. */
+     Cada uno usa una de sus vidas del día (sin vidas juega igual, pero sin premio) y guarda su propio progreso. */
 const TO = {
-  INTENTOS: 3, DIAS: 28, INICIO: "2026-10-20T00:00:00Z",
+  INTENTOS: 5, DIAS: 28, PRECIO_VIDA: 100, PRECIO_SUBE: 50, PRECIO_MAX: 500, INICIO: "2026-10-20T00:00:00Z",
   // [nombre, ícono, color, dibujo en img/arena/mon]
   MONSTRUOS: [["Esqueleto", "💀", "#dee2e6", "esqueleto"], ["Goblin", "👺", "#82c91e", "goblin"], ["Zombi", "🧟", "#5c940d", "zombi"], ["Lobo", "🐺", "#868e96", "lobo"], ["Bruja", "🧙", "#9c36b5", "bruja"], ["Orco", "👹", "#2b8a3e", "orco"], ["Gólem", "🗿", "#adb5bd", "golem"], ["Vampiro", "🦇", "#c92a2a", "vampiro"], ["Demonio", "😈", "#e03131", "demonio"]],
   JEFES: [["Rey Esqueleto", "☠️", "jefe1"], ["Jefe Orco", "👹", "jefe2"], ["Gran Bruja", "🧙‍♀️", "jefe3"], ["Dragón", "🐉", "jefe4"], ["Señor Demonio", "😈", "jefe5"]],
@@ -29,7 +30,21 @@ const Torre = {
     if (t.key !== T.key) { t.key = T.key; t.base = 1; t.mejor = 0; t.hoy = ""; t.usados = 0; }
     return t;
   },
-  quedan(u) { const t = this.datos(u); return Math.max(0, (this.cfg().intentos | 0 || TO.INTENTOS) - (t.hoy === hoyStr() ? t.usados : 0)); },
+  max() { return this.cfg().intentos | 0 || TO.INTENTOS; },
+  quedan(u) { const t = this.datos(u); return Math.max(0, this.max() - (t.hoy === hoyStr() ? t.usados : 0)); },
+  /* Vidas: comprar una con monedas (cada una del día sale un poco más) y recuperarlas todas cada 5 pisos */
+  precioVida(u) { const t = this.datos(u); return Math.min(TO.PRECIO_MAX, TO.PRECIO_VIDA + TO.PRECIO_SUBE * (t.diaCompra === hoyStr() ? t.compradas | 0 : 0)); },
+  comprarVida(u) {
+    const t = this.datos(u), precio = this.precioVida(u);
+    if (this.quedan(u) >= this.max() || u.monedas < precio) return false;
+    if (t.diaCompra !== hoyStr()) { t.diaCompra = hoyStr(); t.compradas = 0; }
+    u.monedas -= precio; t.compradas++; t.usados = Math.max(0, (t.hoy === hoyStr() ? t.usados : 0) - 1); t.hoy = hoyStr();
+    if (u.nube && typeof Nube !== "undefined") Nube.actividad("compra", "torre", 0, -precio);
+    if (typeof Sonido !== "undefined") Sonido.sfx("monedas");
+    Toast.mostrar(`<div class="t-ic">❤️</div><div class="t-txt"><small>Torre de hordas</small><b>¡Recuperaste una vida!</b><span>Pagaste ${precio} 🪙. Tenés ${this.quedan(u)} de ${this.max()}.</span></div>`, "logro");
+    Eco.guardar(u); return true;
+  },
+  regenerar(u) { const t = this.datos(u); t.hoy = hoyStr(); t.usados = 0; },
 
   /* ---------- Cómo es cada piso ---------- */
   piso(f, n = 1) {
@@ -115,15 +130,15 @@ const Torre = {
     const hechos = store.get("torreCobrado", {}), k = `${H.id}`;
     if (hechos[k]) return hechos[k];
     const runs = store.get("torreRun", {}), conPremio = !!runs[H.run], t = this.datos(u), f = H.piso;
-    let r = { sinPremio: !conPremio };
+    let r = { sinPremio: !conPremio, vidas: false };
     if (H.gano && conPremio) {
       const p = this.premio(f, st);
       Eco.completar(u); u.monedas += p.monedas;
       Heroes.ganarXp(u, clase, p.xp);
       t.mejor = Math.max(t.mejor | 0, f);
-      if (f % 5 === 0) t.base = Math.max(t.base | 0, f + 1);
+      if (f % 5 === 0) { t.base = Math.max(t.base | 0, f + 1); this.regenerar(u); r.vidas = true; }
       const sa = u.stats.arena = u.stats.arena || {}; sa.torreMejor = Math.max(sa.torreMejor | 0, f);
-      r = { ...p, sinPremio: false };
+      r = { ...p, sinPremio: false, vidas: f % 5 === 0 };
     }
     r.base = t.base; r.quedan = this.quedan(u);
     hechos[k] = r; store.set("torreCobrado", Object.fromEntries(Object.entries(hechos).slice(-30)));
@@ -154,17 +169,27 @@ const Torre = {
   fin(v, el) {
     const H = v.horda, f = H.piso, yo = v.jug[v.yo], jefe = !v.online || v.isHost;
     const r = yo ? this.cobrar(H, yo.clase, Heroes.stats(Heroes.validar(Arena.miPerfil()))) || {} : {};
-    const premio = r.sinPremio ? `<p class="sub">Jugás sin premio: no te quedaban intentos hoy.</p>` : r.monedas ? `<div class="tr-premio"><div><b>+${r.monedas}</b><small>monedas</small></div><div><b>+${r.xp}</b><small>XP</small></div></div>` : "";
+    const premio = r.sinPremio ? `<p class="sub">Jugás sin premio: no te quedaban vidas hoy.</p>` : r.monedas ? `<div class="tr-premio"><div><b>+${r.monedas}</b><small>monedas</small></div><div><b>+${r.xp}</b><small>XP</small></div></div>` : "";
     el.innerHTML = `<div class="ar-fin-caja">${H.gano
       ? `<h2>🏆 ¡Piso ${f} superado!</h2>${premio}
-         ${f % 5 === 0 && !r.sinPremio ? `<p class="sub">🚩 ¡Guardado! Tus próximos intentos arrancan en el piso ${f + 1}.</p>` : `<p class="sub">El próximo guardado es en el piso ${Math.ceil((f + 1) / 5) * 5}. ${v.online ? "Los que cayeron vuelven en el próximo piso y todos recuperan algo de vida." : "Recuperás algo de vida entre piso y piso."}</p>`}
+         ${f % 5 === 0 && !r.sinPremio ? `<p class="sub">🚩 ¡Guardado! Si caés, volvés desde el piso ${f + 1}. ❤️ ¡Recuperaste todas tus vidas (${r.quedan}/${this.max()})!</p>` : `<p class="sub">El próximo guardado es en el piso ${Math.ceil((f + 1) / 5) * 5}. ${v.online ? "Los que cayeron vuelven en el próximo piso y todos recuperan algo de vida." : "Recuperás algo de vida entre piso y piso."}</p>`}
          ${jefe ? `<div class="row"><button class="btn" id="toSeguir">⬆️ Seguir al piso ${f + 1}</button><button class="btn ghost" id="toSalir">${v.online ? "Volver a la sala" : "Terminar acá"}</button></div>` : `<p class="sub">El anfitrión elige si siguen al piso ${f + 1}.</p><button class="btn ghost" id="toIrme">Salir</button>`}`
       : `<h2>💀 ${v.online ? `Cayeron en el piso ${f}` : `Caíste en el piso ${f}`}</h2>
-         <p class="sub">Tu próximo intento arranca en el piso ${r.base || 1}. ${r.quedan ? `Te quedan ${r.quedan} intento${r.quedan > 1 ? "s" : ""} hoy.` : "Ya usaste los intentos de hoy: volvé mañana."}</p>
-         ${jefe ? `<div class="row"><button class="btn" id="toSalir">${v.online ? "Volver a la sala" : "Volver a la Arena"}</button></div>` : `<button class="btn ghost" id="toIrme">Salir</button>`}`}</div>`;
+         <p class="sub">Volvés desde el piso ${r.base || 1}. <span id="toVidasTx">${Torre.textoVidas()}</span></p>
+         ${!v.online ? `<div class="row"><button class="btn" id="toOtra" ${r.quedan ? "" : "disabled"}>❤️ Usar una vida y volver al piso ${r.base || 1}</button></div>` : ""}
+         ${Torre.botonComprar()}
+         ${jefe ? `<div class="row"><button class="btn ghost" id="toSalir">${v.online ? "Volver a la sala" : "Volver a la Arena"}</button></div>` : `<button class="btn ghost" id="toIrme">Salir</button>`}`}</div>`;
     on("toSeguir", () => v.online ? Arena.send({ t: "torreSeguir" }) : Torre.seguir());
     on("toSalir", () => v.online ? Arena.send({ t: "lobby" }) : Torre.salir());
     on("toIrme", () => { UI.confirmSalir = true; render(); });
+    on("toOtra", () => { Arena.parar(); S.arena = null; Torre.entrar(); });
+    on("toComprar", () => { const u = BD.sesion(); if (u && confirm(`¿Comprar una vida por ${Torre.precioVida(u)} monedas?`) && Torre.comprarVida(u)) Torre.fin(v, el); });
+  },
+  textoVidas() { const u = BD.sesion(); if (!u) return ""; const q = this.quedan(u); return q ? `Te quedan ❤️ ${q} de ${this.max()} vidas hoy.` : "No te quedan vidas hoy."; },
+  botonComprar() {
+    const u = BD.sesion(); if (!u || this.quedan(u) >= this.max()) return "";
+    const p = this.precioVida(u);
+    return `<button class="btn ${this.quedan(u) ? "ghost" : "tb-girar"}" id="toComprar" ${u.monedas < p ? "disabled" : ""}>💰 Comprar una vida · ${p} 🪙</button>`;
   },
 
   /* ---------- En grupo (online): el anfitrión arma cada piso ---------- */
@@ -198,9 +223,10 @@ const Torre = {
     const t = this.datos(u), T = this.temporada(), q = this.quedan(u), dias = Math.max(0, Math.ceil((T.fin - Date.now()) / 864e5));
     const yo = Heroes.datos(u), C = AR.CLASES[yo.clase], p = yo.pj[yo.clase], e = p.evo.length ? Heroes.evoDe(yo.clase, p.evo[p.evo.length - 1]) : null;
     return `<div class="panel to-panel"><div class="headrow"><span class="label">🗼 Torre de hordas</span><small class="sub">Se reinicia en ${dias} día${dias === 1 ? "" : "s"}</small></div>
-      <div class="to-datos"><div><b>${t.base}</b><small>arrancás en el piso</small></div><div><b>${t.mejor || 0}</b><small>tu mejor piso</small></div><div><b>${q}/${this.cfg().intentos | 0 || TO.INTENTOS}</b><small>intentos hoy</small></div></div>
-      <p class="sub he-nota">Pasá olas de monstruos piso por piso: cada uno es más difícil y cada 5 hay un jefe y queda guardado. Cada piso da monedas y experiencia.</p>
+      <div class="to-datos"><div><b>${t.base}</b><small>arrancás en el piso</small></div><div><b>${t.mejor || 0}</b><small>tu mejor piso</small></div><div><b>❤️ ${q}/${this.max()}</b><small>vidas hoy</small></div></div>
+      <p class="sub he-nota">Pasá olas de monstruos piso por piso: cada uno es más difícil y cada 5 hay un jefe, queda guardado y recuperás todas tus vidas. Cada vez que caés perdés una. Cada piso da monedas y experiencia.</p>
       <button class="linkish to-rank" id="toRank">🏆 Ver el ranking de la torre</button>
-      <button class="btn tb-girar" id="toEntrar" ${q ? "" : "disabled"}>${q ? `🗼 Subir desde el piso ${t.base} con ${esc(e ? e.nombre : C.nombre)}` : "Volvé mañana: ya usaste los 3 intentos"}</button></div>`;
+      <button class="btn tb-girar" id="toEntrar" ${q ? "" : "disabled"}>${q ? `🗼 Subir desde el piso ${t.base} con ${esc(e ? e.nombre : C.nombre)}` : "Sin vidas: comprá una o volvé mañana"}</button>
+      ${this.botonComprar()}</div>`;
   }
 };

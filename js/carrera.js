@@ -184,6 +184,10 @@ const Carrera = {
     UI.cr = { id: v.id, obst: p.obst, cps: p.cps, off: performance.now() / 1000 - v.t, yo: { ...yo, vx: 0, vy: 0, salto: 0, esperaSalto: 0, aturdido: 0, cae: 0, golpe: 0, cp: 0, meta: null },
       mov: { x: 0, y: 0 }, teclas: {}, salta: false, ultEnvio: 0, otros: {}, chocadas: new Set() };
     Carrera.joystick();
+    if (!CarreraPixi.activo) ArenaPixi.cargar().then(ok => {
+      const cv = byId("crCanvas"); if (!ok || !cv || CarreraPixi.activo || !UI.cr || UI.cr.id !== v.id) return;
+      const nuevo = cv.cloneNode(false); cv.replaceWith(nuevo); if (CarreraPixi.montar(nuevo)) Carrera.joystick();
+    });
     const b = byId("crSaltar");
     b.onpointerdown = e => { e.preventDefault(); UI.cr.salta = true; setTimeout(() => { if (UI.cr) UI.cr.salta = false; }, 120); };
     b.oncontextmenu = e => e.preventDefault();

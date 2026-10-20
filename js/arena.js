@@ -68,7 +68,7 @@ const Arena = {
   luchador(j, pos) {
     const p = this.validar(j.arena), st = Heroes.stats(p);
     if (j.fuerza) { st.hp = Math.round(st.hp * j.fuerza.hp); st.mult *= j.fuerza.dano; }
-    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1,
+    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
       elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
@@ -298,7 +298,7 @@ const Arena = {
     const yo = s.jug.findIndex(j => j.id === pid);
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
-      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
+      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
         golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed, horda: s.horda ? Torre.vista(s) : null
@@ -316,6 +316,7 @@ const Arena = {
   },
   montar() {
     document.body.classList.add("en-nave");
+    ArenaFX.cargar();
     app.innerHTML = `<div class="nave arena" id="arRoot">
       <canvas id="arCanvas"></canvas>
       <div class="ar-top" id="arTop"></div>
@@ -437,6 +438,7 @@ const Arena = {
     const golpeado = j.hit !== undefined && vt - j.hit < 160;
     // Invisible: los demás apenas ven un brillito (sin sombra, nombre ni vida); uno mismo se ve transparente
     const invis = vt < j.invis;
+    if (j.sprite) { const h = ArenaFX.monstruo(ctx, j, x, y, t, anda, vt); if (h !== false) { if (j.name) this.nombreVida(ctx, j, x, y + 10 - h); return; } }
     if (invis && !j.esYo) { ctx.save(); ctx.globalAlpha = 0.07 + Math.sin(t * 7) * 0.03; ctx.translate(x, y); if (j.cara < 0) ctx.scale(-1, 1); if (img.complete) ctx.drawImage(img, -30, -46, 60, 67); ctx.restore(); ctx.globalAlpha = 1; return; }
     // Sombra y anillo de la clase
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 16, 24, 9, 0, 0, 7); ctx.fill();
@@ -520,13 +522,17 @@ const Arena = {
     if (j.quema) { ctx.font = "15px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("🔥", x - 22, y - 44); }
     if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("❄️", x + 22, y - 44); }
     if (!j.name) return;
-    // Nombre y vida (barra redondeada con borde)
+    this.nombreVida(ctx, j, x, y - 68 - ((j.tam || 1) - 1) * 60);
+  },
+
+  /* Nombre y barra de vida arriba del luchador (yN = altura del nombre) */
+  nombreVida(ctx, j, x, yN) {
     ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
-    const nom = `${j.evoIc || AR.CLASES[j.clase].ic} ${j.name}${j.lv && !j.equipo ? ` · ${j.pre ? HE.PRESTIGIO[j.pre - 1].ic : ""}${j.lv}` : ""}`; ctx.strokeText(nom, x, y - 68 - ((j.tam || 1) - 1) * 60); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, y - 68 - ((j.tam || 1) - 1) * 60);
-    const p = Math.max(0, j.hp / j.max);
-    ctx.fillStyle = "#000c"; ctx.beginPath(); ctx.roundRect(x - 28, y - 62 - ((j.tam || 1) - 1) * 60, 56, 9, 4.5); ctx.fill();
-    ctx.fillStyle = p > 0.5 ? "#3ddcb1" : p > 0.25 ? "#ffc53d" : "#ff4d63"; ctx.beginPath(); ctx.roundRect(x - 27, y - 61 - ((j.tam || 1) - 1) * 60, Math.max(3, 54 * p), 7, 3.5); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - 25, y - 60 - ((j.tam || 1) - 1) * 60, Math.max(0, 50 * p), 2);
+    const nom = `${j.evoIc || AR.CLASES[j.clase].ic} ${j.name}${j.lv && !j.equipo ? ` · ${j.pre ? HE.PRESTIGIO[j.pre - 1].ic : ""}${j.lv}` : ""}`; ctx.strokeText(nom, x, yN); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, yN);
+    const p = Math.max(0, j.hp / j.max), yb = yN + 6;
+    ctx.fillStyle = "#000c"; ctx.beginPath(); ctx.roundRect(x - 28, yb, 56, 9, 4.5); ctx.fill();
+    ctx.fillStyle = j.equipo === "m" ? (p > 0.5 ? "#ff6b6b" : "#e03131") : p > 0.5 ? "#3ddcb1" : p > 0.25 ? "#ffc53d" : "#ff4d63"; ctx.beginPath(); ctx.roundRect(x - 27, yb + 1, Math.max(3, 54 * p), 7, 3.5); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - 25, yb + 2, Math.max(0, 50 * p), 2);
   },
 
   /* Decoración fija de cada escenario (público, grietas, estrellas…) */
@@ -675,6 +681,7 @@ const Arena = {
     const dtv = Math.min(0.2, (now - (n.vtLocal || now)) / 1000);
     v.proy.forEach(p => {
       const x = p.x + p.vx * dtv, y = p.y + p.vy * dtv, a = Math.atan2(p.vy, p.vx);
+      ArenaFX.proyectil(ctx, n, p, x, y, a);
       if (p.tipo === "flecha") {
         ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * 46, y - Math.sin(a) * 46); ctx.lineTo(x, y); ctx.stroke();
         ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.strokeStyle = "#e9dcc0"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(10, 0); ctx.stroke();
@@ -694,6 +701,7 @@ const Arena = {
         if (f.tipo === "boom") chispas("#ff8c00", 22, 260);
         if (f.tipo === "muerte") chispas("#ffffff", 26, 300);
         if (f.tipo === "onda") chispas(f.color, 18, 260);
+        ArenaFX.evento(n, f);
       }
       const k = Math.max(0, (vt - f.t) / 500); if (k > 1 && f.tipo !== "num") return;
       if (f.tipo === "tajo") {
@@ -710,6 +718,7 @@ const Arena = {
     n.part = n.part.filter(p => now - p.t0 < p.vida);
     n.part.forEach(p => { const k = (now - p.t0) / 1000, vida = (now - p.t0) / p.vida; ctx.globalAlpha = 1 - vida; ctx.fillStyle = p.color; const s = p.tam * (1 - vida * 0.5); ctx.fillRect(p.x + p.vx * k - s / 2, p.y + p.vy * k + p.grav * k * k - s / 2, s, s); });
     ctx.globalAlpha = 1;
+    ArenaFX.dibujar(ctx, n, now);
     ctx.restore();
     // Flechas en el borde para los rivales que quedan fuera de la pantalla
     v.jug.forEach(j => {
@@ -719,7 +728,7 @@ const Arena = {
       const ex = Math.max(m, Math.min(W - m, sx)), ey = Math.max(m + 50, Math.min(H - m - 90, sy)), ang = Math.atan2(sy - H / 2, sx - W / 2);
       ctx.save(); ctx.translate(ex, ey);
       ctx.fillStyle = "rgba(20,17,32,.85)"; ctx.strokeStyle = "#ff4d63"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 20, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.font = "18px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(AR.CLASES[j.clase].ic, 0, 1);
+      ctx.font = "18px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(j.evoIc || AR.CLASES[j.clase].ic, 0, 1);
       ctx.rotate(ang); ctx.fillStyle = "#ff4d63"; ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(20, -8); ctx.lineTo(20, 8); ctx.fill();
       ctx.restore();
     });

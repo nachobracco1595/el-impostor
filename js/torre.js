@@ -9,8 +9,9 @@
      Cada uno usa uno de sus intentos del día (sin intentos juega igual, pero sin premio) y guarda su propio progreso. */
 const TO = {
   INTENTOS: 3, DIAS: 28, INICIO: "2026-10-20T00:00:00Z",
-  MONSTRUOS: [["Esqueleto", "💀", "#dee2e6"], ["Goblin", "👺", "#82c91e"], ["Zombi", "🧟", "#5c940d"], ["Lobo", "🐺", "#868e96"], ["Bruja", "🧙", "#9c36b5"], ["Orco", "👹", "#2b8a3e"], ["Gólem", "🗿", "#adb5bd"], ["Vampiro", "🦇", "#c92a2a"], ["Demonio", "😈", "#e03131"]],
-  JEFES: [["Rey Esqueleto", "☠️"], ["Jefe Orco", "👹"], ["Gran Bruja", "🧙‍♀️"], ["Dragón", "🐉"], ["Señor Demonio", "😈"]],
+  // [nombre, ícono, color, dibujo en img/arena/mon]
+  MONSTRUOS: [["Esqueleto", "💀", "#dee2e6", "esqueleto"], ["Goblin", "👺", "#82c91e", "goblin"], ["Zombi", "🧟", "#5c940d", "zombi"], ["Lobo", "🐺", "#868e96", "lobo"], ["Bruja", "🧙", "#9c36b5", "bruja"], ["Orco", "👹", "#2b8a3e", "orco"], ["Gólem", "🗿", "#adb5bd", "golem"], ["Vampiro", "🦇", "#c92a2a", "vampiro"], ["Demonio", "😈", "#e03131", "demonio"]],
+  JEFES: [["Rey Esqueleto", "☠️", "jefe1"], ["Jefe Orco", "👹", "jefe2"], ["Gran Bruja", "🧙‍♀️", "jefe3"], ["Dragón", "🐉", "jefe4"], ["Señor Demonio", "😈", "jefe5"]],
   ESCENARIOS: ["ring", "coliseo", "volcan", "nave"]
 };
 
@@ -38,13 +39,13 @@ const Torre = {
     let k = 0;
     const mon = (extra = {}) => {
       const M = TO.MONSTRUOS[(f + k) % TO.MONSTRUOS.length];
-      return { id: `m${f}-${k++}`, name: M[0], ic: M[1], cpu: true, nivel: f >= 10 ? "dificil" : "normal", equipo: "m", look: { color: M[2], acc: [] }, arena: Heroes.cpu(lv, pre), fuerza, ...extra };
+      return { id: `m${f}-${k++}`, name: M[0], ic: M[1], cpu: true, nivel: f >= 10 ? "dificil" : "normal", equipo: "m", sprite: M[3], look: { color: M[2], acc: [] }, arena: Heroes.cpu(lv, pre), fuerza, ...extra };
     };
     const lista = [];
     for (let o = 0; o < olas; o++) lista.push(Array.from({ length: o === olas - 1 && jefe ? Math.max(1, porOla - 2) : porOla }, () => mon()));
     if (jefe) {
       const J = TO.JEFES[Math.floor(f / 5 - 1) % TO.JEFES.length];
-      lista[olas - 1].push(mon({ name: J[0], ic: J[1], tam: 1.45, arena: Heroes.cpu(Math.min(40, lv + 5), pre), fuerza: { hp: fuerza.hp * 3.5, dano: fuerza.dano * 1.4 } }));
+      lista[olas - 1].push(mon({ name: J[0], ic: J[1], sprite: J[2], tam: 1.6, arena: Heroes.cpu(Math.min(40, lv + 5), pre), fuerza: { hp: fuerza.hp * 3.5, dano: fuerza.dano * 1.4 } }));
     }
     return { olas: lista, jefe, esc: TO.ESCENARIOS[(f - 1) % TO.ESCENARIOS.length] };
   },

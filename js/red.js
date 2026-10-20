@@ -462,6 +462,12 @@ function renderLobby(v) {
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
   Heroes.conectarSelector();
+  if (["arena", "torre", "carrera", "nave"].includes(v.sel) && ArenaPixi.quiere() && !(ArenaPixi.listo && ArenaPixi.imgsListas)) {
+    ArenaPixi.cargar(); ArenaPixi.cargarImagenes();
+    const caja = app.querySelector(".elige ~ .summary");
+    if (caja && !byId("recursosTx")) caja.insertAdjacentHTML("afterend", `<p class="summary" id="recursosTx">⬇️ Descargando gráficos… ${Math.round(ArenaPixi.avance * 100)}%</p>`);
+    if (!ArenaPixi.oyenteSala) { ArenaPixi.oyenteSala = x => { const el = byId("recursosTx"); if (el) el.textContent = x >= 1 ? "✅ Gráficos listos (quedan guardados en el teléfono)" : `⬇️ Descargando gráficos… ${Math.round(x * 100)}%`; }; ArenaPixi.oyentes.push(ArenaPixi.oyenteSala); }
+  }
   if (!H && (v.sel === "arena" || v.sel === "torre") && UI.arenaPerfil !== v.code + v.sel) { UI.arenaPerfil = v.code + v.sel; Net.send({ t: "arenaPerfil", p: Arena.miPerfil(), torre: Torre.info() }); }
   on("invitar", () => invitarAmigos());
 }

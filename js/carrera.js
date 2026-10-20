@@ -372,6 +372,7 @@ const Carrera = {
   /* ---------- En este teléfono, contra bots ---------- */
   bots(n, nivel) { return shuffle(CR.BOTS).slice(0, n).map((name, k) => ({ id: "b" + k, name, cpu: true, nivel, look: { color: CR.COLORES[(k + 2) % CR.COLORES.length], acc: [] } })); },
   empezarLocal(cfg) {
+    if ((!ArenaPixi.listo || !ArenaPixi.imgsListas) && ArenaPixi.quiere() && !Carrera.preparando) { Carrera.preparando = true; return ArenaPixi.preparar(() => { Carrera.preparando = false; Carrera.empezarLocal(cfg); }); }
     const u = BD.sesion();
     S.car = Carrera.setup(shuffle([{ id: "yo", name: u ? u.nombre : "Vos", look: u ? u.look : null }, ...Carrera.bots(cfg.bots, cfg.nivel)]), cfg);
     clearInterval(Carrera.reloj);

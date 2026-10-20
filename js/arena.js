@@ -810,6 +810,7 @@ const Arena = {
 
   /* ---------- Contra la compu ---------- */
   empezarLocal(modo, nivel, esc) {
+    if (!ArenaPixi.listo || !ArenaPixi.imgsListas) { if (ArenaPixi.quiere() && !Arena.preparando) { Arena.preparando = true; return ArenaPixi.preparar(() => { Arena.preparando = false; Arena.empezarLocal(modo, nivel, esc); }); } }
     const u = BD.sesion(), yo = this.miPerfil() || Heroes.validar(null);
     const base = { facil: yo.lv - 4, normal: yo.lv, dificil: yo.lv + 3 }[nivel];
     const cpus = modo === "duelo" ? 1 : 3;

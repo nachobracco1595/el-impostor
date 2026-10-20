@@ -68,6 +68,7 @@ const Torre = {
 
   /* ---------- Un intento ---------- */
   entrar() {
+    if ((!ArenaPixi.listo || !ArenaPixi.imgsListas) && ArenaPixi.quiere() && !this.preparando) { this.preparando = true; return ArenaPixi.preparar(() => { this.preparando = false; Torre.entrar(); }); }
     const u = BD.sesion(); if (!u || !this.quedan(u)) return;
     const t = this.datos(u);
     if (t.hoy !== hoyStr()) { t.hoy = hoyStr(); t.usados = 0; }

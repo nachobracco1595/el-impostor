@@ -5,17 +5,69 @@
    Si el teléfono no tiene WebGL o PixiJS no carga, se usa el dibujo de siempre. */
 const ArenaPixi = {
   listo: false, cargando: null, activo: false,
-  /* PixiJS se baja recién cuando hace falta (pesa ~450 KB) */
+  /* PixiJS se baja recién cuando hace falta (pesa ~450 KB). Se lee con fetch para poder mostrar el avance;
+     el service worker lo guarda y las próximas veces sale de la caché del teléfono al instante. */
+  TAM_PIXI: 456133,
+  avance: 0, oyentes: [], pPixi: 0, pImg: 0,
+  /* El avance suma las dos partes: PixiJS (70%) y las imágenes (30%) */
+  avisar(pixi, img) {
+    if (pixi != null) this.pPixi = Math.max(this.pPixi, pixi); if (img != null) this.pImg = Math.max(this.pImg, img);
+    this.avance = 0.7 * this.pPixi + 0.3 * this.pImg;
+    this.oyentes.forEach(f => { try { f(this.avance); } catch {} });
+  },
   cargar() {
-    if (this.listo || this.cargando) return this.cargando;
-    this.cargando = new Promise(res => {
-      if (window.PIXI) { this.listo = this.soporta(); return res(this.listo); }
-      const sc = document.createElement("script"); sc.src = "js/vendor/pixi.min.js"; sc.async = true;
-      sc.onload = () => { this.listo = this.soporta(); res(this.listo); };
-      sc.onerror = () => { this.listo = false; res(false); };
-      document.head.appendChild(sc);
-    });
+    if (this.cargando) return this.cargando;
+    this.cargando = (async () => {
+      if (window.PIXI) { this.listo = this.soporta(); this.avisar(1); return this.listo; }
+      let ok = false;
+      try {
+        const r = await fetch("js/vendor/pixi.min.js");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const total = +r.headers.get("content-length") || this.TAM_PIXI, lector = r.body && r.body.getReader ? r.body.getReader() : null;
+        let texto;
+        if (lector) {
+          const partes = []; let n = 0;
+          for (;;) { const { done, value } = await lector.read(); if (done) break; partes.push(value); n += value.length; this.avisar(Math.min(0.99, n / Math.max(total, n))); }
+          texto = new TextDecoder().decode(await new Blob(partes).arrayBuffer());
+        } else texto = await r.text();
+        await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = URL.createObjectURL(new Blob([texto], { type: "text/javascript" })); sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+        ok = !!window.PIXI;
+      } catch (e) {
+        // Si fetch no anda (navegador viejo), se carga como siempre
+        ok = await new Promise(res => { const sc = document.createElement("script"); sc.src = "js/vendor/pixi.min.js"; sc.onload = () => res(!!window.PIXI); sc.onerror = () => res(false); document.head.appendChild(sc); });
+      }
+      this.avisar(1);
+      this.listo = ok && this.soporta();
+      return this.listo;
+    })();
     return this.cargando;
+  },
+  /* El arte (partículas y monstruos) también se baja antes, así no aparecen cuadrados vacíos */
+  IMAGENES() { return [...ArenaFX.TEX.map(k => `img/arena/fx/${k}.png`), ...["esqueleto", "goblin", "zombi", "lobo", "bruja", "orco", "golem", "vampiro", "demonio", "jefe1", "jefe2", "jefe3", "jefe4", "jefe5"].map(k => `img/arena/mon/${k}.png`)]; },
+  cargarImagenes() {
+    if (this.imgs) return this.imgs;
+    const lista = this.IMAGENES(); let n = 0;
+    ArenaFX.cargar();
+    return (this.imgs = Promise.all(lista.map(src => new Promise(res => { const im = new Image(); im.onload = im.onerror = () => { n++; this.avisar(null, n / lista.length); res(); }; im.src = src; }))).then(() => { this.imgsListas = true; }));
+  },
+  quiere() { return store.get("arenaPixi", true) !== false && !this.fallo; },
+  /* Pantalla de carga: "Descargando recursos…" con barra; cuando termina (o si tarda demasiado) sigue la pelea */
+  preparar(seguir) {
+    if (!this.quiere() || (this.listo && this.imgsListas)) return seguir();
+    const capa = document.createElement("div"); capa.className = "carga-recursos";
+    capa.innerHTML = `<div class="cr-caja"><div class="cr-ic">⚔️</div><b>Descargando recursos…</b><div class="cr-barra"><i></i></div><small class="cr-pct">0%</small>
+      <p>Gráficos de la Arena, la Torre, la Carrera y La Nave. Es solo la primera vez: después quedan guardados en el teléfono.</p>
+      <button class="linkish" hidden>Seguir sin gráficos mejorados</button></div>`;
+    document.body.appendChild(capa);
+    const barra = capa.querySelector(".cr-barra i"), pct = capa.querySelector(".cr-pct"), saltar = capa.querySelector("button");
+    let listo = false;
+    const fin = () => { if (listo) return; listo = true; this.oyentes = this.oyentes.filter(f => f !== mostrar); capa.classList.add("sale"); setTimeout(() => capa.remove(), 250); seguir(); };
+    const mostrar = x => { barra.style.width = Math.round(x * 100) + "%"; pct.textContent = Math.round(x * 100) + "%"; };
+    this.oyentes.push(mostrar); mostrar(this.avance);
+    setTimeout(() => { saltar.hidden = false; }, 6000);
+    saltar.onclick = () => { this.fallo = true; fin(); };
+    Promise.all([this.cargar(), this.cargarImagenes()]).then(([ok]) => { this.imgsListas = true; if (!ok) this.fallo = true; mostrar(1); setTimeout(fin, 250); });
+    setTimeout(() => { if (!listo) { saltar.hidden = false; } }, 20000);
   },
   soporta() { try { return !!(window.PIXI && PIXI.utils.isWebGLSupported()) && store.get("arenaPixi", true) !== false; } catch { return false; } },
 

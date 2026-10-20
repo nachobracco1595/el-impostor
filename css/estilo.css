@@ -1438,3 +1438,13 @@ body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc
 .bk-f.mini .pt { display: none; }
 .bk-f.mini svg text { transform: translateY(4px); }
 .bk-f.mini .cl { display: none; }
+/* Pantalla de carga de recursos (PixiJS y arte) */
+.carga-recursos { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 50% 40%, #2a2350, #0b0916 75%); animation: aparece .2s ease; transition: opacity .25s; }
+.carga-recursos.sale { opacity: 0; }
+.cr-caja { width: min(360px, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: #fff; }
+.cr-ic { font-size: 54px; animation: latido 1.2s ease-in-out infinite; }
+.cr-caja b { font-family: var(--display); font-size: 24px; }
+.cr-barra { width: 100%; height: 14px; border-radius: 999px; background: rgba(255, 255, 255, .12); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); }
+.cr-barra i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--teal), var(--spot)); transition: width .2s; }
+.cr-pct { font-weight: 800; color: var(--spot); }
+.cr-caja p { margin: 0; font-size: 13px; color: var(--muted); }

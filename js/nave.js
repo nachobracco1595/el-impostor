@@ -543,6 +543,7 @@ const Nave = {
 
   /* ---------- Práctica en un teléfono (con compus) y online ---------- */
   empezarLocal() {
+    if ((!ArenaPixi.listo || !ArenaPixi.imgsListas) && ArenaPixi.quiere() && !Nave.preparando) { Nave.preparando = true; return ArenaPixi.preparar(() => { Nave.preparando = false; Nave.empezarLocal(); }); }
     const u = BD.sesion();
     const yo = { id: "yo", name: u ? u.nombre : (S.players[0] || "Tú"), look: u ? u.look : null };
     const bots = ["Rita", "Tito", "Pepa", "Lalo", "Momo"].map((n, i) => ({ id: "b" + i, name: n, bot: true, look: { color: COLORES[(i + 3) % COLORES.length], acc: [] } }));

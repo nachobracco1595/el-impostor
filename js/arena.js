@@ -11,7 +11,7 @@ const AR = {
     guerrero: { nombre: "Guerrero", ic: "🗡️", hp: 160, vel: 205, precio: 0, desc: "Mucha vida y espadazos en abanico.",
       atk: { tipo: "melee", alcance: 82, arco: 2.2, dano: 18, cd: 550 }, esp: { nombre: "Giro", ic: "🌀", cd: 8000, desc: "Gira 3 s con la espada (como Garen): golpea a todos alrededor varias veces y se mueve un poco más rápido." }, arma: ["Espada", "f"] },
     arquero: { nombre: "Arquero", ic: "🏹", hp: 110, vel: 210, precio: 300, desc: "Dispara flechas desde lejos.",
-      atk: { tipo: "flecha", vel: 700, dano: 14, cd: 450, alcance: 640 }, esp: { nombre: "Lluvia de flechas", ic: "🎯", cd: 6000, desc: "Cinco flechas en abanico." }, arma: ["Arco", "m"] },
+      atk: { tipo: "flecha", vel: 700, dano: 14, cd: 450, alcance: 640, crit: 0.08 }, esp: { nombre: "Lluvia de flechas", ic: "🎯", cd: 6000, desc: "Cinco flechas en abanico." }, arma: ["Arco", "m"] },
     mago: { nombre: "Mago", ic: "🔮", hp: 100, vel: 195, precio: 400, desc: "Bolas de fuego que explotan en área.",
       atk: { tipo: "bola", vel: 440, dano: 20, cd: 800, area: 58, alcance: 540 }, esp: { nombre: "Nova de hielo", ic: "❄️", cd: 7000, desc: "Congela y daña a todos cerca tuyo." }, arma: ["Bastón", "m"] },
     asesino: { nombre: "Asesino", ic: "🥷", hp: 105, vel: 240, precio: 500, desc: "Rápido, con golpes críticos.",
@@ -73,7 +73,7 @@ const Arena = {
   luchador(j, pos) {
     const p = this.validar(j.arena), st = Heroes.stats(p);
     if (j.fuerza) { st.hp = Math.round(st.hp * j.fuerza.hp); st.mult *= j.fuerza.dano; }
-    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, ia: j.ia ?? null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
+    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, ia: j.ia ?? null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null, skin: p.skin || null,
       elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
@@ -128,7 +128,8 @@ const Arena = {
   },
   pegar(s, a, b, dano, crit, efecto = true) {
     if (!b.vivo || s.t < b.invul || this.aliado(a, b)) return;
-    const chance = (a.clase === "asesino" ? AR.CLASES.asesino.atk.crit : 0) + (a.st.crit || 0);
+    // Chance de crítico: la de la clase + Inteligencia + equipo y evoluciones (todo viene sumado en st.crit)
+    const chance = Math.min(0.75, a.st.crit || 0);
     if (crit || Math.random() < chance) { dano *= a.st.critX || 2; crit = true; }
     // Golpe desde la invisibilidad: doble de daño y se vuelve a ver
     let sorpresa = false;
@@ -176,11 +177,11 @@ const Arena = {
         const ang = Math.acos(Math.max(-1, Math.min(1, (ddx * dir.x + ddy * dir.y) / (d || 1))));
         if (d < 30 || ang < A.arco / 2) this.pegar(s, a, b, A.dano);
       }
-      s.fx.push({ k: ++s.nP, tipo: "tajo", x: a.x, y: a.y, dx: dir.x, dy: dir.y, r: alc, arco: A.arco, color: TR.NIVELES[a.eq.arma].color, t: s.t });
+      s.fx.push({ k: ++s.nP, tipo: "tajo", x: a.x, y: a.y, dx: dir.x, dy: dir.y, r: alc, arco: A.arco, color: this.colorArma(a), t: s.t });
     } else this.disparar(s, a, dir, A);
   },
   disparar(s, a, dir, A, extra = {}) {
-    s.proy.push({ k: ++s.nP, tipo: A.tipo, dueno: a.id, x: a.x + dir.x * 26, y: a.y - 10 + dir.y * 26, vx: dir.x * A.vel, vy: dir.y * A.vel, dano: A.dano * (extra.mult || 1), hasta: s.t + (A.alcance * a.st.alc / A.vel) * 1000, area: (A.area || 0) * a.st.area, color: TR.NIVELES[a.eq.arma].color });
+    s.proy.push({ k: ++s.nP, tipo: A.tipo, dueno: a.id, x: a.x + dir.x * 26, y: a.y - 10 + dir.y * 26, vx: dir.x * A.vel, vy: dir.y * A.vel, dano: A.dano * (extra.mult || 1), hasta: s.t + (A.alcance * a.st.alc / A.vel) * 1000, area: (A.area || 0) * a.st.area, color: this.colorArma(a) });
   },
   especial(s, a, dx, dy, manual = false) {
     if (s.fase !== "pelea" || !a.vivo || s.t < a.cdE) return;
@@ -380,7 +381,7 @@ const Arena = {
     const yo = s.jug.findIndex(j => j.id === pid);
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
-      jug: s.jug.map(j => ({ id: j.id, inv: j.inv || null, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
+      jug: s.jug.map(j => ({ id: j.id, inv: j.inv || null, skin: j.skin || null, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
         golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed, horda: s.horda ? Torre.vista(s) : null
@@ -512,6 +513,19 @@ const Arena = {
   },
 
   /* Silueta blanca del personaje (para el destello cuando recibe un golpe) */
+  /* Color del arma y de los ataques: el de la skin si tiene, si no el del material */
+  colorArma(j) { const S = j.skin && HE.SKIN[j.skin]; return S && S.arma ? S.arma : TR.NIVELES[j.eq.arma].color; },
+  /* El personaje teñido con el color de la skin (se guarda para no recalcular) */
+  tenido(look, S) {
+    const img = Mundo.muneco(look), k = "t" + S.id + (look.color || "") + (look.acc || []).join();
+    if (!this.img[k] && img.complete && img.naturalWidth) {
+      const c = document.createElement("canvas"); c.width = 120; c.height = 134;
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0, 120, 134);
+      if (S.tinte) { x.globalCompositeOperation = "source-atop"; x.globalAlpha = S.alfa || 0.4; x.fillStyle = S.tinte; x.fillRect(0, 0, 120, 134); }
+      this.img[k] = c;
+    }
+    return this.img[k] || img;
+  },
   blanco(look) {
     const img = Mundo.muneco(look), k = "b" + (look.color || "") + (look.acc || []).join();
     if (!this.img[k] && img.complete && img.naturalWidth) {
@@ -533,6 +547,8 @@ const Arena = {
     if (invis && !j.esYo) { ctx.save(); ctx.globalAlpha = 0.07 + Math.sin(t * 7) * 0.03; ctx.translate(x, y); if (j.cara < 0) ctx.scale(-1, 1); if (img.complete) ctx.drawImage(img, -30, -46, 60, 67); ctx.restore(); ctx.globalAlpha = 1; return; }
     // Sombra y anillo de la clase
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 16, 24, 9, 0, 0, 7); ctx.fill();
+    const SK = j.skin && HE.SKIN[j.skin];
+    if (SK && SK.aura) { const g = ctx.createRadialGradient(x, y + 14, 4, x, y + 14, 34); g.addColorStop(0, SK.aura); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.save(); ctx.globalAlpha *= 0.45 + Math.sin(t * 4) * 0.15; ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y + 14, 34, 13, 0, 0, 7); ctx.fill(); ctx.restore(); }
     if (vt < j.invul || invis) ctx.globalAlpha = invis ? 0.4 : 0.45;
     const fest = j.festeja, salto = fest ? Math.abs(Math.sin(t * 7)) * 22 : anda ? Math.abs(Math.sin(t * 11)) * 4 : Math.sin(t * 3) * 1;
     const temblor = golpeado ? Math.sin(vt / 12) * 4 : 0;
@@ -546,7 +562,8 @@ const Arena = {
     ctx.save(); ctx.translate(x + temblor, y - salto); if (j.tam && j.tam !== 1) ctx.scale(j.tam, j.tam); if (j.cara < 0) ctx.scale(-1, 1);
     // Inclinación al caminar
     if (anda) ctx.rotate(Math.sin(t * 11) * 0.06);
-    if (img.complete) ctx.drawImage(img, -30, -46, 60, 67);
+    if (SK && SK.opac) ctx.globalAlpha *= SK.opac;
+    if (img.complete) ctx.drawImage(SK && SK.tinte ? this.tenido(look, SK) : img, -30, -46, 60, 67);
     if (golpeado) { const b = this.blanco(look); if (b) { ctx.globalAlpha = 0.85 * (1 - (vt - j.hit) / 160); ctx.drawImage(b, -30, -46, 60, 67); ctx.globalAlpha = invis ? 0.4 : vt < j.invul ? 0.45 : 1; } }
     // Botas
     if (j.eq.botas >= 0) { ctx.fillStyle = N("botas").color; ctx.beginPath(); ctx.roundRect(-17, 9, 14, 9, 3); ctx.roundRect(3, 9, 14, 9, 3); ctx.fill(); ctx.strokeStyle = "#0007"; ctx.lineWidth = 1.2; ctx.stroke(); }
@@ -564,7 +581,7 @@ const Arena = {
       if (j.eq.casco >= 4) { ctx.fillStyle = "#ff4d63"; ctx.beginPath(); ctx.moveTo(-3, -49); ctx.quadraticCurveTo(10, -64, 18, -50); ctx.quadraticCurveTo(8, -52, 3, -47); ctx.fill(); }
     }
     // Arma
-    const col = N("arma").color, golpe = vt - j.golpe < 250 ? (vt - j.golpe) / 250 : -1;
+    const col = SK && SK.arma ? SK.arma : N("arma").color, golpe = vt - j.golpe < 250 ? (vt - j.golpe) / 250 : -1;
     ctx.translate(20, -6);
     const est = (j.estilo && j.estilo.arma) || 0, hoja = (largo, ancho) => { const g = ctx.createLinearGradient(-ancho, 0, ancho, 0); g.addColorStop(0, oscurecer(col, 0.7)); g.addColorStop(0.5, "#fff"); g.addColorStop(1, col); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-ancho, -5); ctx.lineTo(-ancho + 1, -4 - largo + 6); ctx.lineTo(0, -5 - largo); ctx.lineTo(ancho - 1, -4 - largo + 6); ctx.lineTo(ancho, -5); ctx.fill(); };
     if (j.clase === "guerrero" || j.clase === "asesino") {
@@ -626,6 +643,9 @@ const Arena = {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -34, r * 2.2, 0, 7); ctx.fill();
     }
     ctx.restore(); ctx.globalAlpha = 1;
+    // Skin: algo en la cabeza y partículas que giran alrededor
+    if (SK && SK.som) { ctx.font = "20px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(SK.som, x + (SK.som === "🦜" ? 20 : 0), y - salto - (SK.som === "🦜" ? 20 : 52) - ((j.tam || 1) - 1) * 50); ctx.textBaseline = "alphabetic"; }
+    if (SK && SK.part) { ctx.fillStyle = SK.part; for (let k = 0; k < 4; k++) { const a = t * 2.2 + k * 1.57, r = 26 + Math.sin(t * 3 + k) * 4; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 5 + k * 2); ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y - 14 + Math.sin(a) * r * 0.55 - salto, 2.6, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
     if (j.pre >= 10) { ctx.strokeStyle = "#ffd43b"; ctx.globalAlpha = 0.45 + Math.sin(t * 4) * 0.2; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 14, 42, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
     if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = TR.NIVELES[Math.max(j.eq.arma, j.eq.armadura)].color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
     if (j.quema) { ctx.font = "15px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("🔥", x - 22, y - 44); }

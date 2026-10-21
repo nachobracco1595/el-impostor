@@ -23,12 +23,51 @@ const HE = {
     { ic: "🌟", nombre: "Mítico", desc: "Una vez por pelea, al caer, revivís con 30% de vida", pas: { revive: 1 } },
     { ic: "👑", nombre: "Prestigio máximo", desc: "+5% de vida, daño y defensa, aura dorada y niveles hasta el 1000", pas: { hp: .05, dano: .05, def: .05 } }
   ],
+  /* Características: cada punto rinde un poco menos cuantos más tenés en esa (ver rinde) */
   STATS: {
-    fue: ["Fuerza", "💪", "+1,5% de daño"],
-    vid: ["Vida", "❤️", "+2% de vida"],
-    agi: ["Agilidad", "👟", "+0,5% de velocidad y ataques más seguidos"],
-    def: ["Defensa", "🛡️", "-0,6% de daño recibido"]
+    fue: ["Fuerza", "💪", "+1,5% de daño físico, +0,8% de vida y +1,5% de daño crítico"],
+    agi: ["Agilidad", "👟", "+0,5% de velocidad de movimiento y de ataque"],
+    vid: ["Salud", "❤️", "+2% de vida"],
+    def: ["Defensa", "🛡️", "-0,7% de daño recibido, pero -0,25% de velocidad"],
+    int: ["Inteligencia", "🧠", "+1,5% de poder mágico (ataques y habilidades de magia) y +0,3% de chance de crítico"]
   },
+  /* Lo que conviene subir en cada clase (el resto no le sirve casi nada) */
+  RECOMIENDA: {
+    guerrero: ["fue", "vid", "def"],
+    arquero: ["agi", "fue", "int"],
+    mago: ["int", "agi", "vid", "def"],
+    asesino: ["agi", "fue", "int"],
+    invocador: ["int", "agi", "vid", "def"]
+  },
+  /* Por qué (se muestra en el armado) */
+  CONSEJO: {
+    guerrero: "Fuerza bruta: pega golpes físicos. Subí Fuerza, Salud y Defensa. La Agilidad y la Inteligencia casi no le sirven.",
+    arquero: "Arroja flechas (daño físico). Subí Agilidad para tirar más seguido, Fuerza para el daño y los críticos, e Inteligencia para la chance de crítico.",
+    mago: "Su ataque es magia: la Fuerza no le sirve. Subí Inteligencia (poder mágico), Agilidad, Salud y Defensa, que es frágil.",
+    asesino: "Golpes físicos rápidos y críticos. Subí Agilidad, Fuerza (daño crítico) e Inteligencia (chance de crítico).",
+    invocador: "Su ataque y sus bichos son magia: la Fuerza no le sirve. Subí Inteligencia, Agilidad, Salud y Defensa."
+  },
+  /* Skins (solo se ven, no dan ventajas): [id, nombre, ícono, precio, { clase (si es exclusiva), tinte, alfa, aura, arma, part, som, opac }] */
+  SKINS: [
+    ["rey", "Rey", "👑", 1200, { som: "👑", aura: "#ffd43b", arma: "#ffd43b", part: "#fff3bf" }],
+    ["dorado", "Dorado", "🌟", 600, { tinte: "#ffd43b", alfa: .62, aura: "#ffd43b", arma: "#ffd43b", part: "#fff3bf" }],
+    ["fantasma", "Fantasma", "👻", 500, { tinte: "#e7f5ff", alfa: .72, opac: .65, aura: "#a5d8ff" }],
+    ["lava", "Lava", "🌋", 700, { tinte: "#ff6b00", alfa: .57, aura: "#ff922b", arma: "#ff6b00", part: "#ffd43b" }],
+    ["hielo", "Hielo", "🧊", 700, { tinte: "#74c0fc", alfa: .62, aura: "#a5d8ff", arma: "#d0ebff", part: "#e7f5ff" }],
+    ["neon", "Neón", "💜", 800, { tinte: "#cc5de8", alfa: .47, aura: "#f783ac", arma: "#f783ac", part: "#e599f7" }],
+    ["sombra", "Sombra", "🌑", 900, { tinte: "#1b1726", alfa: .75, aura: "#7048e8", arma: "#9775fa" }],
+    ["zombi", "Zombi", "🧟", 450, { tinte: "#82c91e", alfa: .57, som: "🧠" }],
+    ["robot", "Robot", "🤖", 650, { tinte: "#adb5bd", alfa: .67, som: "📡", arma: "#74c0fc" }],
+    ["pirata", "Pirata", "🏴‍☠️", 550, { som: "🦜", arma: "#e9ecef" }],
+    ["fiesta", "Fiesta", "🥳", 400, { som: "🎉", part: "#ffd43b", aura: "#f783ac" }],
+    ["rey-barbaro", "Rey bárbaro", "🪓", 1000, { clase: "guerrero", tinte: "#c92a2a", alfa: .42, som: "👑", arma: "#ff6b6b", aura: "#ff8787" }],
+    ["elfo", "Elfo del bosque", "🍃", 1000, { clase: "arquero", tinte: "#2f9e44", alfa: .47, som: "🍃", arma: "#69db7c", part: "#b2f2bb" }],
+    ["cosmico", "Archimago cósmico", "🌌", 1100, { clase: "mago", tinte: "#364fc7", alfa: .57, som: "⭐", arma: "#91a7ff", aura: "#748ffc", part: "#fff" }],
+    ["carmesi", "Ninja carmesí", "🩸", 1000, { clase: "asesino", tinte: "#a61e4d", alfa: .57, arma: "#ff8787", aura: "#e64980" }],
+    ["vacio", "Señor del vacío", "🕳️", 1100, { clase: "invocador", tinte: "#5f3dc4", alfa: .62, aura: "#9775fa", part: "#d0bfff", arma: "#b197fc" }]
+  ],
+  /* Tipo de daño de cada clase (ataque y especial): físico usa Fuerza, mágico usa Inteligencia */
+  DANO: { guerrero: "fis", arquero: "fis", asesino: "fis", mago: "mag", invocador: "mag" },
   SLOTS: { arma: ["Arma", "⚔️"], ropa: ["Ropa", "🦺"], casco: ["Cabeza", "⛑️"], botas: ["Pies", "🥾"] },
   NIVEL_TIER: [1, 4, 8, 12, 16, 21, 26, 32, 38],
   PRECIO_TIER: [0, 80, 180, 320, 500, 750, 1050, 1400, 1800],
@@ -103,9 +142,12 @@ const HE = {
   }
 };
 
+HE.SKIN = Object.fromEntries(HE.SKINS.map(([id, nombre, ic, precio, x]) => [id, { id, nombre, ic, precio, ...x }]));
+
 const Heroes = {
   /* ---------- Progreso guardado en el perfil (u.diario.arena) ---------- */
-  nuevo() { return { xp: 0, pre: 0, ppts: { fue: 0, vid: 0, agi: 0, def: 0 }, pts: { fue: 0, vid: 0, agi: 0, def: 0 }, evo: [], items: ["arma:0:0", "ropa:0:0", "casco:0:0", "botas:0:0"], eq: { arma: "arma:0:0", ropa: "ropa:0:0", casco: null, botas: "botas:0:0" } }; },
+  cero() { return Object.fromEntries(Object.keys(HE.STATS).map(k => [k, 0])); },
+  nuevo() { return { xp: 0, pre: 0, ppts: Heroes.cero(), pts: Heroes.cero(), evo: [], items: ["arma:0:0", "ropa:0:0", "casco:0:0", "botas:0:0"], eq: { arma: "arma:0:0", ropa: "ropa:0:0", casco: null, botas: "botas:0:0" } }; },
   datos(u) {
     Eco.completar(u);
     const a = u.diario.arena = u.diario.arena || {};
@@ -126,6 +168,16 @@ const Heroes = {
     }
     // Se completa lo que falte sin reemplazar el objeto (así nadie se queda con una copia vieja)
     for (const c of Object.keys(AR.CLASES)) { const q = a.pj[c] = a.pj[c] || {}, base = Heroes.nuevo(); for (const k of Object.keys(base)) if (q[k] == null) q[k] = base[k]; }
+    // Características nuevas (con Inteligencia): los puntos de prestigio, que salen al azar, se vuelven a sortear
+    // entre las que le sirven a cada clase (así nadie se queda con puntos de prestigio que no le sirven)
+    if ((a.statsV | 0) < 2) {
+      for (const c of Object.keys(AR.CLASES)) {
+        const q = a.pj[c]; q.pts = { ...Heroes.cero(), ...q.pts };
+        const tot = Heroes.usados(q.ppts); q.ppts = Heroes.cero();
+        for (let k = 0; k < tot; k++) q.ppts[pick(HE.RECOMIENDA[c])]++;
+      }
+      a.statsV = 2;
+    }
     if (!AR.CLASES[a.clase]) a.clase = "guerrero";
     return a;
   },
@@ -166,7 +218,7 @@ const Heroes = {
   /* ---------- Lo que se manda a la pelea (también online) ---------- */
   perfil(u) {
     const a = this.datos(u), p = a.pj[a.clase], L = this.nivel(p.xp, p.pre);
-    return { clase: a.clase, lv: L.n, pre: p.pre | 0, pts: { ...p.pts }, ppts: { ...p.ppts }, evo: p.evo.slice(0, 2), eq: { ...p.eq }, elo: Arena.elo(u) };
+    return { clase: a.clase, lv: L.n, pre: p.pre | 0, pts: { ...p.pts }, ppts: { ...p.ppts }, evo: p.evo.slice(0, 2), eq: { ...p.eq }, elo: Arena.elo(u), skin: p.skin || null };
   },
   validar(p) {
     const ok = p && typeof p === "object", clase = ok && AR.CLASES[p.clase] ? p.clase : "guerrero";
@@ -180,7 +232,8 @@ const Heroes = {
     }
     const eq = {};
     for (const s of Object.keys(HE.SLOTS)) { const it = ok && p.eq ? this.item(clase, p.eq[s]) : null; eq[s] = it && it.slot === s ? it.id : null; }
-    return { clase, lv, pre, pts, ppts, evo, eq, elo: Math.max(0, Math.min(4000, ok ? (p.elo | 0) || 1000 : 1000)) };
+    const S = ok && HE.SKIN[p.skin], skin = S && (!S.clase || S.clase === clase) ? S.id : null;
+    return { clase, lv, pre, pts, ppts, evo, eq, skin, elo: Math.max(0, Math.min(4000, ok ? (p.elo | 0) || 1000 : 1000)) };
   },
   evoDe(clase, id) { const E = HE.EVOS[clase]; for (const r of ["a", "b"]) for (const e of E[r]) if (e.id === id) return { ...e, rama: r }; return null; },
   /* Stats para pelear: clase + puntos + evoluciones + equipo */
@@ -199,13 +252,16 @@ const Heroes = {
     const pr = {};
     HE.PRESTIGIO.slice(0, p.pre | 0).forEach(x => { for (const [k, v] of Object.entries(x.pas)) pr[k] = (pr[k] || 0) + v; });
     const P = {}; for (const k of Object.keys(HE.STATS)) P[k] = this.rinde(((p.pts && p.pts[k]) | 0) + ((p.ppts && p.ppts[k]) | 0));
+    // Daño: los golpes físicos (guerrero, asesino, arquero) suben con Fuerza; la magia (mago, invocador) con Inteligencia
+    const tipo = HE.DANO[p.clase] || "fis", poder = tipo === "mag" ? P.int : P.fue;
     return {
-      hp: Math.round(C.hp * (1 + P.vid * 0.02 + b.hp + (pas.hp || 0) + (pr.hp || 0))),
-      vel: C.vel * (1 + P.agi * 0.005 + b.vel + (pas.vel || 0) + (pr.vel || 0)),
-      mult: 1 + P.fue * 0.015 + b.dano + (pas.dano || 0) + (pr.dano || 0),
-      def: 1 - Math.min(0.65, P.def * 0.006 + b.def + (pas.def || 0) + (pr.def || 0)),
-      cd: Math.max(0.6, 1 - P.agi * 0.004 - b.cdm + b.cd),
-      alc: 1 + b.alc + (pas.alc || 0), crit: b.crit + (pas.crit || 0) + (pr.crit || 0), critX: pas.critX || 2,
+      tipo,
+      hp: Math.round(C.hp * (1 + P.vid * 0.02 + P.fue * 0.008 + b.hp + (pas.hp || 0) + (pr.hp || 0))),
+      vel: C.vel * Math.max(0.6, 1 + P.agi * 0.005 - P.def * 0.0025 + b.vel + (pas.vel || 0) + (pr.vel || 0)),
+      mult: 1 + poder * 0.015 + b.dano + (pas.dano || 0) + (pr.dano || 0),
+      def: 1 - Math.min(0.65, P.def * 0.007 + b.def + (pas.def || 0) + (pr.def || 0)),
+      cd: Math.max(0.55, 1 - P.agi * 0.005 - b.cdm + b.cd),
+      alc: 1 + b.alc + (pas.alc || 0), crit: (C.atk.crit || 0) + P.int * 0.003 + b.crit + (pas.crit || 0) + (pr.crit || 0), critX: (pas.critX || 2) + P.fue * 0.015,
       area: 1 + (pas.area || 0), nova: 1 + (pas.nova || 0), lento: pas.lento || 0, quema: pas.quema || 0, regen: pas.regen || 0, furia: pas.furia || 0,
       espCd: (1 - (pas.espCd || 0)) * (1 - (pr.espCd || 0)), flechas: pas.flechas || 5,
       invN: pas.invN || 2, invDura: pas.invDura || 0, invBoom: !!pas.invBoom, invFuerza: pas.invFuerza || 0, invGolem: !!pas.invGolem,
@@ -217,11 +273,13 @@ const Heroes = {
   cpu(lv, pre = 0, clase = pick(Object.keys(AR.CLASES))) {
     pre = Math.max(0, Math.min(HE.PRESTIGIOS, pre | 0)); lv = Math.max(1, Math.min(this.tope(pre), lv | 0));
     const total = this.puntosTotales(lv);
-    const reparto = { guerrero: [.35, .35, .1, .2], arquero: [.45, .25, .2, .1], mago: [.45, .3, .1, .15], asesino: [.4, .2, .3, .1], invocador: [.4, .35, .1, .15] }[clase];
-    const pts = {}; let usados = 0; Object.keys(HE.STATS).forEach((k, i) => { pts[k] = Math.floor(total * reparto[i]); usados += pts[k]; }); pts.fue += total - usados;
+    // Los bots reparten como recomienda su clase (con un poco de azar)
+    const reparto = { guerrero: { fue: .45, vid: .3, def: .25 }, arquero: { agi: .35, fue: .4, int: .25 }, mago: { int: .45, agi: .2, vid: .2, def: .15 }, asesino: { agi: .35, fue: .35, int: .3 }, invocador: { int: .45, agi: .15, vid: .25, def: .15 } }[clase];
+    const pts = Heroes.cero(); let usados = 0; for (const [k, x] of Object.entries(reparto)) { pts[k] = Math.floor(total * x * (0.85 + Math.random() * 0.3)); usados += pts[k]; }
+    pts[HE.RECOMIENDA[clase][0]] += Math.max(0, total - usados); if (usados > total) pts[HE.RECOMIENDA[clase][0]] -= usados - total;
     const rama = Math.random() < 0.5 ? "a" : "b", E = HE.EVOS[clase][rama], evo = lv >= 20 || pre ? [E[0].id, E[1].id] : lv >= 10 ? [E[0].id] : [];
     const tier = pre ? 8 : HE.NIVEL_TIER.filter(n => n <= lv).length - 1, eq = {};
-    const ppts = { fue: 0, vid: 0, agi: 0, def: 0 }, ks = Object.keys(ppts); for (let k = 0; k < pre * HE.PTS_PRESTIGIO; k++) ppts[pick(ks)]++;
+    const ppts = Heroes.cero(); for (let k = 0; k < pre * HE.PTS_PRESTIGIO; k++) ppts[pick(HE.RECOMIENDA[clase])]++;
     for (const s of Object.keys(HE.SLOTS)) { const t = Math.max(0, tier - (Math.random() < 0.4 ? 1 : 0)); eq[s] = `${s}:${Math.random() < 0.5 ? 0 : 1}:${t}`; }
     return { clase, lv, pre, pts, ppts, evo, eq };
   },
@@ -247,8 +305,8 @@ const Heroes = {
   prestigiar(u) {
     const a = this.datos(u), p = a.pj[a.clase];
     if (!this.puedePrestigio(p)) return;
-    p.pre = (p.pre | 0) + 1; p.xp = 0; p.pts = { fue: 0, vid: 0, agi: 0, def: 0 };
-    const ks = Object.keys(p.ppts), suma = { fue: 0, vid: 0, agi: 0, def: 0 };
+    p.pre = (p.pre | 0) + 1; p.xp = 0; p.pts = Heroes.cero();
+    const ks = HE.RECOMIENDA[a.clase], suma = Heroes.cero();
     for (let k = 0; k < HE.PTS_PRESTIGIO; k++) { const x = ks[Math.floor(Math.random() * ks.length)]; p.ppts[x]++; suma[x]++; }
     const X = HE.PRESTIGIO[p.pre - 1];
     if (typeof Sonido !== "undefined") Sonido.sfx("victoria");
@@ -261,7 +319,32 @@ const Heroes = {
     if (d < 0 && p.pts[k] <= 0) return;
     p.pts[k] += d; if (typeof Sonido !== "undefined") Sonido.sfx("clic"); this.guardar(u);
   },
-  reiniciar(u) { const p = this.pj(u); p.pts = { fue: 0, vid: 0, agi: 0, def: 0 }; this.guardar(u); },
+  reiniciar(u) { const p = this.pj(u); p.pts = Heroes.cero(); this.guardar(u); },
+  /* ---------- Skins ---------- */
+  skinsDe(clase) { return HE.SKINS.map(x => HE.SKIN[x[0]]).filter(S => !S.clase || S.clase === clase); },
+  comprarSkin(u, id) {
+    const a = this.datos(u), S = HE.SKIN[id]; a.skins = a.skins || [];
+    if (!S || a.skins.includes(id) || (S.clase && S.clase !== a.clase) || (u.monedas || 0) < S.precio) return false;
+    u.monedas -= S.precio; a.skins.push(id); a.pj[a.clase].skin = id;
+    if (typeof Sonido !== "undefined") Sonido.sfx("victoria");
+    Toast.mostrar(`<div class="t-ic">${S.ic}</div><div class="t-txt"><small>Skin nueva</small><b>${esc(S.nombre)}</b><span>Ya la tiene puesta tu ${esc(AR.CLASES[a.clase].nombre)}.</span></div>`, "logro");
+    if (u.nube && typeof Nube !== "undefined") Nube.actividad("compra", "skin", 0, -S.precio);
+    this.guardar(u); return true;
+  },
+  ponerSkin(u, id) {
+    const a = this.datos(u), p = a.pj[a.clase];
+    if (id && !(a.skins || []).includes(id)) return;
+    p.skin = id || null; this.guardar(u);
+  },
+  /* Reparte todos los puntos como recomienda la clase */
+  recomendado(u) {
+    const a = this.datos(u), p = a.pj[a.clase], total = this.puntosTotales(this.nivel(p.xp, p.pre).n), ks = HE.RECOMIENDA[a.clase];
+    const peso = { guerrero: [.45, .3, .25], arquero: [.35, .4, .25], mago: [.45, .2, .2, .15], asesino: [.35, .35, .3], invocador: [.45, .15, .25, .15] }[a.clase];
+    p.pts = Heroes.cero(); let usados = 0;
+    ks.forEach((k, i) => { p.pts[k] = Math.floor(total * peso[i]); usados += p.pts[k]; });
+    p.pts[ks[0]] += total - usados;
+    this.guardar(u);
+  },
   evolucionar(u, id) {
     const a = this.datos(u), p = a.pj[a.clase], L = this.nivel(p.xp, p.pre), e = this.evoDe(a.clase, id);
     if (!e) return;
@@ -323,6 +406,16 @@ PANTALLAS.arenaIntro = () => {
   // Pestañas: un personaje por clase
   const tabs = `<div class="he-tabs">${Object.entries(AR.CLASES).map(([k, X]) => { const q = a.pj[k], l = Heroes.nivel(q.xp, q.pre), e = q.evo.length ? Heroes.evoDe(k, q.evo[q.evo.length - 1]) : null, aviso = Heroes.libres(q) > 0 || ((l.n >= 10 || q.pre) && !q.evo.length) || ((l.n >= 20 || q.pre) && q.evo.length === 1) || Heroes.puedePrestigio(q);
     return `<button class="he-tab ${k === clase ? "on" : ""}" data-pj="${k}"><span class="ic">${e ? e.ic : X.ic}</span><b>${esc(e ? e.nombre : X.nombre)}</b><small>${q.pre ? `${HE.PRESTIGIO[q.pre - 1].ic} ` : ""}Nv ${l.n}</small>${aviso ? `<i class="he-punto"></i>` : ""}</button>`; }).join("")}</div>`;
+  // Skins
+  const misSkins = a.skins || [], ver = U.skinVer && U.skinVer.clase === clase ? U.skinVer.id : undefined;
+  const skinsHTML = `<div class="panel he-skins"><div class="headrow"><span class="label">🎨 Skins de ${esc(AR.CLASES[clase].nombre)}</span><small class="sub">Solo cambian cómo se ve</small></div>
+    <div class="he-skin-grid">
+      <button class="he-skin ${!p.skin ? "puesta" : ""} ${ver === null ? "viendo" : ""}" data-skinver=""><span class="ic">🙂</span><b>Normal</b><small>${!p.skin ? "✓ Puesta" : "Gratis"}</small></button>
+      ${Heroes.skinsDe(clase).map(S => { const tengo = misSkins.includes(S.id), puesta = p.skin === S.id;
+        return `<button class="he-skin ${puesta ? "puesta" : ""} ${ver === S.id ? "viendo" : ""} ${S.clase ? "exclusiva" : ""}" data-skinver="${S.id}" style="--sc:${S.aura || S.tinte || "#748ffc"}"><span class="ic">${S.ic}</span><b>${esc(S.nombre)}</b><small>${puesta ? "✓ Puesta" : tengo ? "Tuya" : `🪙 ${S.precio}`}</small>${S.clase ? `<em>Exclusiva</em>` : ""}</button>`; }).join("")}
+    </div>
+    ${ver !== undefined && ver !== (p.skin || null) ? (() => { const S = ver && HE.SKIN[ver]; return `<div class="he-skin-acc"><span>👀 Probando <b>${S ? esc(S.nombre) : "Normal"}</b> en la vista de arriba</span>${!S || misSkins.includes(ver) ? `<button class="btn chico" id="skinPoner">Ponérsela</button>` : `<button class="btn chico" id="skinComprar" ${(u.monedas || 0) < S.precio ? "disabled" : ""}>Comprar · 🪙 ${S.precio}</button>`}</div>`; })() : ""}
+  </div>`;
   // Evoluciones
   const E = HE.EVOS[clase], rama = p.evo.length ? Heroes.evoDe(clase, p.evo[0]).rama : null;
   const evoCard = (e, paso, estado) => `<div class="he-evo ${estado}"><span class="ic">${e.ic}</span><div><b>${esc(e.nombre)}</b><small>${esc(e.desc)}</small></div>
@@ -332,7 +425,9 @@ PANTALLAS.arenaIntro = () => {
        <div class="he-caminos">${["a", "b"].map(r => `<div class="he-camino">${evoCard(E[r][0], 0, evoOk(10) ? "elegir" : "bloq")}${evoCard(E[r][1], 1, "bloq")}</div>`).join("")}</div>`
     : `<div class="he-camino solo">${evoCard(E[rama][0], 0, "hecha")}${evoCard(E[rama][1], 1, p.evo.length > 1 ? "hecha" : evoOk(20) ? "lista" : "bloq")}</div>`;
   // Puntos
-  const statsHTML = Object.entries(HE.STATS).map(([k, [nom, ic, desc]]) => `<div class="he-stat"><span class="ic">${ic}</span><div><b>${nom} <em>${p.pts[k]}</em>${p.ppts[k] ? `<em class="he-pp">+${p.ppts[k]} de prestigio</em>` : ""}</b><small>${desc}</small></div>
+  const recom = HE.RECOMIENDA[clase];
+  const malGastados = Object.keys(HE.STATS).filter(k => !recom.includes(k)).reduce((t, k) => t + (p.pts[k] | 0), 0);
+  const statsHTML = `<p class="he-consejo">💡 ${esc(HE.CONSEJO[clase])}${malGastados ? `<br><b>⚠️ Tenés ${malGastados} punto${malGastados > 1 ? "s" : ""} en características que no le sirven a esta clase. Tocá «Repartir como recomienda la clase» (es gratis).</b>` : ""}</p>` + Object.entries(HE.STATS).map(([k, [nom, ic, desc]]) => `<div class="he-stat ${recom.includes(k) ? "recom" : "inutil"}"><span class="ic">${ic}</span><div><b>${nom} <em>${p.pts[k]}</em>${recom.includes(k) ? `<em class="he-rec">⭐ Recomendada</em>` : ""}${p.ppts[k] ? `<em class="he-pp">+${p.ppts[k]} de prestigio</em>` : ""}</b><small>${desc}</small></div>
     <button class="he-mas menos" data-pt="${k}" data-d="-1" ${p.pts[k] ? "" : "disabled"} aria-label="Quitar un punto de ${nom}">−</button><button class="he-mas" data-pt="${k}" data-d="1" ${libres > 0 ? "" : "disabled"} aria-label="Sumar un punto a ${nom}">+</button></div>`).join("");
   // Equipo
   const slotHTML = Object.entries(HE.SLOTS).map(([s, [nom, ic]]) => {
@@ -356,13 +451,14 @@ PANTALLAS.arenaIntro = () => {
       <div class="ar-retrato"><canvas id="arPrev" width="160" height="170"></canvas></div>
       <div class="ar-datos"><span class="label">${C.ic} ${esc(C.nombre)}${evoAct ? ` → ${esc(evoAct.nombre)}` : ""}</span><b class="ar-elo he-nv">Nv ${L.n}${p.pre ? ` <small>${PR[p.pre - 1].ic} Prestigio ${p.pre}</small>` : ""}</b>
         <div class="he-xp"><i style="width:${Math.min(100, L.enEste / L.falta * 100)}%"></i></div><small>${xpTxt}</small>
-        <div class="ar-st"><span>❤️ ${st.hp}</span><span>👟 ${Math.round(st.vel)}</span><span>💥 ×${st.mult.toFixed(2)}</span><span>🛡️ ${Math.round((1 - st.def) * 100)}%</span>${st.crit ? `<span>🎯 ${Math.round(st.crit * 100)}%</span>` : ""}</div>
+        <div class="ar-st"><span>❤️ ${st.hp}</span><span>👟 ${Math.round(st.vel)}</span><span title="${st.tipo === "mag" ? "Poder mágico" : "Daño físico"}">${st.tipo === "mag" ? "🔮" : "💥"} ×${st.mult.toFixed(2)}</span><span>🛡️ ${Math.round((1 - st.def) * 100)}%</span>${st.crit ? `<span title="Chance y daño de crítico">🎯 ${Math.round(st.crit * 100)}% ×${st.critX.toFixed(1)}</span>` : ""}</div>
         <small>ELO ${elo} · ${sa.g || 0} victorias · ${sa.j || 0} peleas</small></div>
     </div>
-    <div class="panel"><div class="headrow"><span class="label">Puntos${libres ? ` · <b class="he-libres">${libres} para repartir</b>` : ""}</span><button class="linkish" id="heReiniciar" ${Heroes.usados(p.pts) ? "" : "disabled"}>↺ Reiniciar</button></div>${statsHTML}</div>
+    <div class="panel"><div class="headrow"><span class="label">Puntos${libres ? ` · <b class="he-libres">${libres} para repartir</b>` : ""}</span><button class="linkish" id="heReiniciar" ${Heroes.usados(p.pts) ? "" : "disabled"}>↺ Reiniciar</button></div>${statsHTML}<button class="btn ghost chico he-recom" id="heRecom">✨ Repartir como recomienda la clase</button></div>
     <div class="panel"><span class="label">Evolución</span>${evos}</div>
     ${prest}
     <div class="panel"><span class="label">Equipo de ${esc(nombrePj)}</span><p class="sub he-nota">Cada material se compra al llegar a su nivel. Lo que compraste lo podés cambiar cuando quieras.</p>${slotHTML}</div>
+    ${skinsHTML}
     ${Torre.panel(u)}
     <div class="panel"><span class="label">Escenario</span>
       <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, X]) => `<button class="chip-j ${cfg.esc === k ? "on" : ""}" data-esc="${k}">${X.ic} ${X.nombre}</button>`).join("")}</div>
@@ -382,11 +478,19 @@ PANTALLAS.arenaIntro = () => {
   </section>`;
   Cuenta.conectarBarra();
   const cv = byId("arPrev"), ctx = cv.getContext("2d");
-  const pintar = () => { ctx.clearRect(0, 0, 160, 170); ctx.save(); ctx.scale(1.7, 1.7); Arena.dibujarLuchador(ctx, { name: "", look: u.look, clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, cara: 1, hp: 1, max: 1, invul: 0, lento: 0, golpe: -9999 }, 47, 75, performance.now() / 1000, false, 0); ctx.restore(); };
-  pintar(); setTimeout(pintar, 300);
+  const skinPrev = ver !== undefined ? ver : p.skin || null;
+  const pintar = () => { ctx.clearRect(0, 0, 160, 170); ctx.save(); ctx.scale(1.7, 1.7); Arena.dibujarLuchador(ctx, { name: "", look: u.look, clase, skin: skinPrev, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, cara: 1, hp: 1, max: 1, invul: 0, lento: 0, golpe: -9999 }, 47, 80, performance.now() / 1000, false, 0); ctx.restore(); };
+  // La vista se anima (las skins tienen aura y partículas)
+  cancelAnimationFrame(Heroes.rafPrev);
+  const animar = () => { if (!cv.isConnected) return; pintar(); Heroes.rafPrev = requestAnimationFrame(animar); };
+  animar();
+  app.querySelectorAll("[data-skinver]").forEach(b => b.onclick = () => { U.skinVer = { clase, id: b.dataset.skinver || null }; render(); const r = byId("arPrev"); if (r) r.scrollIntoView({ behavior: "smooth", block: "center" }); });
+  on("skinPoner", () => { Heroes.ponerSkin(u, U.skinVer.id); U.skinVer = null; });
+  on("skinComprar", () => { const S = HE.SKIN[U.skinVer.id]; if (confirm(`¿Comprar la skin ${S.nombre} por ${S.precio} monedas?`) && Heroes.comprarSkin(u, S.id)) U.skinVer = null; });
   app.querySelectorAll("[data-pj]").forEach(b => b.onclick = () => { a.clase = b.dataset.pj; U.slot = null; Eco.guardar(u); render(); });
   app.querySelectorAll("[data-pt]").forEach(b => b.onclick = () => Heroes.punto(u, b.dataset.pt, +b.dataset.d));
   on("heReiniciar", () => Heroes.reiniciar(u));
+  on("heRecom", () => Heroes.recomendado(u));
   on("hePrestigio", () => { if (confirm(`¿Subir a prestigio ${p.pre + 1}? ${nombrePj} vuelve al nivel 1 y sus puntos de nivel se reinician. Te quedás con la evolución, el equipo y los puntos de prestigio, y ganás: ${HE.PRESTIGIO[p.pre].desc}.`)) Heroes.prestigiar(u); });
   app.querySelectorAll("[data-evo]").forEach(b => b.onclick = () => { const e = Heroes.evoDe(clase, b.dataset.evo); if (p.evo.length || confirm(`¿Evolucionar a ${e.nombre}? El camino que elijas queda para siempre en este personaje.`)) Heroes.evolucionar(u, b.dataset.evo); });
   app.querySelectorAll("[data-slot]").forEach(b => b.onclick = () => { U.slot = U.slot === b.dataset.slot ? null : b.dataset.slot; render(); });

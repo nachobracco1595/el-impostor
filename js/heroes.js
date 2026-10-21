@@ -48,29 +48,13 @@ const HE = {
     invocador: "Su ataque y sus bichos son magia: la Fuerza no le sirve. Subí Inteligencia, Agilidad, Salud y Defensa."
   },
   /* Skins (solo se ven, no dan ventajas): [id, nombre, ícono, precio, { clase (si es exclusiva), tinte, alfa, aura, arma, part, som, opac }] */
-  SKINS: [
-    ["rey", "Rey", "👑", 1200, { som: "👑", aura: "#ffd43b", arma: "#ffd43b", part: "#fff3bf" }],
-    ["dorado", "Dorado", "🌟", 600, { tinte: "#ffd43b", alfa: .62, aura: "#ffd43b", arma: "#ffd43b", part: "#fff3bf" }],
-    ["fantasma", "Fantasma", "👻", 500, { tinte: "#e7f5ff", alfa: .72, opac: .65, aura: "#a5d8ff" }],
-    ["lava", "Lava", "🌋", 700, { tinte: "#ff6b00", alfa: .57, aura: "#ff922b", arma: "#ff6b00", part: "#ffd43b" }],
-    ["hielo", "Hielo", "🧊", 700, { tinte: "#74c0fc", alfa: .62, aura: "#a5d8ff", arma: "#d0ebff", part: "#e7f5ff" }],
-    ["neon", "Neón", "💜", 800, { tinte: "#cc5de8", alfa: .47, aura: "#f783ac", arma: "#f783ac", part: "#e599f7" }],
-    ["sombra", "Sombra", "🌑", 900, { tinte: "#1b1726", alfa: .75, aura: "#7048e8", arma: "#9775fa" }],
-    ["zombi", "Zombi", "🧟", 450, { tinte: "#82c91e", alfa: .57, som: "🧠" }],
-    ["robot", "Robot", "🤖", 650, { tinte: "#adb5bd", alfa: .67, som: "📡", arma: "#74c0fc" }],
-    ["pirata", "Pirata", "🏴‍☠️", 550, { som: "🦜", arma: "#e9ecef" }],
-    ["fiesta", "Fiesta", "🥳", 400, { som: "🎉", part: "#ffd43b", aura: "#f783ac" }],
-    ["rey-barbaro", "Rey bárbaro", "🪓", 1000, { clase: "guerrero", tinte: "#c92a2a", alfa: .42, som: "👑", arma: "#ff6b6b", aura: "#ff8787" }],
-    ["elfo", "Elfo del bosque", "🍃", 1000, { clase: "arquero", tinte: "#2f9e44", alfa: .47, som: "🍃", arma: "#69db7c", part: "#b2f2bb" }],
-    ["cosmico", "Archimago cósmico", "🌌", 1100, { clase: "mago", tinte: "#364fc7", alfa: .57, som: "⭐", arma: "#91a7ff", aura: "#748ffc", part: "#fff" }],
-    ["carmesi", "Ninja carmesí", "🩸", 1000, { clase: "asesino", tinte: "#a61e4d", alfa: .57, arma: "#ff8787", aura: "#e64980" }],
-    ["vacio", "Señor del vacío", "🕳️", 1100, { clase: "invocador", tinte: "#5f3dc4", alfa: .62, aura: "#9775fa", part: "#d0bfff", arma: "#b197fc" }]
-  ],
+  SKINS: SKINS_DATA,
+
   /* Tipo de daño de cada clase (ataque y especial): físico usa Fuerza, mágico usa Inteligencia */
   DANO: { guerrero: "fis", arquero: "fis", asesino: "fis", mago: "mag", invocador: "mag" },
   SLOTS: { arma: ["Arma", "⚔️"], ropa: ["Ropa", "🦺"], casco: ["Cabeza", "⛑️"], botas: ["Pies", "🥾"] },
   NIVEL_TIER: [1, 4, 8, 12, 16, 21, 26, 32, 38],
-  PRECIO_TIER: [0, 80, 180, 320, 500, 750, 1050, 1400, 1800],
+  PRECIO_TIER: PRECIO_TIER_BASE,
   /* Dos estilos por lugar: [nombre, género, qué da por material] */
   EQUIPO: {
     guerrero: {
@@ -207,7 +191,7 @@ const Heroes = {
     let suf = gen[0] === "m" ? N.m : N.f;
     if (N.id === "encantado") suf = { m: "encantado", f: "encantada", fp: "encantadas", mp: "encantados" }[gen];
     const bonus = Object.fromEntries(Object.entries(por).map(([k, x]) => [k, x * (tier + 1)]));
-    return { id: `${slot}:${+v}:${tier}`, slot, v: +v, tier, nombre: `${nom} ${suf}`, color: N.color, nivel: HE.NIVEL_TIER[tier], precio: HE.PRECIO_TIER[tier], bonus };
+    return { id: `${slot}:${+v}:${tier}`, slot, v: +v, tier, nombre: `${nom} ${suf}`, color: N.color, nivel: HE.NIVEL_TIER[tier], precio: Catalogo.precio("tier:" + tier, HE.PRECIO_TIER[tier]), bonus };
   },
   catalogo(clase, slot) { const out = []; for (let t = 0; t <= 8; t++) for (let v = 0; v < 2; v++) out.push(this.item(clase, `${slot}:${v}:${t}`)); return out; },
   textoBonus(b) {
@@ -321,14 +305,18 @@ const Heroes = {
   },
   reiniciar(u) { const p = this.pj(u); p.pts = Heroes.cero(); this.guardar(u); },
   /* ---------- Skins ---------- */
-  skinsDe(clase) { return HE.SKINS.map(x => HE.SKIN[x[0]]).filter(S => !S.clase || S.clase === clase); },
+  /* Las skins de una clase que se pueden ver (las que el panel sacó de la venta solo las ve quien ya las tiene) */
+  skinsDe(clase, u) { const mias = (u && this.datos(u).skins) || []; return HE.SKINS.map(x => HE.SKIN[x[0]]).filter(S => (!S.clase || S.clase === clase) && (Catalogo.visible("skin:" + S.id) || mias.includes(S.id))); },
+  precioSkin(S) { return Catalogo.precio("skin:" + S.id, S.precio); },
   comprarSkin(u, id) {
     const a = this.datos(u), S = HE.SKIN[id]; a.skins = a.skins || [];
-    if (!S || a.skins.includes(id) || (S.clase && S.clase !== a.clase) || (u.monedas || 0) < S.precio) return false;
-    u.monedas -= S.precio; a.skins.push(id); a.pj[a.clase].skin = id;
+    const precio = S && this.precioSkin(S);
+    if (!S || a.skins.includes(id) || (S.clase && S.clase !== a.clase) || (u.monedas || 0) < precio || !Catalogo.visible("skin:" + id)) return false;
+    u.monedas -= precio; a.skins.push(id); a.pj[a.clase].skin = id;
+    Catalogo.anotar(u, "skin", "skin:" + id, S.nombre, precio);
     if (typeof Sonido !== "undefined") Sonido.sfx("victoria");
     Toast.mostrar(`<div class="t-ic">${S.ic}</div><div class="t-txt"><small>Skin nueva</small><b>${esc(S.nombre)}</b><span>Ya la tiene puesta tu ${esc(AR.CLASES[a.clase].nombre)}.</span></div>`, "logro");
-    if (u.nube && typeof Nube !== "undefined") Nube.actividad("compra", "skin", 0, -S.precio);
+    if (u.nube && typeof Nube !== "undefined") Nube.actividad("compra", "skin", 0, -precio);
     this.guardar(u); return true;
   },
   ponerSkin(u, id) {
@@ -358,9 +346,10 @@ const Heroes = {
   },
   comprar(u, id) {
     const a = this.datos(u), p = a.pj[a.clase], it = this.item(a.clase, id);
-    if (!it || p.items.includes(it.id) || !this.desbloqueado(p, it) || u.monedas < it.precio) return;
+    if (!it || p.items.includes(it.id) || !this.desbloqueado(p, it) || u.monedas < it.precio || !Catalogo.visible("tier:" + it.tier)) return;
     u.monedas -= it.precio; p.items.push(it.id); p.eq[it.slot] = it.id;
     if (u.nube) Nube.actividad("compra", "arena", 0, -it.precio);
+    Catalogo.anotar(u, "equipo", "tier:" + it.tier, `${AR.CLASES[a.clase].nombre}: ${it.nombre}`, it.precio);
     if (typeof Sonido !== "undefined") Sonido.sfx("monedas");
     Toast.mostrar(`<div class="t-ic">${HE.SLOTS[it.slot][1]}</div><div class="t-txt"><small>Comprado y puesto</small><b>${esc(it.nombre)}</b></div>`, "logro");
     this.guardar(u);
@@ -411,10 +400,10 @@ PANTALLAS.arenaIntro = () => {
   const skinsHTML = `<div class="panel he-skins"><div class="headrow"><span class="label">🎨 Skins de ${esc(AR.CLASES[clase].nombre)}</span><small class="sub">Solo cambian cómo se ve</small></div>
     <div class="he-skin-grid">
       <button class="he-skin ${!p.skin ? "puesta" : ""} ${ver === null ? "viendo" : ""}" data-skinver=""><span class="ic">🙂</span><b>Normal</b><small>${!p.skin ? "✓ Puesta" : "Gratis"}</small></button>
-      ${Heroes.skinsDe(clase).map(S => { const tengo = misSkins.includes(S.id), puesta = p.skin === S.id;
-        return `<button class="he-skin ${puesta ? "puesta" : ""} ${ver === S.id ? "viendo" : ""} ${S.clase ? "exclusiva" : ""}" data-skinver="${S.id}" style="--sc:${S.aura || S.tinte || "#748ffc"}"><span class="ic">${S.ic}</span><b>${esc(S.nombre)}</b><small>${puesta ? "✓ Puesta" : tengo ? "Tuya" : `🪙 ${S.precio}`}</small>${S.clase ? `<em>Exclusiva</em>` : ""}</button>`; }).join("")}
+      ${Heroes.skinsDe(clase, u).map(S => { const tengo = misSkins.includes(S.id), puesta = p.skin === S.id;
+        return `<button class="he-skin ${puesta ? "puesta" : ""} ${ver === S.id ? "viendo" : ""} ${S.clase ? "exclusiva" : ""}" data-skinver="${S.id}" style="--sc:${S.aura || S.tinte || "#748ffc"}"><span class="ic">${S.ic}</span><b>${esc(S.nombre)}</b><small>${puesta ? "✓ Puesta" : tengo ? "Tuya" : `🪙 ${Heroes.precioSkin(S)}`}</small>${S.clase ? `<em>Exclusiva</em>` : ""}</button>`; }).join("")}
     </div>
-    ${ver !== undefined && ver !== (p.skin || null) ? (() => { const S = ver && HE.SKIN[ver]; return `<div class="he-skin-acc"><span>👀 Probando <b>${S ? esc(S.nombre) : "Normal"}</b> en la vista de arriba</span>${!S || misSkins.includes(ver) ? `<button class="btn chico" id="skinPoner">Ponérsela</button>` : `<button class="btn chico" id="skinComprar" ${(u.monedas || 0) < S.precio ? "disabled" : ""}>Comprar · 🪙 ${S.precio}</button>`}</div>`; })() : ""}
+    ${ver !== undefined && ver !== (p.skin || null) ? (() => { const S = ver && HE.SKIN[ver]; return `<div class="he-skin-acc"><span>👀 Probando <b>${S ? esc(S.nombre) : "Normal"}</b> en la vista de arriba</span>${!S || misSkins.includes(ver) ? `<button class="btn chico" id="skinPoner">Ponérsela</button>` : `<button class="btn chico" id="skinComprar" ${(u.monedas || 0) < Heroes.precioSkin(S) ? "disabled" : ""}>Comprar · 🪙 ${Heroes.precioSkin(S)}</button>`}</div>`; })() : ""}
   </div>`;
   // Evoluciones
   const E = HE.EVOS[clase], rama = p.evo.length ? Heroes.evoDe(clase, p.evo[0]).rama : null;
@@ -434,9 +423,9 @@ PANTALLAS.arenaIntro = () => {
     const it = Heroes.item(clase, p.eq[s]), abierto = U.slot === s;
     return `<button class="he-slot ${abierto ? "on" : ""}" data-slot="${s}"><span class="he-ic" style="--c:${it ? it.color : "transparent"}">${ic}</span><div><small>${nom}</small><b>${it ? esc(it.nombre) : "Nada"}</b>${it ? `<small>${Heroes.textoBonus(it.bonus)}</small>` : ""}</div><span class="he-flecha">${abierto ? "▲" : "▼"}</span></button>
       ${abierto ? `<div class="he-items">${s === "casco" ? `<div class="he-item ${p.eq.casco ? "" : "puesto"}"><span class="he-ic">🚫</span><div><b>Sin nada en la cabeza</b></div>${p.eq.casco ? `<button class="btn chico ghost" data-equipar="casco" data-id="">Sacar</button>` : `<span class="ok">Puesto</span>`}</div>` : ""}
-        ${Heroes.catalogo(clase, s).map(x => { const tengo = p.items.includes(x.id), puesto = p.eq[s] === x.id, bloq = !tengo && !Heroes.desbloqueado(p, x);
+        ${Heroes.catalogo(clase, s).map(x => { const tengo = p.items.includes(x.id), puesto = p.eq[s] === x.id, bloq = !tengo && !Heroes.desbloqueado(p, x), agotado = !tengo && !Catalogo.visible("tier:" + x.tier);
           return `<div class="he-item ${puesto ? "puesto" : ""} ${bloq ? "bloq" : ""}"><span class="he-ic" style="--c:${x.color}">${ic}</span><div><b>${esc(x.nombre)}</b><small>${Heroes.textoBonus(x.bonus)}</small></div>
-            ${puesto ? `<span class="ok">Puesto</span>` : tengo ? `<button class="btn chico ghost" data-equipar="${s}" data-id="${x.id}">Poner</button>` : bloq ? `<span class="he-req">🔒 Nv ${x.nivel}</span>` : `<button class="btn chico" data-comprar="${x.id}" ${u.monedas < x.precio ? "disabled" : ""}>🪙 ${x.precio}</button>`}</div>`; }).join("")}</div>` : ""}`;
+            ${puesto ? `<span class="ok">Puesto</span>` : tengo ? `<button class="btn chico ghost" data-equipar="${s}" data-id="${x.id}">Poner</button>` : bloq ? `<span class="he-req">🔒 Nv ${x.nivel}</span>` : agotado ? `<span class="he-req">No disponible</span>` : `<button class="btn chico" data-comprar="${x.id}" ${u.monedas < x.precio ? "disabled" : ""}>🪙 ${x.precio}</button>`}</div>`; }).join("")}</div>` : ""}`;
   }).join("");
   const xpTxt = L.tope ? (p.pre >= HE.PRESTIGIOS ? "¡Nivel 1000! Llegaste a lo más alto." : "¡Nivel 40! Ya podés subir de prestigio.") : `${L.enEste}/${L.falta} XP para el nivel ${L.n + 1}`;
   // Prestigio: las 10 mejoras y el botón para subir
@@ -486,7 +475,7 @@ PANTALLAS.arenaIntro = () => {
   animar();
   app.querySelectorAll("[data-skinver]").forEach(b => b.onclick = () => { U.skinVer = { clase, id: b.dataset.skinver || null }; render(); const r = byId("arPrev"); if (r) r.scrollIntoView({ behavior: "smooth", block: "center" }); });
   on("skinPoner", () => { Heroes.ponerSkin(u, U.skinVer.id); U.skinVer = null; });
-  on("skinComprar", () => { const S = HE.SKIN[U.skinVer.id]; if (confirm(`¿Comprar la skin ${S.nombre} por ${S.precio} monedas?`) && Heroes.comprarSkin(u, S.id)) U.skinVer = null; });
+  on("skinComprar", () => { const S = HE.SKIN[U.skinVer.id]; if (confirm(`¿Comprar la skin ${S.nombre} por ${Heroes.precioSkin(S)} monedas?`) && Heroes.comprarSkin(u, S.id)) U.skinVer = null; });
   app.querySelectorAll("[data-pj]").forEach(b => b.onclick = () => { a.clase = b.dataset.pj; U.slot = null; Eco.guardar(u); render(); });
   app.querySelectorAll("[data-pt]").forEach(b => b.onclick = () => Heroes.punto(u, b.dataset.pt, +b.dataset.d));
   on("heReiniciar", () => Heroes.reiniciar(u));

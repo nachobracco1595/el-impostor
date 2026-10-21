@@ -41,7 +41,12 @@ async function cambiar(user) {
 async function cargar() {
   P.cargando = true; pintar();
   const [r, u, ev, rf, rc] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle(), P.sb.rpc("panel_referidos"), P.sb.from("config").select("valor").eq("clave", "referidos").maybeSingle()]);
-  const [tb, tc, to] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle(), P.sb.from("config").select("valor").eq("clave", "torre").maybeSingle()]);
+  const [tb, tc, to, pc, cc] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle(), P.sb.from("config").select("valor").eq("clave", "torre").maybeSingle(),
+    P.sb.rpc("panel_compras", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "catalogo").maybeSingle()]);
+  P.compras = pc.error ? null : pc.data;
+  const cv = (cc.data && cc.data.valor) || {};
+  P.catCfg = { precio: { ...(cv.precio || {}) }, oculto: { ...(cv.oculto || {}) } };
+  P.duenos = null;
   P.torre = Object.assign({ inicio: "2026-10-20T00:00:00Z", dias: 28, intentos: 5 }, (to.data && to.data.valor) || {});
   P.timba = tb.error ? null : tb.data;
   P.timbaCfg = Object.assign({ activo: true, maxApuesta: 500 }, (tc.data && tc.data.valor) || {});
@@ -88,6 +93,12 @@ function pintar() {
     <article class="tarjeta"><h2>Partidas por juego</h2><p class="sub">Últimos ${P.dias} días.</p>${horizontales(d.porJuego || {})}</article>
     <article class="tarjeta"><h2>Monedas repartidas por día</h2><p class="sub">En ${P.dias} días se repartieron <b>${num(repartido)}</b> y se gastaron <b>${num(gastado)}</b> en la tienda.</p>
       ${apiladas(s, [["mPartidas", "Por partidas"], ["mPremios", "Premios y regalos"], ["mAnuncios", "Anuncios"]])}</article>
+  </section>
+
+  <section class="tarjeta" id="secTienda">
+    <h2>🛍️ Tienda y precios</h2>
+    <p class="sub">Cambiá precios y sacá cosas de la venta. Lo que saques deja de aparecer, pero quien ya lo tiene lo conserva. Los jugadores ven los cambios la próxima vez que abran el juego.</p>
+    ${pantallaTienda()}
   </section>
 
   <section class="tarjeta">
@@ -194,6 +205,7 @@ function pintar() {
     if (!error) P.datos.config = valor;
   };
   conectarEvento();
+  conectarTienda();
   const fr = document.getElementById("fRef");
   if (fr) fr.onsubmit = async e => {
     e.preventDefault();
@@ -419,3 +431,96 @@ function conectarEvento() {
     if (!error) P.evento = valor;
   };
 }
+
+/* ---------- Tienda: precios, disponibilidad y quién compra qué ---------- */
+const TIENDA_TABS = { tienda: "🛒 Tienda", skins: "🎨 Skins de la Arena", equipo: "⚔️ Equipo de la Arena", otros: "🗼 Otros" };
+const TIPOS_TIENDA = { cabeza: "Cabeza", cara: "Cara", color: "Color", marco: "Marco", titulo: "Título", mascota: "Mascota" };
+function filasTienda(tab) {
+  if (tab === "skins") return SKINS_DATA.map(([id, n, ic, precio, o]) => ({ id: "skin:" + id, ic, nombre: n, sub: o.clase ? "Solo " + o.clase : "Todas las clases", base: precio }));
+  if (tab === "equipo") return MATERIALES.map((m, t) => ({ id: "tier:" + t, ic: "⚔️", nombre: m, sub: "Precio de cada pieza (arma, armadura, casco…)", base: PRECIO_TIER_BASE[t], sinDuenos: true })).slice(1);
+  if (tab === "otros") return [{ id: "torre:vida", ic: "❤️", nombre: "Vida de la torre", sub: "Precio de la primera del día (después sube 50 cada una, hasta 500)", base: 100, sinDuenos: true },
+    { id: "nombre", ic: "✏️", nombre: "Cambio de nombre", sub: "Precio fijo de 500 (lo cobra el servidor)", base: 500, fijo: true, sinDuenos: true }];
+  return Object.entries(CATALOGO).filter(([, it]) => !it.refs).map(([id, it]) => ({ id, nombre: it.tipo === "mascota" ? it.nombre.replace(/\s\S+$/u, "") : it.nombre, sub: (TIPOS_TIENDA[it.tipo] || it.tipo) + (it.evento ? " · evento" : ""), base: it.precio, tipo: it.tipo, valor: it.valor, evento: !!it.evento }));
+}
+function prevTienda(f) {
+  if (f.ic) return `<span class="ti-ic">${f.ic}</span>`;
+  if (f.tipo === "color") return personaje(f.valor, "civ", 40);
+  if (f.tipo === "titulo") return `<span class="tit-prev">«${esc(f.valor)}»</span>`;
+  if (f.tipo === "marco" || f.tipo === "mascota") return `<span class="ti-ic">${f.tipo === "marco" ? "🖼️" : (MASCOTAS[f.valor] || "🐾")}</span>`;
+  return personaje("#748ffc", "civ", 40, [f.valor].filter(a => ACCESORIOS[a]));
+}
+function pantallaTienda() {
+  const tab = P.tiendaTab || "tienda", C = P.compras, cfg = P.catCfg || { precio: {}, oculto: {} };
+  const items = (C && C.porItem) || {}, duenos = (C && C.duenos) || {};
+  const filas = filasTienda(tab).sort((a, b) => ((items[b.id] || {}).monedas || 0) - ((items[a.id] || {}).monedas || 0));
+  const tipoN = { tienda: "Tienda", evento: "Evento", skin: "Skins", equipo: "Equipo", torre: "Torre", nombre: "Nombres" };
+  const resumen = C ? `<section class="kpis">
+      ${kpi(`Compras en ${P.dias} días`, num(C.compras), `${num(C.compradores)} jugadores distintos`)}
+      ${kpi(`Monedas gastadas`, num(C.monedas) + " 🪙", C.compras ? `${num(Math.round(C.monedas / C.compras))} por compra en promedio` : "Todavía no hay compras")}
+      ${Object.entries(C.porTipo || {}).sort((a, b) => b[1].monedas - a[1].monedas).slice(0, 4).map(([t, x]) => kpi(tipoN[t] || t, num(x.monedas) + " 🪙", `${num(x.n)} compras`)).join("")}
+    </section>` : `<p class="warn">Corré el SQL nuevo (tabla <code>compras</code> y <code>panel_compras</code>) para ver las estadísticas. Los precios y la disponibilidad ya se pueden cambiar.</p>`;
+  return `${resumen}
+    <div class="seg ti-tabs">${Object.entries(TIENDA_TABS).map(([k, t]) => `<button data-titab="${k}" aria-pressed="${tab === k}">${t}</button>`).join("")}</div>
+    <div class="tabla-scroll"><table class="tabla ti-tabla">
+      <thead><tr><th>Cosa</th><th class="n">Base</th><th class="n">Precio</th><th>En venta</th><th class="n">La tienen</th><th class="n">Ventas</th><th class="n">🪙 en ${P.dias} días</th><th></th></tr></thead>
+      <tbody>${filas.map(f => { const v = items[f.id] || {}, pr = cfg.precio[f.id], cambiado = pr !== undefined && +pr !== f.base, oc = !!cfg.oculto[f.id];
+        return `<tr class="${oc ? "ti-oculto" : ""}"><td><span class="ti-cosa"><span class="ti-prev">${prevTienda(f)}</span><span><b>${esc(f.nombre)}</b><small>${esc(f.sub)}</small></span></span></td>
+          <td class="n">${num(f.base)}</td>
+          <td class="n">${f.fijo ? num(f.base) : `<input class="campo ti-precio ${cambiado ? "cambiado" : ""}" type="number" min="0" max="100000" step="10" data-tiprecio="${f.id}" value="${pr !== undefined ? pr : f.base}" aria-label="Precio de ${esc(f.nombre)}">`}</td>
+          <td>${f.fijo ? "—" : `<label class="ev-on"><input type="checkbox" data-tion="${f.id}" ${oc ? "" : "checked"}> ${oc ? "Oculto" : "Sí"}</label>`}</td>
+          <td class="n">${f.sinDuenos ? "—" : num(duenos[f.id] || 0)}</td><td class="n">${num(v.n || 0)}</td><td class="n">${num(v.monedas || 0)}</td>
+          <td>${C ? `<button class="linkish" data-tiquien="${f.id}">${P.duenos && P.duenos.id === f.id ? "Ocultar ▲" : "Quiénes ▼"}</button>` : ""}</td></tr>
+          ${P.duenos && P.duenos.id === f.id ? `<tr class="bots-fila"><td colspan="8">${listaDuenos(P.duenos)}</td></tr>` : ""}`; }).join("")}</tbody>
+    </table></div>
+    <div class="row ti-acc"><button class="btn" id="tiGuardar">Guardar precios y disponibilidad</button><button class="btn ghost" id="tiBase">Volver esta pestaña a los precios de base</button></div>
+    <p class="summary" id="tiMsg"></p>
+    ${C ? `<div class="dos-col ti-listas">
+      <article><span class="label">Los que más gastan (${P.dias} días)</span>
+        <ol class="tabla-rank">${(C.top || []).map((t, i) => `<li><span class="pos">${i + 1}</span>${mini(t.look)}<span class="nm"><b>${esc(t.nombre)}</b><small>${num(t.n)} compras</small></span><strong>${num(t.monedas)} 🪙</strong></li>`).join("") || `<p class="empty">Todavía nadie compró nada.</p>`}</ol></article>
+      <article><span class="label">Últimas compras</span>
+        <ul class="ti-ultimas">${(C.ultimas || []).map(x => `<li>${mini(x.look)}<span><b>${esc(x.nombre)}</b> compró <b>${esc(x.que || x.item)}</b><small>${esc(tipoN[x.tipo] || x.tipo)} · ${hace(x.creado)}</small></span><strong>${num(x.precio)} 🪙</strong></li>`).join("") || `<p class="empty">Todavía nadie compró nada.</p>`}</ul></article>
+    </div>` : ""}`;
+}
+const hace = f => { const m = Math.round((Date.now() - Date.parse(f)) / 6e4); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : fecha(f); };
+function listaDuenos(D) {
+  if (D.cargando) return `<p class="sub">Buscando…</p>`;
+  if (D.error) return `<p class="warn">No se pudo cargar: ${esc(D.error)}</p>`;
+  if (!D.lista.length) return `<p class="sub">Nadie la tiene todavía.</p>`;
+  return `<ul class="ti-duenos">${D.lista.map(x => `<li>${mini(x.look)}<span><b>${esc(x.nombre)}</b><small>${x.cuando ? `Compró ${hace(x.cuando)} · ${num(x.pago)} 🪙` : "La tiene (compra anterior al registro)"}</small></span><small>${num(x.monedas)} 🪙</small></li>`).join("")}</ul>
+    <small class="sub">${D.lista.length} jugador${D.lista.length > 1 ? "es" : ""}.</small>`;
+}
+function conectarTienda() {
+  const sec = document.getElementById("secTienda"); if (!sec) return;
+  const cfg = P.catCfg;
+  sec.querySelectorAll("[data-titab]").forEach(b => b.onclick = () => { P.tiendaTab = b.dataset.titab; P.duenos = null; pintar(); });
+  sec.querySelectorAll("[data-tiprecio]").forEach(i => i.onchange = () => {
+    const f = filasTienda(P.tiendaTab || "tienda").find(x => x.id === i.dataset.tiprecio), v = Math.max(0, Math.min(100000, Math.round(+i.value || 0)));
+    if (i.value === "" || v === f.base) delete cfg.precio[f.id]; else cfg.precio[f.id] = v;
+    i.value = cfg.precio[f.id] !== undefined ? v : f.base; i.classList.toggle("cambiado", cfg.precio[f.id] !== undefined);
+  });
+  sec.querySelectorAll("[data-tion]").forEach(c => c.onchange = () => {
+    if (c.checked) delete cfg.oculto[c.dataset.tion]; else cfg.oculto[c.dataset.tion] = true;
+    c.closest("tr").classList.toggle("ti-oculto", !c.checked); c.parentNode.lastChild.textContent = c.checked ? " Sí" : " Oculto";
+  });
+  sec.querySelectorAll("[data-tiquien]").forEach(b => b.onclick = async () => {
+    const id = b.dataset.tiquien;
+    if (P.duenos && P.duenos.id === id) { P.duenos = null; return pintar(); }
+    P.duenos = { id, cargando: true }; pintar();
+    const { data, error } = await P.sb.rpc("panel_duenos", { cual: id });
+    if (!P.duenos || P.duenos.id !== id) return;
+    P.duenos = { id, lista: data || [], error: error && error.message }; pintar();
+  });
+  document.getElementById("tiBase").onclick = () => {
+    if (!confirm("¿Volver todos los precios de esta pestaña a los de base? (Después tocá Guardar)")) return;
+    filasTienda(P.tiendaTab || "tienda").forEach(f => delete cfg.precio[f.id]); pintar();
+    document.getElementById("tiMsg").textContent = "Precios de base puestos. Tocá Guardar para aplicarlos.";
+  };
+  document.getElementById("tiGuardar").onclick = async () => {
+    const valor = { precio: cfg.precio, oculto: cfg.oculto };
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "catalogo").select("clave");
+    if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "catalogo", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
+    const n = Object.keys(cfg.precio).length, o = Object.keys(cfg.oculto).length;
+    document.getElementById("tiMsg").textContent = error ? "No se pudo guardar: " + error.message : `Guardado: ${n} precio${n === 1 ? "" : "s"} cambiado${n === 1 ? "" : "s"} y ${o} cosa${o === 1 ? "" : "s"} fuera de venta.`;
+  };
+}
+

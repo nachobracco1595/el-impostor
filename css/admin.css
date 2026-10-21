@@ -86,3 +86,21 @@ code { color: var(--spot); }
 .bots-det { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 4px 0; }
 .bots-det div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--card); white-space: normal; }
 .bots-det span { font-weight: 800; } .bots-det small { color: var(--muted); }
+
+/* Tienda y precios */
+.ti-tabs { margin: 12px 0 8px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ti-tabla td { vertical-align: middle; }
+.ti-cosa { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.ti-cosa small { display: block; color: var(--muted); font-size: 12px; white-space: normal; }
+.ti-prev { width: 44px; height: 44px; display: grid; place-items: center; flex: none; }
+.ti-prev .tit-prev { font-size: 10px; max-width: 44px; overflow: hidden; display: block; }
+.ti-ic { font-size: 26px; }
+.ti-precio { width: 96px; height: 38px; text-align: right; }
+.ti-precio.cambiado { border-color: var(--spot); color: var(--spot); font-weight: 800; }
+.ti-oculto td:not(:nth-child(4)) { opacity: .45; }
+.ti-acc { margin-top: 12px; flex-wrap: wrap; gap: 8px; }
+.ti-listas { margin-top: 14px; }
+.ti-ultimas, .ti-duenos { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+.ti-ultimas li, .ti-duenos li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-size: 14px; white-space: normal; }
+.ti-ultimas small, .ti-duenos small { display: block; color: var(--muted); }
+.ti-duenos { max-height: 300px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }

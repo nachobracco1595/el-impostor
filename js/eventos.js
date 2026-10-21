@@ -64,7 +64,8 @@ const Evento = {
   precio(id) {
     const it = CATALOGO[id]; if (!it) return 0;
     const e = this.actual(), o = it.evento && e && e.cfg.items && e.cfg.items[id];
-    return o && +o.precio > 0 ? Math.round(+o.precio) : it.precio;
+    if (o && +o.precio > 0) return Math.round(+o.precio);
+    return typeof Catalogo !== "undefined" ? Catalogo.precio(id, it.precio) : it.precio;
   },
   trabajo() { const e = this.actual(); return e && e.cfg.trabajo !== false ? e.trabajo : null; },
 

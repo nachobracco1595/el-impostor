@@ -33,13 +33,14 @@ const Torre = {
   max() { return this.cfg().intentos | 0 || TO.INTENTOS; },
   quedan(u) { const t = this.datos(u); return Math.max(0, this.max() - (t.hoy === hoyStr() ? t.usados : 0)); },
   /* Vidas: comprar una con monedas (cada una del día sale un poco más) y recuperarlas todas cada 5 pisos */
-  precioVida(u) { const t = this.datos(u); return Math.min(TO.PRECIO_MAX, TO.PRECIO_VIDA + TO.PRECIO_SUBE * (t.diaCompra === hoyStr() ? t.compradas | 0 : 0)); },
+  precioVida(u) { const t = this.datos(u); return Math.min(TO.PRECIO_MAX, Catalogo.precio("torre:vida", TO.PRECIO_VIDA) + TO.PRECIO_SUBE * (t.diaCompra === hoyStr() ? t.compradas | 0 : 0)); },
   comprarVida(u) {
     const t = this.datos(u), precio = this.precioVida(u);
-    if (this.quedan(u) >= this.max() || u.monedas < precio) return false;
+    if (this.quedan(u) >= this.max() || u.monedas < precio || !Catalogo.visible("torre:vida")) return false;
     if (t.diaCompra !== hoyStr()) { t.diaCompra = hoyStr(); t.compradas = 0; }
     u.monedas -= precio; t.compradas++; t.usados = Math.max(0, (t.hoy === hoyStr() ? t.usados : 0) - 1); t.hoy = hoyStr();
     if (u.nube && typeof Nube !== "undefined") Nube.actividad("compra", "torre", 0, -precio);
+    Catalogo.anotar(u, "torre", "torre:vida", "Vida de la torre", precio);
     if (typeof Sonido !== "undefined") Sonido.sfx("monedas");
     Toast.mostrar(`<div class="t-ic">❤️</div><div class="t-txt"><small>Torre de hordas</small><b>¡Recuperaste una vida!</b><span>Pagaste ${precio} 🪙. Tenés ${this.quedan(u)} de ${this.max()}.</span></div>`, "logro");
     Eco.guardar(u); return true;
@@ -189,7 +190,7 @@ const Torre = {
   },
   textoVidas() { const u = BD.sesion(); if (!u) return ""; const q = this.quedan(u); return q ? `Te quedan ❤️ ${q} de ${this.max()} vidas hoy.` : "No te quedan vidas hoy."; },
   botonComprar() {
-    const u = BD.sesion(); if (!u || this.quedan(u) >= this.max()) return "";
+    const u = BD.sesion(); if (!u || this.quedan(u) >= this.max() || !Catalogo.visible("torre:vida")) return "";
     const p = this.precioVida(u);
     return `<button class="btn ${this.quedan(u) ? "ghost" : "tb-girar"}" id="toComprar" ${u.monedas < p ? "disabled" : ""}>💰 Comprar una vida · ${p} 🪙</button>`;
   },

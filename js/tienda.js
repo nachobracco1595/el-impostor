@@ -16,20 +16,6 @@ Object.assign(ACCESORIOS, {
   auris_gato: { sobre: `<path d="M24 26 L30 4 L44 18 Z" fill="#fcc2d7" stroke="#1b1726" stroke-width="2.5" stroke-linejoin="round"/><path d="M76 26 L70 4 L56 18 Z" fill="#fcc2d7" stroke="#1b1726" stroke-width="2.5" stroke-linejoin="round"/>` }
 });
 
-const COLORES_TIENDA = ["#ffd700", "#111111", "#ff00a8", "#00e5ff", "#7cff00", "#8b5a2b", "#ffffff", "#ff3b00"];
-const MARCOS = { oro: "Marco dorado", fuego: "Marco de fuego", hielo: "Marco de hielo", arcoiris: "Marco arcoíris", neon: "Marco neón" };
-const MASCOTAS = { perro: "🐶", gato: "🐱", pollito: "🐤", pulpo: "🐙", dino: "🦖", robot: "🤖" };
-
-/* Catálogo: id → { tipo, nombre, precio, valor } */
-const CATALOGO = {};
-[["corona", "Corona", 400], ["cuernos", "Cuernos de diablo", 250], ["aureola", "Aureola", 250], ["fiesta", "Gorro de fiesta", 120], ["vincha", "Vincha ninja", 150],
- ["navidad", "Gorro navideño", 150], ["flor", "Flor", 80], ["auris_gato", "Orejas de gato", 180]].forEach(([v, n, p]) => CATALOGO["cab-" + v] = { tipo: "cabeza", nombre: n, precio: p, valor: v });
-[["parche", "Parche pirata", 120], ["antifaz", "Antifaz", 150], ["bufanda", "Bufanda", 100]].forEach(([v, n, p]) => CATALOGO["car-" + v] = { tipo: "cara", nombre: n, precio: p, valor: v });
-COLORES_TIENDA.forEach((c, i) => CATALOGO["col-" + i] = { tipo: "color", nombre: ["Dorado", "Sombra", "Fucsia neón", "Celeste neón", "Verde ácido", "Chocolate", "Fantasma", "Lava"][i], precio: i === 0 ? 300 : 120, valor: c });
-Object.entries(MARCOS).forEach(([v, n], i) => CATALOGO["mar-" + v] = { tipo: "marco", nombre: n, precio: [350, 250, 250, 300, 200][i], valor: v });
-[["El Sospechoso", 60], ["Cara de póker", 100], ["Sherlock", 150], ["Rey del Chinchón", 150], ["Almirante", 120], ["Gran Maestro", 200], ["Leyenda", 500]].forEach(([n, p], i) => CATALOGO["tit-" + i] = { tipo: "titulo", nombre: n, precio: p, valor: n });
-Object.entries(MASCOTAS).forEach(([v, e], i) => CATALOGO["mas-" + v] = { tipo: "mascota", nombre: { perro: "Perrito", gato: "Gatito", pollito: "Pollito", pulpo: "Pulpo", dino: "Dino", robot: "Robotito" }[v] + " " + e, precio: [200, 200, 150, 250, 300, 300][i], valor: v });
-
 const CABEZAS_GRATIS = CABEZAS.slice(), CARAS_GRATIS = CARAS.slice();
 const TIPOS_TIENDA = [["cabeza", "Cabeza"], ["cara", "Cara"], ["color", "Colores"], ["marco", "Marcos"], ["titulo", "Títulos"], ["mascota", "Mascotas"]];
 
@@ -94,9 +80,10 @@ const Eco = {
 
   comprar(u, id) {
     const it = CATALOGO[id], precio = typeof Evento !== "undefined" ? Evento.precio(id) : it && it.precio;
-    if (!it || it.refs || u.inv.includes(id) || u.monedas < precio || (typeof Evento !== "undefined" && !Evento.itemDisponible(id))) return false;
+    if (!it || it.refs || u.inv.includes(id) || u.monedas < precio || (typeof Evento !== "undefined" && !Evento.itemDisponible(id)) || !Catalogo.visible(id)) return false;
     u.monedas -= precio; u.inv.push(id);
     if (u.nube) Nube.actividad("compra", it.evento ? "evento" : it.tipo, 0, -precio);
+    Catalogo.anotar(u, it.evento ? "evento" : "tienda", id, it.nombre, precio);
     Eco.guardar(u); return true;
   },
   tiene: (u, id) => u.inv.includes(id),
@@ -225,7 +212,7 @@ PANTALLAS.tienda = () => {
   if (tab === "evento" && !ev) tab = "cabeza";
   const m = Eco.mision(u), e = Eco.diario(u);
   // Las cosas de un evento se ven solo mientras está prendido (o si ya las tienes)
-  const items = Object.entries(CATALOGO).filter(([id, it]) => tab === "evento" ? it.evento === ev.id && Evento.itemDisponible(id) : it.tipo === tab && (!it.evento || Eco.tiene(u, id) || Evento.itemDisponible(id)) && (!it.refs || Eco.tiene(u, id)));
+  const items = Object.entries(CATALOGO).filter(([id, it]) => tab === "evento" ? it.evento === ev.id && Evento.itemDisponible(id) : it.tipo === tab && (!it.evento || Eco.tiene(u, id) || Evento.itemDisponible(id)) && (!it.refs || Eco.tiene(u, id)) && (Catalogo.visible(id) || Eco.tiene(u, id)));
   const prev = (id, it) => {
     const l = { ...u.look, acc: u.look.acc.slice() };
     if (it.tipo === "color") l.color = it.valor;

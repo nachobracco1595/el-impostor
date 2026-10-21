@@ -537,6 +537,9 @@ begin
   update public.perfiles set nombre = n, monedas = monedas - precio, cambios_nombre = cambios_nombre + 1 where id = yo.id returning * into yo;
   perform set_config('impostor.ajuste', '0', true);
   insert into public.actividad (usuario, tipo, juego, monedas) values (yo.id, 'compra', 'nombre', -precio);
+  if to_regclass('public.compras') is not null then
+    insert into public.compras (usuario, tipo, item, nombre, precio) values (yo.id, 'nombre', 'nombre', 'Cambio de nombre a ' || n, precio);
+  end if;
   return jsonb_build_object('ok', true, 'nombre', yo.nombre, 'monedas', yo.monedas, 'precio', precio);
 end $$;
 
@@ -558,3 +561,73 @@ begin
   end if;
   return jsonb_build_object('id', p.id, 'nombre', p.nombre, 'look', p.look, 'tag', p.tag, 'publico', false, 'completa', false, 'amigo', false, 'puntos', p.puntos);
 end $$;
+
+-- ============ Tienda: precios, disponibilidad y estadísticas de compras ============
+-- Precios y lo que no está a la venta se guardan en config 'catalogo': {"precio": {"<id>": n}, "oculto": {"<id>": true}}
+-- Ids: los de la tienda (cab-…, car-…, col-…, mar-…, tit-…, mas-…), "skin:<id>", "tier:<0-8>" (equipo de la Arena) y "torre:vida".
+insert into public.config (clave, valor) values ('catalogo', '{"precio": {}, "oculto": {}}') on conflict do nothing;
+
+-- Cada compra: qué, quién, cuánto y cuándo (la app la anota al comprar)
+create table if not exists public.compras (
+  id       bigint generated always as identity primary key,
+  usuario  uuid not null references public.perfiles (id) on delete cascade,
+  tipo     text not null check (char_length(tipo) between 1 and 20),
+  item     text not null check (char_length(item) between 1 and 40),
+  nombre   text check (char_length(nombre) <= 60),
+  precio   integer not null default 0 check (precio between 0 and 100000),
+  creado   timestamptz not null default now()
+);
+create index if not exists compras_creado_idx on public.compras (creado desc);
+create index if not exists compras_item_idx on public.compras (item);
+alter table public.compras enable row level security;
+grant select, insert on public.compras to authenticated;
+drop policy if exists "anotar mis compras" on public.compras;
+create policy "anotar mis compras" on public.compras for insert to authenticated with check (usuario = auth.uid());
+drop policy if exists "ver mis compras" on public.compras;
+create policy "ver mis compras" on public.compras for select to authenticated using (usuario = auth.uid() or public.es_admin());
+
+-- Panel: qué se vende, cuánto deja y quién compra (en los últimos días), y cuántos tienen cada cosa (desde siempre)
+create or replace function public.panel_compras(dias integer default 30) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare desde timestamptz := now() - make_interval(days => least(greatest(dias, 1), 365));
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'compras', (select count(*) from public.compras where creado >= desde),
+    'monedas', (select coalesce(sum(precio), 0) from public.compras where creado >= desde),
+    'compradores', (select count(distinct usuario) from public.compras where creado >= desde),
+    'porTipo', (select coalesce(jsonb_object_agg(tipo, jsonb_build_object('n', n, 'monedas', m)), '{}'::jsonb) from (
+      select tipo, count(*) as n, sum(precio) as m from public.compras where creado >= desde group by tipo) x),
+    'porItem', (select coalesce(jsonb_object_agg(item, jsonb_build_object('n', n, 'monedas', m, 'nombre', nom)), '{}'::jsonb) from (
+      select item, count(*) as n, sum(precio) as m, max(nombre) as nom from public.compras where creado >= desde group by item) x),
+    'top', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (
+      select p.id, p.nombre, p.look, count(*) as n, sum(c.precio) as monedas from public.compras c join public.perfiles p on p.id = c.usuario
+      where c.creado >= desde group by p.id order by sum(c.precio) desc limit 10) t),
+    'ultimas', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (
+      select c.item, c.nombre as que, c.tipo, c.precio, c.creado, p.nombre, p.look from public.compras c join public.perfiles p on p.id = c.usuario
+      order by c.creado desc limit 40) t),
+    'duenos', (select coalesce(jsonb_object_agg(item, n), '{}'::jsonb) from (
+      select item, count(*) as n from (
+        select x as item from public.perfiles, jsonb_array_elements_text(case when jsonb_typeof(inventario) = 'array' then inventario else '[]'::jsonb end) x
+        union all
+        select 'skin:' || x from public.perfiles, jsonb_array_elements_text(case when jsonb_typeof(diario -> 'arena' -> 'skins') = 'array' then diario -> 'arena' -> 'skins' else '[]'::jsonb end) x
+      ) todo group by item) y)
+  );
+end $$;
+
+-- Panel: quiénes tienen una cosa (y cuándo la compraron, si la compra quedó anotada)
+create or replace function public.panel_duenos(cual text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return (select coalesce(jsonb_agg(t), '[]'::jsonb) from (
+    select p.id, p.nombre, p.look, p.monedas,
+      (select max(c.creado) from public.compras c where c.usuario = p.id and c.item = cual) as cuando,
+      (select c.precio from public.compras c where c.usuario = p.id and c.item = cual order by c.creado desc limit 1) as pago
+    from public.perfiles p
+    where (cual like 'skin:%' and jsonb_typeof(p.diario -> 'arena' -> 'skins') = 'array' and (p.diario -> 'arena' -> 'skins') ? substr(cual, 6))
+       or (cual not like 'skin:%' and jsonb_typeof(p.inventario) = 'array' and p.inventario ? cual)
+       or exists (select 1 from public.compras c where c.usuario = p.id and c.item = cual)
+    order by cuando desc nulls last, p.nombre limit 300) t);
+end $$;
+

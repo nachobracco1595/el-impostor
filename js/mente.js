@@ -71,10 +71,5 @@ const Mente = {
     }
   },
   /* Solo se aprende en partidas de este teléfono (online cada uno tiene su propia memoria) */
-  local() { return typeof Net === "undefined" || !Net.activo || !Net.activo(); },
-  /* Cartelito para las pantallas de cada juego */
-  chip(juego) {
-    const M = this.de(juego), n = this.nivel(juego);
-    return `<div class="mente-chip" title="Los bots aprenden de cómo jugás"><span>🧠</span><b>Bots nivel ${n}</b><small>${M.j ? `${M.g} de ${M.j} ganadas · aprenden de vos` : "aprenden de vos partida a partida"}</small></div>`;
-  }
+  local() { return typeof Net === "undefined" || !Net.activo || !Net.activo(); }
 };

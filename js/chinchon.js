@@ -103,14 +103,14 @@ const Chin = {
     if (a.t === "siguiente") { if (s.fase === "ronda" && (pid === null || pid === "H")) Chin.nuevaRonda(s); return; }
     if (!J || i !== s.turno || J.fuera) return;
     if (a.t === "robar" && s.fase === "robar") {
-      if (a.de === "descarte" && s.descarte.length) { const c = s.descarte.pop(); J.mano.push(c); s.log = `${J.name} tomó del descarte`; (s.tomadas = s.tomadas || {})[i] = [...(s.tomadas[i] || []), c].slice(-6); }
+      if (a.de === "descarte" && s.descarte.length) { const c = s.descarte.pop(); J.mano.push(c); s.nueva = { i, c, de: "descarte" }; s.log = `${J.name} tomó del descarte`; (s.tomadas = s.tomadas || {})[i] = [...(s.tomadas[i] || []), c].slice(-6); }
       else {
         if (!s.mazo.length) {
           // Se acabó el mazo: se mezcla el descarte. Si ya pasó dos veces (o no alcanza), la ronda se anula.
           if (s.descarte.length <= 1 || s.vueltas >= 2) { s.fase = "ronda"; s.cierre = { anulada: true, manos: s.jug.map(j => j.fuera ? null : { ...Chin.analizar(j.mano), suma: 0, mano: j.mano }) }; return; }
           const top = s.descarte.pop(); s.mazo = shuffle(s.descarte); s.descarte = [top]; s.vueltas++;
         }
-        J.mano.push(s.mazo.pop()); s.log = `${J.name} robó del mazo`;
+        const c = s.mazo.pop(); J.mano.push(c); s.nueva = { i, c, de: "mazo" }; s.log = `${J.name} robó del mazo`;
       }
       s.fase = "tirar";
     } else if (a.t === "tirar" && s.fase === "tirar" && J.mano.includes(a.c)) {
@@ -194,7 +194,7 @@ const Chin = {
     return {
       game: "chinchon", me: pid, yo: i, fase: s.fase, turno: s.turno, ronda: s.ronda, log: s.log, cfg: s.cfg,
       jug: s.jug.map(j => ({ name: j.name, cpu: !!j.cpu, pts: j.pts, fuera: j.fuera, n: j.mano.length })),
-      mano: i >= 0 ? s.jug[i].mano : [], top: s.descarte[s.descarte.length - 1] || null, mazo: s.mazo.length,
+      mano: i >= 0 ? s.jug[i].mano : [], nueva: i >= 0 && s.nueva && s.nueva.i === i && s.turno === i && s.fase === "tirar" ? s.nueva : null, top: s.descarte[s.descarte.length - 1] || null, mazo: s.mazo.length,
       cierre: s.cierre, ganador: s.ganador, chinchon: s.chinchon
     };
   },
@@ -226,6 +226,7 @@ const Chin = {
     } else {
       const an = Chin.analizar(v.mano);
       const sel = UI.chSel && v.mano.includes(UI.chSel) ? UI.chSel : null;
+      const nueva = miTurno && v.nueva && v.mano.includes(v.nueva.c) ? v.nueva.c : null, esNueva = c => c === nueva ? "nueva" : "";
       let corte = null;
       if (miTurno && v.fase === "tirar" && sel) {
         const resto = v.mano.filter(c => c !== sel), a2 = Chin.analizar(resto);
@@ -237,9 +238,9 @@ const Chin = {
           <div class="ch-pila"><span class="label">Mazo · ${v.mazo}</span>${miTurno && v.fase === "robar" ? `<button class="ch-btn" id="chMazo">${Chin.carta(null)}</button>` : Chin.carta(null)}</div>
           <div class="ch-pila"><span class="label">Descarte</span>${miTurno && v.fase === "robar" && v.top ? `<button class="ch-btn" id="chDesc">${Chin.carta(v.top)}</button>` : Chin.carta(v.top)}</div>
         </div>
-        <p class="aj-estado">${miTurno ? (v.fase === "robar" ? "🎴 <b>Tu turno:</b> roba del mazo o toma la carta del descarte." : "Elige una carta para <b>tirar</b> (o para cortar).") : turnoJ.cpu ? `🤖 ${esc(turnoJ.name)} está jugando…` : `Turno de <b>${esc(turnoJ.name)}</b>.`}${v.log ? ` <small>${esc(v.log)}.</small>` : ""}</p>
+        <p class="aj-estado">${miTurno ? (v.fase === "robar" ? "🎴 <b>Tu turno:</b> roba del mazo o toma la carta del descarte." : `${nueva ? `${v.nueva.de === "mazo" ? "Robaste" : "Tomaste"} ${Chin.carta(nueva, { cls: "mini" })} (brilla en tu mano). ` : ""}Elige una carta para <b>tirar</b> (o para cortar).`) : turnoJ.cpu ? `🤖 ${esc(turnoJ.name)} está jugando…` : `Turno de <b>${esc(turnoJ.name)}</b>.`}${v.log ? ` <small>${esc(v.log)}.</small>` : ""}</p>
         ${yo >= 0 ? `<div class="panel ch-panel"><div class="headrow"><span class="label">Tu mano</span><span class="label">Sueltas: ${an.resto} pts</span></div>
-          <div class="ch-mano">${an.juegos.map(g => `<span class="ch-juego">${g.map(c => Chin.carta(c, { cls: `${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</span>`).join("")}${an.libres.map(c => Chin.carta(c, { cls: `suelta ${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</div>
+          <div class="ch-mano">${an.juegos.map(g => `<span class="ch-juego">${g.map(c => Chin.carta(c, { cls: `${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""} ${esNueva(c)}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</span>`).join("")}${an.libres.map(c => Chin.carta(c, { cls: `suelta ${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""} ${esNueva(c)}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</div>
           ${miTurno && v.fase === "tirar" ? `<div class="row"><button class="btn" id="chTirar" ${sel ? "" : "disabled"}>Tirar</button><button class="btn ${corte && corte.ok ? "danger" : "ghost"}" id="chCortar" ${corte && corte.ok ? "" : "disabled"}>${corte ? corte.txt : "Cortar"}</button></div>` : ""}
         </div>` : ""}
         <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Escaleras: 3 o más del mismo palo seguidas (${v.cfg && v.cfg.con89 ? "baraja de 48: 7, 8, 9 y la sota" : "baraja de 40: no hay 8 ni 9, el 7 sigue con la sota"}). Grupos: 3 o 4 del mismo número. Un comodín por juego. Puedes cortar si lo suelto suma 5 o menos; con todo ligado restas 10. Una escalera de 7 del mismo palo es <b>chinchón</b> y gana la partida. Quien pasa de 100 queda afuera.</p></details>`;

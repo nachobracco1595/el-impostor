@@ -9,6 +9,19 @@ const SERIE = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 const P = { sb: null, user: null, admin: null, dias: 30, datos: null, usuarios: [], q: "", msg: "", regalo: null, cargando: false };
 
+/* Nivel de los bots de cada jugador (lo que aprendieron de él, js/mente.js): 1 a 10 por juego */
+const BOTS_JUEGOS = { arena: "⚔️ Arena", torre: "🗼 Torre", truco: "🃏 Truco", liars: "🤥 Mentiroso", poker: "♠️ Póker", chinchon: "🎴 Chinchón", burako: "🀄 Burako", ajedrez: "♟️ Ajedrez", naval: "🚢 Batalla naval", carrera: "🏁 Carrera", nave: "🚀 La Nave" };
+const botsNivel = r => Math.max(1, Math.min(10, Math.round(r / 10)));
+const botsCelda = u => {
+  if (u.mente === undefined) return `<small class="sub" title="Corre de nuevo supabase/esquema.sql para ver este dato">—</small>`;
+  const js = Object.values(u.mente || {}).filter(m => m && m.j);
+  if (!js.length) return `<small class="sub">sin partidas</small>`;
+  const prom = js.reduce((a, m) => a + m.r, 0) / js.length;
+  return `<button class="linkish" data-bots="${u.id}">Nv ${botsNivel(prom)} ${P.bots === u.id ? "▲" : "▼"}</button>`;
+};
+const botsDetalle = u => `<div class="bots-det">${Object.entries(BOTS_JUEGOS).map(([k, t]) => { const m = (u.mente || {})[k];
+  return `<div><b>${t}</b>${m && m.j ? `<span>Nivel ${botsNivel(m.r)} <small>(${Math.round(m.r)}/100)</small></span><small>Ganó ${m.g || 0} de ${m.j} contra bots</small>` : `<small>Sin partidas</small>`}</div>`; }).join("")}</div>`;
+
 async function iniciar() {
   if (!CFG) { app.innerHTML = `<section class="caja"><h1>Panel</h1><p class="sub">Falta la configuración de Supabase en <code>js/supabase-config.js</code>.</p></section>`; return; }
   P.sb = supabase.createClient(CFG.url, CFG.anonKey, { auth: { flowType: "implicit", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
@@ -145,9 +158,9 @@ function pintar() {
   <section class="tarjeta">
     <div class="headrow"><h2>Jugadores</h2><form id="fBus" class="add busca"><input id="q" placeholder="Buscar por nombre" value="${esc(P.q)}" aria-label="Buscar jugadores"><button type="submit" aria-label="Buscar">🔍</button></form></div>
     <div class="tabla-scroll"><table class="tabla">
-      <thead><tr><th>Jugador</th><th class="n">Nivel</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
-      <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n" title="${esc(nivelDe(u.puntos).titulo)}">${nivelDe(u.puntos).n}</td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
-        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="0" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">🏅 Llevar a nivel<select class="campo" name="nv" data-pts="${u.puntos}"><option value="">—</option>${NIVELES.map(([p, t], k) => `<option value="${p}" ${k + 1 === nivelDe(u.puntos).n ? "disabled" : ""}>${k + 1}. ${esc(t)}</option>`).join("")}</select></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100). El nivel sale de los puntos: al elegir un nivel se calculan los puntos que hay que sumar o quitar.</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
+      <thead><tr><th>Jugador</th><th class="n">Nivel</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th class="n">Bots 🧠</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
+      <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n" title="${esc(nivelDe(u.puntos).titulo)}">${nivelDe(u.puntos).n}</td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td class="n">${botsCelda(u)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
+        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="0" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">🏅 Llevar a nivel<select class="campo" name="nv" data-pts="${u.puntos}"><option value="">—</option>${NIVELES.map(([p, t], k) => `<option value="${p}" ${k + 1 === nivelDe(u.puntos).n ? "disabled" : ""}>${k + 1}. ${esc(t)}</option>`).join("")}</select></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100). El nivel sale de los puntos: al elegir un nivel se calculan los puntos que hay que sumar o quitar.</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>${P.bots === u.id ? `<tr class="bots-fila"><td colspan="9">${botsDetalle(u)}</td></tr>` : ""}`).join("") || `<tr><td colspan="9" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
     </table></div>
   </section>
   <p class="summary center">La actividad se cuenta desde que se creó la tabla <code>actividad</code>; los días anteriores aparecen en cero.</p>`;
@@ -156,6 +169,7 @@ function pintar() {
   document.getElementById("recargar").onclick = cargar;
   document.getElementById("salir").onclick = async () => { await P.sb.auth.signOut(); P.user = null; pintar(); };
   document.getElementById("fBus").onsubmit = e => { e.preventDefault(); P.q = document.getElementById("q").value.trim(); cargar(); };
+  app.querySelectorAll("[data-bots]").forEach(b => b.onclick = () => { P.bots = P.bots === b.dataset.bots ? null : b.dataset.bots; pintar(); });
   app.querySelectorAll("[data-regalo]").forEach(b => b.onclick = () => { P.regalo = b.dataset.regalo; pintar(); });
   app.querySelectorAll("select[name=nv]").forEach(sel => sel.onchange = () => { if (sel.value !== "") sel.form.p.value = +sel.value - +sel.dataset.pts; });
   app.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => { P.regalo = null; pintar(); });

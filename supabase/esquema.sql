@@ -344,7 +344,7 @@ language plpgsql stable security definer set search_path = public as $$
 begin
   if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
   return (select coalesce(jsonb_agg(u), '[]'::jsonb) from (
-    select p.id, p.nombre, p.look, p.puntos, p.monedas, p.creado,
+    select p.id, p.nombre, p.look, p.puntos, p.monedas, p.creado, p.diario->'mente' as mente,
       (select max(creado) from public.actividad a where a.usuario = p.id) as ultima,
       (select count(*) from public.actividad a where a.usuario = p.id and a.tipo = 'partida') as partidas
     from public.perfiles p

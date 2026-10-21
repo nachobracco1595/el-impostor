@@ -438,7 +438,6 @@ PANTALLAS.pokerIntro = () => {
     <div class="panel"><span class="label">Bots en la mesa</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button aria-pressed="${c.bots === n}" data-pkb="${n}">${n}</button>`).join("")}</div>
       <span class="label">Cómo juegan</span><div class="seg">${[["facil", "Fácil"], ["normal", "Normal"], ["dificil", "Difícil"]].map(([k, t]) => `<button aria-pressed="${c.nivel === k}" data-pkn="${k}">${t}</button>`).join("")}</div>
       <span class="label">Fichas para cada uno</span><div class="seg">${[500, 1000, 2000].map(n => `<button aria-pressed="${c.fichas === n}" data-pkf="${n}">${n}</button>`).join("")}</div></div>
-${typeof Mente !== "undefined" ? Mente.chip("poker") : ""}
     <button class="btn tb-girar" id="pkJugar">🃏 Sentarme a jugar</button>
     <p class="summary center">¿Con amigos? Creá una sala en "Jugar online" y elegí Póker: los lugares que sobran los ocupan bots.</p>
     <button class="btn ghost" id="pkVolver">Volver</button>

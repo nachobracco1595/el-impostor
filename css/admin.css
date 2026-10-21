@@ -82,3 +82,7 @@ code { color: var(--spot); }
 .tb-panel { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .tb-panel li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; font-size: 14px; }
 .tb-panel .pos { color: #3ddcb1; font-weight: 800; } .tb-panel .neg { color: #ff6b81; font-weight: 800; }
+.bots-fila td { background: rgba(112, 72, 232, .12); }
+.bots-det { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 4px 0; }
+.bots-det div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--card); white-space: normal; }
+.bots-det span { font-weight: 800; } .bots-det small { color: var(--muted); }

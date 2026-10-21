@@ -611,7 +611,6 @@ PANTALLAS.naveIntro = () => {
   <section class="screen">
     <div class="nave-intro"><span class="nave-mini grande">🚀</span><h2>La Nave</h2>
       <p class="sub">Muévete por la nave y haz tus tareas. Entre la tripulación hay un impostor que elimina a escondidas. Si encuentras un cuerpo, repórtalo: todos debaten y votan a quién echar.</p></div>
-${typeof Mente !== "undefined" ? Mente.chip("nave") : ""}
     <div class="panel"><span class="label">Cómo se juega</span>
       <ul class="reglas-pts">
         <li><span>🕹️ Moverse</span><b>Arrastra el dedo en la pantalla (o flechas)</b></li>

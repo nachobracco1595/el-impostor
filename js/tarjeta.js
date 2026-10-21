@@ -61,7 +61,7 @@ const Tarjeta = {
     const jugadas = total(u, "j"), ganadas = total(u, "g"), logros = LOGROS.filter(l => (t.logros || {})[l.id]);
     const juegos = Object.keys(JUEGOS).map(k => ({ k, ...u.stats[k] })).filter(x => x.j).sort((a, b) => (b.p || 0) - (a.p || 0));
     const maxP = Math.max(1, ...juegos.map(x => x.p || 0));
-    const IC = { impostor: "🎭", liars: "🤥", casos: "🔍", chinchon: "🎴", truco: "🗡️", burako: "🀄", poker: "♠️", carrera: "🏁", naval: "⚓", ajedrez: "♚", nave: "🚀", arena: "⚔️", bowling: "🎳", arco: "🏹", circo: "🎪" };
+    const IC = { impostor: "🎭", liars: "🤥", casos: "🔍", chinchon: "🎴", truco: "🗡️", burako: "🀄", poker: "♠️", carrera: "🏁", naval: "⚓", ajedrez: "♚", nave: "🚀", arena: "⚔️", bowling: "🎳", arco: "🏹", circo: "🎪", preguntas: "❓" };
     // Arena: el héroe con más nivel
     let heroe = null;
     if (t.arena && t.arena.pj && typeof Heroes !== "undefined") {

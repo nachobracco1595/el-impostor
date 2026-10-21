@@ -174,14 +174,15 @@ function juegosMenu() {
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", MenuArte.trabajos(), "t-trab", "#94d82d"],
     ["circo", "Circo", "Aros de fuego, cuerda floja y pelotas.", MenuArte.circo(), "t-circo", "#ff922b"],
     ["bowling", "Bowling", "Strikes, spares y efecto con el dedo.", MenuArte.bowling(), "t-bowl", "#9775fa"],
-    ["arco", "Arco y flecha", "Diana, viento y pulso firme.", MenuArte.arco(), "t-arco", "#ffd43b"]
+    ["arco", "Arco y flecha", "Diana, viento y pulso firme.", MenuArte.arco(), "t-arco", "#ffd43b"],
+    ["preguntas", "Preguntas Locas", "Ruleta, preguntas y prendas para reírse en la juntada.", MenuArte.preguntas(), "t-preg", "#e64980"]
   ];
 }
 /* Secciones del inicio */
 const MENU_SECCIONES = [
   ["⚔️ Acción", ["arena", "carrera", "circo"]],
   ["🎯 Puntería", ["bowling", "arco"]],
-  ["🎉 Para jugar en grupo", ["impostor", "nave", "liars", "casos"]],
+  ["🎉 Para jugar en grupo", ["preguntas", "impostor", "nave", "liars", "casos"]],
   ["🃏 Cartas y fichas", ["truco", "chinchon", "poker", "burako"]],
   ["♟️ Duelos", ["ajedrez", "naval"]],
   ["🪙 Monedas", ["casino", "trabajos"]]
@@ -204,7 +205,7 @@ PANTALLAS.home = () => {
     <div class="ob-txt"><b>Jugar online</b><small>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código.</small></div>
     <div class="ob-acc"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
   </article>
-  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena")).join("")}</div></section>`).join("")}`;
+  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "preguntas")).join("")}</div></section>`).join("")}`;
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");

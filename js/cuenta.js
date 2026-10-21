@@ -302,6 +302,7 @@ PANTALLAS.perfil = () => {
         <div><b>♚ Ajedrez</b><span>${st.ajedrez.p} pts · ${st.ajedrez.g}/${st.ajedrez.j} ganadas (${pct(st.ajedrez.g, st.ajedrez.j)})</span><small>${st.ajedrez.mates} mates · ${st.ajedrez.tablas} tablas</small></div>
         <div><b>🎳 Bowling</b><span>${st.bowling.p} pts · ${st.bowling.g}/${st.bowling.j} ganadas (${pct(st.bowling.g, st.bowling.j)})</span><small>${st.bowling.strikes} strikes · ${st.bowling.spares} spares${st.bowling.mejor ? ` · mejor partida ${st.bowling.mejor}` : ""}</small></div>
         <div><b>🏹 Arco y flecha</b><span>${st.arco.p} pts · ${st.arco.g}/${st.arco.j} ganadas (${pct(st.arco.g, st.arco.j)})</span><small>${st.arco.x} flechas al centro${st.arco.mejor ? ` · mejor torneo ${st.arco.mejor}/120` : ""}</small></div>
+        <div><b>❓ Preguntas Locas</b><span>${st.preguntas.p} pts · ${st.preguntas.g}/${st.preguntas.j} ganadas (${pct(st.preguntas.g, st.preguntas.j)})</span><small>${st.preguntas.correctas} respuestas correctas · ${st.preguntas.personajes} personajes</small></div>
         <div><b>🎪 Circo</b><span>${st.circo.p} pts · ${st.circo.g}/${st.circo.j} ganadas (${pct(st.circo.g, st.circo.j)})</span><small>${st.circo.etapas} etapas superadas${st.circo.mejor ? ` · récord ${st.circo.mejor}` : ""}</small></div>
         <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
         ${st.timba && st.timba.jugadas ? `<div><b>🎰 Casino</b><span>${st.timba.jugadas} jugadas · ${st.timba.ganado - st.timba.apostado >= 0 ? "+" : ""}${st.timba.ganado - st.timba.apostado} 🪙 en total</span><small>Mayor premio: ${st.timba.mayor} 🪙 · ${st.timba.plenos} plenos · ${st.timba.jackpots} jackpots · ${st.timba.bingos} bingos</small></div>` : ""}
@@ -365,7 +366,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}

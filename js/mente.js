@@ -6,7 +6,7 @@
 const MENTE = {
   BASE: { facil: 0.2, normal: 0.5, dificil: 0.8 },
   SUBE: 7, BAJA: 3, INICIO: 40,
-  NOMBRES: { arena: "Arena", torre: "Torre", truco: "Truco", liars: "Mentiroso", poker: "Póker", chinchon: "Chinchón", burako: "Burako", ajedrez: "Ajedrez", naval: "Batalla naval", carrera: "Carrera", nave: "La Nave", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo" }
+  NOMBRES: { arena: "Arena", torre: "Torre", truco: "Truco", liars: "Mentiroso", poker: "Póker", chinchon: "Chinchón", burako: "Burako", ajedrez: "Ajedrez", naval: "Batalla naval", carrera: "Carrera", nave: "La Nave", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo", preguntas: "Preguntas Locas" }
 };
 
 const Mente = {

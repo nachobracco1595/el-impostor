@@ -57,8 +57,16 @@ const HE = {
       ropa: [["Traje", "m", { def: .03 }], ["Capa", "f", { vel: .015, hp: .02 }]],
       casco: [["Máscara", "f", { crit: .006 }], ["Capucha", "f", { def: .02 }]],
       botas: [["Botas", "fp", { vel: .03 }], ["Tabi", "mp", { vel: .02, crit: .003 }]]
+    },
+    invocador: {
+      arma: [["Grimorio", "m", { dano: .08 }], ["Báculo de hueso", "m", { dano: .05, cdm: .02 }]],
+      ropa: [["Túnica", "f", { hp: .04 }], ["Capa", "f", { def: .03 }]],
+      casco: [["Capucha", "f", { def: .02 }], ["Cráneo", "m", { dano: .02 }]],
+      botas: [["Sandalias", "fp", { vel: .03 }], ["Botas", "fp", { def: .015, vel: .015 }]]
     }
   },
+  /* Lo que en las evoluciones vale el mayor (no se suma entre la del nivel 10 y la del 20) */
+  MAXIMOS: ["flechas", "critX", "lento", "invN", "invBoom", "invGolem"],
   QUE: { dano: ["daño", 1], hp: ["vida", 1], def: ["defensa", 1], vel: ["velocidad", 1], cd: ["más lento", 1], cdm: ["ataques más seguidos", 1], alc: ["alcance", 1], crit: ["crítico", 1] },
   /* Evoluciones: [nivel 10, nivel 20] de cada camino. pas = lo que suman */
   EVOS: {
@@ -85,6 +93,12 @@ const HE = {
           { id: "maestro-ninja", nombre: "Maestro ninja", ic: "🐉", desc: "Especial 45% más seguido y +12% de velocidad.", pas: { espCd: .45, vel: .12 } }],
       b: [{ id: "sicario", nombre: "Sicario", ic: "🗡️", desc: "+10% de crítico.", pas: { crit: .10 } },
           { id: "parca", nombre: "Parca", ic: "💀", desc: "+20% de crítico y los críticos pegan ×2,5.", pas: { crit: .20, critX: 2.5 } }]
+    },
+    invocador: {
+      a: [{ id: "nigromante", nombre: "Nigromante", ic: "☠️", desc: "Invoca 3 esqueletos en vez de 2 bichos.", pas: { invN: 3 } },
+          { id: "senor-muertos", nombre: "Señor de los muertos", ic: "⚰️", desc: "3 esqueletos que duran 50% más y explotan al irse.", pas: { invN: 3, invDura: .5, invBoom: 1 } }],
+      b: [{ id: "domador", nombre: "Domador", ic: "🐺", desc: "Sus bichos tienen +40% de vida y daño.", pas: { invFuerza: .4 } },
+          { id: "senor-bestias", nombre: "Señor de las bestias", ic: "🗿", desc: "Invoca un gólem gigante y 2 lobos, todos con +60%.", pas: { invFuerza: .6, invGolem: 1 } }]
     }
   }
 };
@@ -178,9 +192,9 @@ const Heroes = {
       for (const [k, x] of Object.entries(it.bonus)) b[k] += x;
       ver[s === "ropa" ? "armadura" : s] = it.tier; if (s === "arma") estilo.arma = it.v;
     }
-    for (const id of p.evo) { const e = this.evoDe(p.clase, id); if (e) for (const [k, x] of Object.entries(e.pas)) pas[k] = k === "flechas" || k === "critX" || k === "lento" ? Math.max(pas[k] || 0, x) : (pas[k] || 0) + x; }
+    for (const id of p.evo) { const e = this.evoDe(p.clase, id); if (e) for (const [k, x] of Object.entries(e.pas)) pas[k] = HE.MAXIMOS.includes(k) ? Math.max(pas[k] || 0, x) : (pas[k] || 0) + x; }
     // Cada evolución reemplaza a la anterior en lo que suma (no se acumulan las dos del mismo camino)
-    if (p.evo.length === 2) { const e1 = this.evoDe(p.clase, p.evo[0]); for (const [k, x] of Object.entries(e1.pas)) if (!["flechas", "critX", "lento"].includes(k)) pas[k] -= x; }
+    if (p.evo.length === 2) { const e1 = this.evoDe(p.clase, p.evo[0]); for (const [k, x] of Object.entries(e1.pas)) if (!HE.MAXIMOS.includes(k)) pas[k] -= x; }
     // Mejoras de prestigio (se suman todas las que tiene)
     const pr = {};
     HE.PRESTIGIO.slice(0, p.pre | 0).forEach(x => { for (const [k, v] of Object.entries(x.pas)) pr[k] = (pr[k] || 0) + v; });
@@ -194,6 +208,7 @@ const Heroes = {
       alc: 1 + b.alc + (pas.alc || 0), crit: b.crit + (pas.crit || 0) + (pr.crit || 0), critX: pas.critX || 2,
       area: 1 + (pas.area || 0), nova: 1 + (pas.nova || 0), lento: pas.lento || 0, quema: pas.quema || 0, regen: pas.regen || 0, furia: pas.furia || 0,
       espCd: (1 - (pas.espCd || 0)) * (1 - (pr.espCd || 0)), flechas: pas.flechas || 5,
+      invN: pas.invN || 2, invDura: pas.invDura || 0, invBoom: !!pas.invBoom, invFuerza: pas.invFuerza || 0, invGolem: !!pas.invGolem,
       monedas: pr.monedas || 0, pocion: 1 + (pr.pocion || 0), robo: pr.robo || 0, revive: !!pr.revive,
       ver, estilo, evoIc: p.evo.length ? this.evoDe(p.clase, p.evo[p.evo.length - 1]).ic : null, evoId: p.evo.length ? p.evo[p.evo.length - 1] : null, lv: p.lv, pre: p.pre | 0
     };
@@ -202,7 +217,7 @@ const Heroes = {
   cpu(lv, pre = 0, clase = pick(Object.keys(AR.CLASES))) {
     pre = Math.max(0, Math.min(HE.PRESTIGIOS, pre | 0)); lv = Math.max(1, Math.min(this.tope(pre), lv | 0));
     const total = this.puntosTotales(lv);
-    const reparto = { guerrero: [.35, .35, .1, .2], arquero: [.45, .25, .2, .1], mago: [.45, .3, .1, .15], asesino: [.4, .2, .3, .1] }[clase];
+    const reparto = { guerrero: [.35, .35, .1, .2], arquero: [.45, .25, .2, .1], mago: [.45, .3, .1, .15], asesino: [.4, .2, .3, .1], invocador: [.4, .35, .1, .15] }[clase];
     const pts = {}; let usados = 0; Object.keys(HE.STATS).forEach((k, i) => { pts[k] = Math.floor(total * reparto[i]); usados += pts[k]; }); pts.fue += total - usados;
     const rama = Math.random() < 0.5 ? "a" : "b", E = HE.EVOS[clase][rama], evo = lv >= 20 || pre ? [E[0].id, E[1].id] : lv >= 10 ? [E[0].id] : [];
     const tier = pre ? 8 : HE.NIVEL_TIER.filter(n => n <= lv).length - 1, eq = {};

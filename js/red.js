@@ -506,7 +506,7 @@ const Turno = {
   },
   revisar(v) {
     const e = this.estado(v), mio = !!(e && e.mio), p = this.pill();
-    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker", "blackjack", "bowling", "arco"].includes(v.game));
+    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker", "blackjack", "bowling", "arco", "preguntas"].includes(v.game));
     document.body.classList.toggle("mi-turno", mio); document.body.classList.toggle("con-turno", !!e || porTurnos);
     p.hidden = !e;
     if (e) { p.classList.toggle("mio", mio); p.innerHTML = mio ? `🎯 <b>¡Es tu turno!</b> <small>Te toca ${esc(e.que)}</small>` : `⏳ Turno de <b>${esc(e.quien)}</b>`; }

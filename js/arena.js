@@ -15,8 +15,12 @@ const AR = {
     mago: { nombre: "Mago", ic: "🔮", hp: 100, vel: 195, precio: 400, desc: "Bolas de fuego que explotan en área.",
       atk: { tipo: "bola", vel: 440, dano: 20, cd: 800, area: 58, alcance: 540 }, esp: { nombre: "Nova de hielo", ic: "❄️", cd: 7000, desc: "Congela y daña a todos cerca tuyo." }, arma: ["Bastón", "m"] },
     asesino: { nombre: "Asesino", ic: "🥷", hp: 105, vel: 240, precio: 500, desc: "Rápido, con golpes críticos.",
-      atk: { tipo: "melee", alcance: 64, arco: 1.7, dano: 13, cd: 300, crit: 0.25 }, esp: { nombre: "Invisible", ic: "👻", cd: 7000, desc: "Se vuelve invisible 4 s (nadie lo puede apuntar) y su primer golpe hace el doble de daño." }, arma: ["Dagas", "fp"] }
+      atk: { tipo: "melee", alcance: 64, arco: 1.7, dano: 13, cd: 300, crit: 0.25 }, esp: { nombre: "Invisible", ic: "👻", cd: 7000, desc: "Se vuelve invisible 4 s (nadie lo puede apuntar) y su primer golpe hace el doble de daño." }, arma: ["Dagas", "fp"] },
+    invocador: { nombre: "Invocador", ic: "🧿", hp: 95, vel: 195, precio: 0, desc: "Invoca bichos que pelean por él. Ataca con bolas de fuego, como el mago.",
+      atk: { tipo: "bola", vel: 440, dano: 17, cd: 850, area: 50, alcance: 520 }, esp: { nombre: "Invocar", ic: "👹", cd: 10000, desc: "Invoca 2 bichos que pelean por vos durante 12 s (los rivales también les pueden pegar)." }, arma: ["Grimorio", "m"] }
   },
+  /* Bichos del invocador: [nombre, ícono, color, sprite, clase con la que pelean, tamaño] */
+  BICHOS: { lobo: ["Lobo", "🐺", "#868e96", "lobo", "asesino", 0.8], esqueleto: ["Esqueleto", "💀", "#dee2e6", "esqueleto", "guerrero", 0.8], golem: ["Gólem", "🗿", "#adb5bd", "golem", "guerrero", 1.25] },
   PIEZAS: { casco: ["Casco", "m", "⛑️"], armadura: ["Armadura", "f", "🦺"], botas: ["Botas", "fp", "🥾"], arma: ["Arma", "f", "⚔️"] },
   COSTO: [0, 120, 250, 450, 750, 1200, 1800, 2600, 3600],
   ESCENARIOS: {
@@ -74,9 +78,37 @@ const Arena = {
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
   },
-  /* En la torre los monstruos son un equipo: no se pegan entre ellos */
-  aliado: (a, b) => !!(a.equipo && a.equipo === b.equipo),
-  vivos: s => s.jug.filter(j => j.vivo),
+  /* En la torre los monstruos son un equipo: no se pegan entre ellos. Los bichos invocados son del lado de su dueño */
+  aliado: (a, b) => !!(a.equipo && a.equipo === b.equipo) || (a.inv || a.id) === (b.inv || b.id),
+  /* Los que cuentan para ganar (los bichos invocados no) */
+  vivos: s => s.jug.filter(j => j.vivo && !j.inv),
+  /* Invocador: aparecen bichos alrededor que pelean por él un rato (reemplazan a los anteriores) */
+  invocar(s, a) {
+    const E = this.esc(s), st = a.st, fuerza = 1 + (st.invFuerza || 0), dura = 12000 * (1 + (st.invDura || 0));
+    for (const b of s.jug) if (b.inv === a.id && b.vivo) { b.vivo = false; b.murio = s.t; s.fx.push({ k: ++s.nP, tipo: "humo", x: b.x, y: b.y, t: s.t }); }
+    const tipos = st.invGolem ? ["golem", "lobo", "lobo"] : Array(st.invN || 2).fill(st.invN >= 3 ? "esqueleto" : null).map((x, i) => x || (i % 2 ? "esqueleto" : "lobo"));
+    tipos.forEach((tipo, i) => {
+      const B = AR.BICHOS[tipo], ang = (i / tipos.length) * Math.PI * 2 + Math.random();
+      let x = a.x + Math.cos(ang) * 60, y = a.y + Math.sin(ang) * 60;
+      for (let k = 0; k < 12 && !this.libre(E, x, y); k++) { x += (a.x - x) * 0.3; y += (a.y - y) * 0.3; }
+      const j = this.luchador({ id: `${a.id}~${++s.nP}`, name: "", cpu: true, ia: Math.min(0.95, 0.55 + 0.4 * (a.ia ?? 0.6)), equipo: a.equipo, sprite: B[3], tam: B[5], look: { color: B[2], acc: [] },
+        arena: { clase: B[4], lv: a.lv || 1, pre: 0, pts: {}, ppts: {}, evo: [], eq: {} } }, { x, y });
+      j.inv = a.id; j.hasta = s.t + dura; j.evoIc = B[1]; j.elo = 0; j.cdA = s.t + 400;
+      j.hp = j.max = Math.round(a.max * (tipo === "golem" ? 0.9 : 0.35) * fuerza);
+      j.st.mult = a.st.mult * (tipo === "golem" ? 0.75 : 0.5) * fuerza; j.st.def = 1; j.st.vel = j.st.vel * (tipo === "lobo" ? 1.15 : tipo === "golem" ? 0.75 : 0.95);
+      s.jug.push(j);
+      s.fx.push({ k: ++s.nP, tipo: "onda", x, y, r: 46, color: "#b197fc", t: s.t });
+    });
+    s.fx.push({ k: ++s.nP, tipo: "num", x: a.x, y: a.y - 50, txt: "👹 ¡Invocación!", color: "#d0bfff", t: s.t });
+    for (const b of s.jug) if (b.inv === a.id && b.vivo) b.boom = !!st.invBoom;
+  },
+  /* Señor de los muertos: sus esqueletos explotan al irse */
+  explotar(s, b) {
+    if (b.exploto) return; b.exploto = true;
+    const due = s.jug.find(x => x.id === b.inv); if (!due) return;
+    for (const c of s.jug) if (c.vivo && !this.aliado(due, c) && Math.hypot(c.x - b.x, c.y - b.y) < 90) this.pegar(s, due, c, AR.CLASES.invocador.atk.dano * 0.9, false, false);
+    s.fx.push({ k: ++s.nP, tipo: "boom", x: b.x, y: b.y, r: 80, t: s.t });
+  },
   objetivo(s, a, alcance) {
     let mejor = null, d0 = Infinity;
     for (const b of s.jug) if (b !== a && b.vivo && !(s.t < b.invis) && !this.aliado(a, b)) { const d = Math.hypot(b.x - a.x, b.y - a.y); if (d < d0 && d < alcance) { d0 = d; mejor = b; } }
@@ -117,8 +149,12 @@ const Arena = {
       s.fx.push({ k: ++s.nP, tipo: "onda", x: b.x, y: b.y, r: 90, color: "#ffd43b", t: s.t }, { k: ++s.nP, tipo: "num", x: b.x, y: b.y - 50, txt: "🌟 ¡Revive!", color: "#ffd43b", t: s.t });
       return;
     }
-    b.hp = 0; b.vivo = false; s.muertes.push(b.id);
-    if (a && a !== b) { a.kills++; s.feed.unshift({ t: s.t, txt: `${a.name} ⚔️ ${b.name}` }); }
+    b.hp = 0; b.vivo = false; b.murio = s.t;
+    // Lo que elimina un bicho invocado cuenta para su dueño
+    const autor = a && a.inv ? s.jug.find(x => x.id === a.inv) || a : a;
+    if (b.inv) { s.fx.push({ k: ++s.nP, tipo: "humo", x: b.x, y: b.y, t: s.t }); if (b.boom) this.explotar(s, b); return; }
+    s.muertes.push(b.id);
+    if (autor && autor !== b) { autor.kills++; s.feed.unshift({ t: s.t, txt: `${autor.name} ${a.inv ? a.evoIc : "⚔️"} ${b.name}` }); }
     else s.feed.unshift({ t: s.t, txt: `☠️ ${b.name} cayó` });
     s.feed = s.feed.slice(0, 4);
     s.fx.push({ k: ++s.nP, tipo: "muerte", x: b.x, y: b.y, t: s.t });
@@ -165,7 +201,7 @@ const Arena = {
     } else if (a.clase === "asesino") {
       a.invis = s.t + 4000;
       s.fx.push({ k: ++s.nP, tipo: "humo", x: a.x, y: a.y, t: s.t });
-    }
+    } else if (a.clase === "invocador") this.invocar(s, a);
   },
   saltar(s, a, dir) {
     const E = this.esc(s);
@@ -229,13 +265,20 @@ const Arena = {
       s.prox = s.t + 12000;
       for (let k = 0; k < 30; k++) { const x = 150 + Math.random() * 1100, y = 150 + Math.random() * 700; if (this.libre(E, x, y, 30) && !E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 30)) { s.pociones.push({ k: ++s.nP, x, y }); break; } }
     }
-    s.pociones = s.pociones.filter(p => { const j = s.jug.find(j => j.vivo && Math.hypot(j.x - p.x, j.y - p.y) < 34); if (j) { const c = Math.round(35 * (j.st.pocion || 1)); j.hp = Math.min(j.max, j.hp + c); s.fx.push({ k: ++s.nP, tipo: "num", x: j.x, y: j.y - 40, txt: "+" + c, color: "#3ddcb1", t: s.t }); return false; } return true; });
+    s.pociones = s.pociones.filter(p => { const j = s.jug.find(j => j.vivo && !j.inv && Math.hypot(j.x - p.x, j.y - p.y) < 34); if (j) { const c = Math.round(35 * (j.st.pocion || 1)); j.hp = Math.min(j.max, j.hp + c); s.fx.push({ k: ++s.nP, tipo: "num", x: j.x, y: j.y - 40, txt: "+" + c, color: "#3ddcb1", t: s.t }); return false; } return true; });
     // Giro del guerrero: golpea alrededor cada 0,3 s mientras dura
     for (const a of s.jug) {
       if (!a.vivo || !(s.t < a.giro) || s.t < a.giroSig) continue;
       a.giroSig = s.t + 300;
       for (const b of s.jug) if (b !== a && b.vivo && !this.aliado(a, b) && Math.hypot(b.x - a.x, b.y - a.y) < 110) this.pegar(s, a, b, AR.CLASES.guerrero.atk.dano * 0.5, false, false);
     }
+    // Bichos invocados: se van cuando se termina su tiempo o cae su dueño
+    for (const j of s.jug) {
+      if (!j.inv || !j.vivo) continue;
+      const due = s.jug.find(x => x.id === j.inv);
+      if (s.t > j.hasta || !due || !due.vivo) { j.vivo = false; j.murio = s.t; s.fx.push({ k: ++s.nP, tipo: "humo", x: j.x, y: j.y, t: s.t }); if (due && due.st.invBoom) this.explotar(s, j); }
+    }
+    s.jug = s.jug.filter(j => !j.inv || j.vivo || s.t - j.murio < 1500);
     // Compus
     for (const j of s.jug) if (j.cpu && j.vivo) this.cpu(s, j, dt);
     // Velocidad de cada uno (para apuntar a donde van)
@@ -279,7 +322,7 @@ const Arena = {
       if (Math.abs(lateral) < 40 && Math.random() < h * 0.9) { const s2 = lateral >= 0 ? 1 : -1; mx += -uy * s2 * 1.6; my += ux * s2 * 1.6; }
     }
     // Con poca vida, los buenos van a buscar una poción
-    if (j.hp < j.max * 0.45 && s.pociones.length && h > 0.35) { const P = s.pociones.reduce((a, q) => Math.hypot(q.x - j.x, q.y - j.y) < Math.hypot(a.x - j.x, a.y - j.y) ? q : a); const pd = Math.hypot(P.x - j.x, P.y - j.y) || 1; if (pd < 600) { mx += (P.x - j.x) / pd * 1.4 * h; my += (P.y - j.y) / pd * 1.4 * h; } }
+    if (!j.inv && j.hp < j.max * 0.45 && s.pociones.length && h > 0.35) { const P = s.pociones.reduce((a, q) => Math.hypot(q.x - j.x, q.y - j.y) < Math.hypot(a.x - j.x, a.y - j.y) ? q : a); const pd = Math.hypot(P.x - j.x, P.y - j.y) || 1; if (pd < 600) { mx += (P.x - j.x) / pd * 1.4 * h; my += (P.y - j.y) / pd * 1.4 * h; } }
     const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
     const vel = j.st.vel * ritmo * (s.t < j.lento ? 1 - AR.FRENO : 1) * (s.t < j.giro ? 1.1 : 1);
     let nx = j.x + mx * vel * dt, ny = j.y + my * vel * dt;
@@ -299,6 +342,7 @@ const Arena = {
       const sirve = j.clase === "guerrero" ? cerca >= 1 && (h < 0.5 || cerca >= 2 || b.hp < b.max * 0.6)
         : j.clase === "mago" ? rivales.some(x => Math.hypot(x.x - j.x, x.y - j.y) < 160 * j.st.nova)
         : j.clase === "arquero" ? d < 520 && d > 120
+        : j.clase === "invocador" ? d < 560 && !s.jug.some(x => x.inv === j.id && x.vivo)
         : d < 420 && d > 160;                                   // asesino: invisible para acercarse por sorpresa
       if (sirve || Math.random() < 0.15 * (1 - h)) this.especial(s, j, dx, dy);
     }
@@ -310,6 +354,7 @@ const Arena = {
     // Lugar: los vivos primero (por vida), después los que cayeron último
     const orden = [...this.vivos(s).sort((a, b) => b.hp - a.hp), ...s.muertes.slice().reverse().map(id => s.jug.find(j => j.id === id))];
     orden.forEach((j, i) => j.lugar = i + 1);
+    s.jug = s.jug.filter(j => !j.inv);
     const n = s.jug.length, K = s.online ? 32 : 20;
     for (const a of s.jug) {
       let d = 0;
@@ -335,7 +380,7 @@ const Arena = {
     const yo = s.jug.findIndex(j => j.id === pid);
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
-      jug: s.jug.map(j => ({ id: j.id, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
+      jug: s.jug.map(j => ({ id: j.id, inv: j.inv || null, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
         golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed, horda: s.horda ? Torre.vista(s) : null
@@ -549,6 +594,24 @@ const Arena = {
       ctx.strokeStyle = oscurecer(col, 0.8); ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -4, 19, -1.3, 1.3); ctx.stroke();
       ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, -4, 19, -1.25, 1.25); ctx.stroke();
       ctx.strokeStyle = "#eee"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Math.cos(-1.3) * 19, -4 + Math.sin(-1.3) * 19); ctx.lineTo(-tens * 10 + 4, -4); ctx.lineTo(Math.cos(1.3) * 19, -4 + Math.sin(1.3) * 19); ctx.stroke();
+    } else if (j.clase === "invocador" && est === 1) {
+      // Báculo de hueso con una calavera que brilla
+      ctx.rotate(golpe >= 0 ? -0.7 + golpe * 0.9 : -0.15 + Math.sin(t * 3) * 0.05);
+      ctx.strokeStyle = "#e9e1cf"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -26); ctx.stroke(); ctx.lineCap = "butt";
+      const r = 6 + (golpe >= 0 ? 4 * (1 - golpe) : Math.sin(t * 4)), g = ctx.createRadialGradient(0, -33, 1, 0, -33, r * 2.4);
+      g.addColorStop(0, "#e5dbff"); g.addColorStop(0.4, col); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -33, r * 2.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#f1ece0"; ctx.beginPath(); ctx.arc(0, -34, 7, 0, 7); ctx.fill(); ctx.fillRect(-4, -30, 8, 5);
+      ctx.fillStyle = "#7048e8"; ctx.beginPath(); ctx.arc(-2.6, -35, 1.9, 0, 7); ctx.arc(2.6, -35, 1.9, 0, 7); ctx.fill();
+    } else if (j.clase === "invocador") {
+      // Grimorio abierto que flota, con runas que giran
+      const fl = Math.sin(t * 3) * 2 - (golpe >= 0 ? 6 * (1 - golpe) : 0);
+      ctx.save(); ctx.translate(2, -14 + fl); ctx.rotate(-0.15);
+      ctx.fillStyle = "#4b2a7a"; ctx.beginPath(); ctx.roundRect(-13, -9, 26, 18, 3); ctx.fill();
+      ctx.fillStyle = "#f3eee2"; ctx.beginPath(); ctx.moveTo(0, -7); ctx.quadraticCurveTo(-6, -10, -11, -7); ctx.lineTo(-11, 6); ctx.quadraticCurveTo(-6, 4, 0, 7); ctx.quadraticCurveTo(6, 4, 11, 6); ctx.lineTo(11, -7); ctx.quadraticCurveTo(6, -10, 0, -7); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 1; for (let k = -1; k <= 1; k += 2) for (let r = 0; r < 3; r++) { ctx.beginPath(); ctx.moveTo(k * 3, -3 + r * 3.5); ctx.lineTo(k * 9, -3.5 + r * 3.5); ctx.stroke(); }
+      ctx.restore();
+      ctx.fillStyle = col; ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.8; for (let k = 0; k < 3; k++) { const a = t * 2 + k * 2.09; ctx.beginPath(); ctx.arc(2 + Math.cos(a) * 18, -16 + fl + Math.sin(a) * 7, 2.2, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = invis ? 0.4 : vt < j.invul ? 0.45 : 1;
     } else if (est === 1) {
       // Varita: corta, con una estrella en la punta
       ctx.rotate(golpe >= 0 ? -0.9 + golpe * 1.2 : -0.35 + Math.sin(t * 3) * 0.06);
@@ -798,7 +861,7 @@ const Arena = {
     ctx.restore();
     // Flechas en el borde para los rivales que quedan fuera de la pantalla
     v.jug.forEach(j => {
-      if (!j.vivo || j.id === v.me) return;
+      if (!j.vivo || j.id === v.me || j.inv) return;
       const o = n.otros[j.id] || j, sx = (o.x - n.camx) * esc + W / 2, sy = (o.y - 20 - n.camy) * esc + H / 2, m = 34;
       if (sx > m && sx < W - m && sy > m + 50 && sy < H - m - 90) return;
       const ex = Math.max(m, Math.min(W - m, sx)), ey = Math.max(m + 50, Math.min(H - m - 90, sy)), ang = Math.atan2(sy - H / 2, sx - W / 2);
@@ -820,7 +883,7 @@ const Arena = {
   hud() {
     const v = Arena.v, yo = v.jug[v.yo];
     const top = byId("arTop"); if (!top) return;
-    top.innerHTML = v.horda ? Torre.barra(v) : v.jug.map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`).join("");
+    top.innerHTML = v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`).join("");
     byId("arFeed").innerHTML = v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : "");
     if (yo) byId("arEspIc").textContent = AR.CLASES[yo.clase].esp.ic;
     const c = byId("arCentro");

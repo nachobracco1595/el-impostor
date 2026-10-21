@@ -12,8 +12,10 @@ const Turnero = {
     clearTimeout(Turnero.t);
     if (!s || s.fase === "fin") return;
     if (s.fase === "anim") { Turnero.t = setTimeout(() => { if (s.fase !== "anim") return; mod.seguir(s); s.mov++; cambio(); Turnero.programar(mod, s, cambio); }, s.anim.dur + 900); return; }
-    const J = s.jug[s.turno];
-    if (s.fase === "tiro" && J && J.cpu) Turnero.t = setTimeout(() => { if (s.fase !== "tiro" || s.jug[s.turno] !== J) return; mod.tirar(s, s.turno, mod.bot(s, s.turno)); s.mov++; cambio(); Turnero.programar(mod, s, cambio); }, 1100 + Math.random() * 700);
+    const J = s.jug[s.turno], mov = s.mov;
+    if (s.fase === "tiro" && J && J.cpu) Turnero.t = setTimeout(() => { if (s.fase !== "tiro" || s.jug[s.turno] !== J || s.mov !== mov) return; mod.tirar(s, s.turno, mod.bot(s, s.turno)); s.mov++; cambio(); Turnero.programar(mod, s, cambio); }, mod.esperaBot ? mod.esperaBot(s) : 1100 + Math.random() * 700);
+    // Tiempo límite (por ejemplo, para responder una pregunta): si se pasa, el juego decide qué pasa
+    else if (s.fase === "tiro" && J && s.limite && mod.vencido) Turnero.t = setTimeout(() => { if (s.fase !== "tiro" || s.jug[s.turno] !== J || s.mov !== mov) return; mod.tirar(s, s.turno, mod.vencido(s)); s.mov++; cambio(); Turnero.programar(mod, s, cambio); }, Math.max(0, s.limite - Date.now()) + 250);
   },
   /* Acción de alguien (pid null: modo un teléfono, tira el que tiene el turno) */
   act(mod, s, pid, a) {

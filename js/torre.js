@@ -81,7 +81,7 @@ const Torre = {
   armar(f, h, opts = {}) {
     const P = this.piso(f, h.length);
     const s = Arena.setup([...h.map(x => ({ ...x, equipo: "h" })), ...P.olas[0]], { esc: P.esc, nivel: "normal", online: !!opts.online, horda: { piso: f, ola: 1, olas: P.olas.length, resto: P.olas.slice(1), jefe: P.jefe, gano: null, run: opts.run, n: h.length } });
-    s.jug.forEach(j => { if (j.equipo === "h") { const d = h.find(x => x.id === j.id); j.hp = Math.max(1, Math.round(j.max * ((d && d.hp) || 1))); } else { const d = P.olas[0].find(x => x.id === j.id); if (d) j.evoIc = d.ic; } });
+    s.jug.forEach(j => { if (j.equipo === "h" && !j.inv) { const d = h.find(x => x.id === j.id); j.hp = Math.max(1, Math.round(j.max * ((d && d.hp) || 1))); } else { const d = P.olas[0].find(x => x.id === j.id); if (d) j.evoIc = d.ic; } });
     return s;
   },
   jugarPiso() {
@@ -99,7 +99,7 @@ const Torre = {
   },
   /* Lo llama Arena.tick: nuevas olas y fin del piso */
   tick(s) {
-    const H = s.horda, humanos = s.jug.filter(j => j.equipo === "h"), yo = humanos.find(j => j.vivo) || humanos[0];
+    const H = s.horda, humanos = s.jug.filter(j => j.equipo === "h" && !j.inv), yo = humanos.find(j => j.vivo) || humanos[0];
     if (!humanos.some(j => j.vivo)) return this.cerrar(s, false);
     if (s.jug.some(j => j.equipo === "m" && j.vivo)) return;
     if (!H.resto.length) return this.cerrar(s, true);
@@ -121,7 +121,7 @@ const Torre = {
     if (typeof Sonido !== "undefined") Sonido.sfx(gano ? "victoria" : "derrota");
     if (!s.online) {
       if (typeof Mente !== "undefined") Mente.resultado("torre", gano);
-      const R = S.torre, yo = s.jug.find(j => j.equipo === "h");
+      const R = S.torre, yo = s.jug.find(j => j.equipo === "h" && !j.inv);
       this.cobrar(this.vista(s), yo.clase, yo.st);
       if (gano && R) R.hp = Math.min(1, yo.hp / yo.max + 0.35); else S.torre = null;
     }
@@ -151,7 +151,7 @@ const Torre = {
   salir() { Arena.parar(); S.torre = null; S.arena = null; go("arenaIntro"); },
 
   /* ---------- Pantalla de pelea ---------- */
-  vista(s) { const H = s.horda; return { id: s.id, run: H.run, n: H.n, piso: H.piso, ola: H.ola, olas: H.olas, gano: H.gano, jefe: H.jefe, vivos: s.jug.filter(j => j.equipo === "m" && j.vivo).length, caidos: s.jug.filter(j => j.equipo === "h" && !j.vivo).length }; },
+  vista(s) { const H = s.horda; return { id: s.id, run: H.run, n: H.n, piso: H.piso, ola: H.ola, olas: H.olas, gano: H.gano, jefe: H.jefe, vivos: s.jug.filter(j => j.equipo === "m" && j.vivo).length, caidos: s.jug.filter(j => j.equipo === "h" && !j.inv && !j.vivo).length }; },
   /* Online: al ver un intento nuevo, cada teléfono usa uno de sus intentos del día (si no le quedan, juega sin premio) */
   unirse(v) {
     const H = v.horda; if (!H || !v.online || !H.run) return;
@@ -163,7 +163,7 @@ const Torre = {
   },
   barra(v) {
     this.unirse(v);
-    const yo = v.jug[v.yo], H = v.horda, humanos = v.jug.filter(j => j.equipo === "h");
+    const yo = v.jug[v.yo], H = v.horda, humanos = v.jug.filter(j => j.equipo === "h" && !j.inv);
     const chip = j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`;
     return `${humanos.map(chip).join("")}<span class="ar-chip to-chip"><b>🗼 Piso ${H.piso}${H.jefe ? " · Jefe" : ""}</b></span><span class="ar-chip to-chip"><b>🌊 ${H.ola}/${H.olas} · 👹 ${H.vivos}</b></span>
       ${yo && !yo.vivo && v.fase !== "fin" && humanos.some(j => j.vivo) ? `<span class="ar-chip to-chip"><b>💀 Caíste: volvés en el próximo piso</b></span>` : ""}`;
@@ -215,7 +215,7 @@ const Torre = {
   seguirOn(R) {
     const s = R.arena, T = R.torreRun;
     if (!s || !T || s.fase !== "fin" || !s.horda.gano) return;
-    s.jug.filter(j => j.equipo === "h").forEach(j => { T.hp[j.id] = j.vivo ? Math.min(1, j.hp / j.max + 0.35) : 0.4; });
+    s.jug.filter(j => j.equipo === "h" && !j.inv).forEach(j => { T.hp[j.id] = j.vivo ? Math.min(1, j.hp / j.max + 0.35) : 0.4; });
     T.piso++;
     this.pisoOn(R);
   },

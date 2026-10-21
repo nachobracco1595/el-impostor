@@ -461,7 +461,7 @@ const ArenaPixi = {
   fuera(v, n, esc, W, H) {
     const g = this.flechas; g.clear(); const usados = new Set();
     v.jug.forEach(j => {
-      if (!j.vivo || j.id === v.me) return;
+      if (!j.vivo || j.id === v.me || j.inv) return;
       const o = n.otros[j.id] || j, sx = (o.x - n.camx) * esc + W / 2, sy = (o.y - 20 - n.camy) * esc + H / 2, m = 34;
       if (sx > m && sx < W - m && sy > m + 50 && sy < H - m - 90) return;
       const ex = Math.max(m, Math.min(W - m, sx)), ey = Math.max(m + 50, Math.min(H - m - 90, sy)), ang = Math.atan2(sy - H / 2, sx - W / 2);

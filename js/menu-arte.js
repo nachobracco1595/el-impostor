@@ -93,6 +93,15 @@ const MenuArte = {
         <path d="M-8 -43 L4 -43 L-1 -57 Z" fill="#748ffc"/><circle cx="-1" cy="-58" r="2.2" fill="#ffd43b"/>
         <path d="M-10 -28 q4 3 8 0 q4 3 8 0" stroke="#fff" stroke-width="2.5" fill="none"/></g></svg>`;
   },
+  preguntas() {
+    const cols = ["#22b8cf", "#4c6ef5", "#f59f00", "#40c057", "#e64980", "#9c36b5", "#ffd43b"];
+    const sec = k => { const a0 = (k - 0.5) / 7 * Math.PI * 2 - Math.PI / 2, a1 = (k + 0.5) / 7 * Math.PI * 2 - Math.PI / 2, R = 34; return `M0 0 L${(Math.cos(a0) * R).toFixed(1)} ${(Math.sin(a0) * R).toFixed(1)} A${R} ${R} 0 0 1 ${(Math.cos(a1) * R).toFixed(1)} ${(Math.sin(a1) * R).toFixed(1)} Z`; };
+    return `<svg viewBox="0 0 120 84" width="120" height="84" aria-hidden="true">
+      <g transform="translate(46 44) rotate(-12)"><circle r="37" fill="#1b1729"/>${cols.map((c, k) => `<path d="${sec(k)}" fill="${c}" stroke="#fff" stroke-width="1.6"/>`).join("")}<circle r="9" fill="#fff"/><text y="1" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#1b1729">?</text></g>
+      <path d="M40 4 L52 4 L46 15 Z" fill="#fff" stroke="#1b1729" stroke-width="1.5"/>
+      <g transform="translate(94 40) rotate(14)"><rect x="-17" y="-24" width="34" height="46" rx="8" fill="#fff"/><text y="3" font-size="34" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#e64980">?</text></g>
+      <g font-size="13"><text x="96" y="78">😂</text><text x="2" y="16">✨</text></g></svg>`;
+  },
   online() {
     return `<svg viewBox="0 0 120 84" width="120" height="84" aria-hidden="true">
       <g fill="none" stroke="#3ddcb1" stroke-width="5" stroke-linecap="round"><path d="M38 34 A32 32 0 0 1 82 34" opacity=".45"/><path d="M46 44 A20 20 0 0 1 74 44" opacity=".75"/></g><circle cx="60" cy="54" r="5" fill="#3ddcb1"/>

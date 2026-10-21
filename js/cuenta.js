@@ -47,6 +47,7 @@ const Cuenta = {
 
   /* Después de cada pantalla: si terminó una partida, suma puntos (una sola vez) */
   revisar() {
+    if (typeof Mente !== "undefined") try { Mente.revisar(); } catch (e) { console.warn(e); }
     const pend = [];
     const deLocal = (players, fn) => players.forEach((p, i) => { const u = BD.porNombre(p.name); if (u) pend.push([u, fn(p, i)]); });
     if (typeof Net !== "undefined" && Net.activo()) {

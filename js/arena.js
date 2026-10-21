@@ -62,13 +62,14 @@ const Arena = {
       id: "ar-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), esc, online: !!cfg.online, nivelCpu: cfg.nivel || "normal",
       t: 0, fase: "cuenta", inicio: 3000, proy: [], fx: [], pociones: [], prox: 12000, muertes: [], feed: [], sub: false, nP: 0,
       horda: cfg.horda || null,
+      mente: cfg.online || typeof Mente === "undefined" ? null : { distRival: Mente.costumbre("arena", "dist", 250) },
       jug: jug.map((j, i) => this.luchador(j, pos[i]))
     };
   },
   luchador(j, pos) {
     const p = this.validar(j.arena), st = Heroes.stats(p);
     if (j.fuerza) { st.hp = Math.round(st.hp * j.fuerza.hp); st.mult *= j.fuerza.dano; }
-    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
+    return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, ia: j.ia ?? null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null,
       elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
@@ -126,6 +127,8 @@ const Arena = {
     if (s.fase !== "pelea" || !a.vivo || s.t < a.cdA || s.t < a.giro) return;
     const C = AR.CLASES[a.clase], A = C.atk;
     a.cdA = s.t + A.cd * a.st.cd; a.golpe = s.t;
+    // Los bots anotan desde qué distancia atacás vos, para jugarte en contra
+    if (!a.cpu && s.mente && !s.horda) { const r = s.jug.filter(b => b !== a && b.vivo && !this.aliado(a, b)).map(b => Math.hypot(b.x - a.x, b.y - a.y)); if (r.length) Mente.anotar("arena", "dist", Math.min(...r), 0.05); }
     const alc = (A.alcance || 80) * a.st.alc;
     const dir = this.apuntar(s, a, dx, dy, alc + 40, A.tipo === "melee" ? 0 : A.vel, manual);
     a.dx = dir.x; a.dy = dir.y; if (Math.abs(dir.x) > 0.1) a.cara = dir.x < 0 ? -1 : 1;
@@ -244,29 +247,61 @@ const Arena = {
     if (vivos.length <= 1 || (!s.online && humanosVivos === 0)) this.terminar(s);
   },
 
-  /* Compu: busca al más cercano, mantiene distancia según su clase, esquiva la lava y ataca */
+  /* Compu: elige a quién atacar, mantiene la distancia que le conviene, esquiva proyectiles y lava, toma pociones
+     y usa el especial cuando sirve. Qué tan bien lo hace depende de j.ia (0 a 1), que sale de la dificultad y de lo que
+     los bots aprendieron de la persona (Mente): con más nivel apuntan mejor, esquivan más y juegan en contra de tu estilo. */
   cpu(s, j, dt) {
-    const E = this.esc(s), C = AR.CLASES[j.clase], ritmo = { facil: 0.55, normal: 0.85, dificil: 1 }[j.nivel || "normal"];
-    const b = this.objetivo(s, j, 3000); if (!b) return;
-    const dx = b.x - j.x, dy = b.y - j.y, d = Math.hypot(dx, dy) || 1;
-    const lejos = C.atk.tipo === "melee" ? C.atk.alcance * 0.7 : 270;
-    j.giro = j.giro || (Math.random() < 0.5 ? 1 : -1);
-    if (Math.random() < 0.005) j.giro *= -1;
+    const E = this.esc(s), C = AR.CLASES[j.clase], h = j.ia ?? ({ facil: 0.25, normal: 0.5, dificil: 0.8 }[j.nivel || "normal"]);
+    const ritmo = 0.5 + 0.5 * h, rivales = s.jug.filter(b => b !== j && b.vivo && !this.aliado(j, b) && !(s.t < b.invis));
+    if (!rivales.length) return;
+    // A quién: los flojos van al más cercano; los buenos prefieren al que tiene poca vida o a la persona
+    const puntaje = b => { const d = Math.hypot(b.x - j.x, b.y - j.y); return d * (1 - 0.5 * h * (1 - b.hp / b.max)) * (h > 0.6 && !b.cpu ? 0.85 : 1); };
+    if (!j.obj || !rivales.includes(j.obj) || s.t > (j.cambio || 0)) { j.obj = rivales.reduce((a, b) => puntaje(b) < puntaje(a) ? b : a); j.cambio = s.t + 900 + Math.random() * 1200; }
+    const b = j.obj;
+    const dx = b.x - j.x, dy = b.y - j.y, d = Math.hypot(dx, dy) || 1, ranged = C.atk.tipo !== "melee";
+    const alcance = (C.atk.alcance || 80) * j.st.alc + (ranged ? 0 : 10);
+    // Distancia que le conviene: contra alguien que pega de lejos, los melee se tiran encima; los de lejos se alejan de los melee
+    const rivalLejos = !b.cpu && s.mente ? s.mente.distRival > 230 : AR.CLASES[b.clase].atk.tipo !== "melee";
+    const quiero = ranged ? Math.min(alcance * 0.8, (AR.CLASES[b.clase].atk.tipo === "melee" ? 330 : 270) * (0.85 + 0.3 * h)) : C.atk.alcance * 0.7;
+    j.lado = j.lado || (Math.random() < 0.5 ? 1 : -1);
+    if (Math.random() < 0.005 + 0.01 * h) j.lado *= -1;
     let mx = 0, my = 0;
-    if (d > lejos + 20) { mx = dx / d; my = dy / d; }
-    else if (d < 150 && C.atk.tipo !== "melee") { mx = -dx / d * 0.6; my = -dy / d * 0.6; }   // retrocede poco y lento
-    mx += -dy / d * 0.5 * j.giro; my += dx / d * 0.5 * j.giro;
+    if (d > quiero + 20) { mx = dx / d; my = dy / d; }
+    else if (ranged && d < quiero - 60) { mx = -dx / d * (0.4 + 0.5 * h); my = -dy / d * (0.4 + 0.5 * h); }
+    const zig = ranged ? 0.5 : rivalLejos ? 0.25 + 0.5 * h : 0.5;       // en zigzag para que cueste apuntarle
+    mx += -dy / d * zig * j.lado; my += dx / d * zig * j.lado;
+    // Esquivar proyectiles que vienen hacia él
+    if (h > 0.2) for (const p of s.proy) {
+      if (p.dueno === j.id) continue; const due = s.jug.find(x => x.id === p.dueno); if (due && this.aliado(due, j)) continue;
+      const rx = j.x - p.x, ry = j.y - p.y, v = Math.hypot(p.vx, p.vy) || 1, ux = p.vx / v, uy = p.vy / v, adelante = rx * ux + ry * uy;
+      if (adelante < 0 || adelante > 320) continue;
+      const lateral = rx * -uy + ry * ux;
+      if (Math.abs(lateral) < 40 && Math.random() < h * 0.9) { const s2 = lateral >= 0 ? 1 : -1; mx += -uy * s2 * 1.6; my += ux * s2 * 1.6; }
+    }
+    // Con poca vida, los buenos van a buscar una poción
+    if (j.hp < j.max * 0.45 && s.pociones.length && h > 0.35) { const P = s.pociones.reduce((a, q) => Math.hypot(q.x - j.x, q.y - j.y) < Math.hypot(a.x - j.x, a.y - j.y) ? q : a); const pd = Math.hypot(P.x - j.x, P.y - j.y) || 1; if (pd < 600) { mx += (P.x - j.x) / pd * 1.4 * h; my += (P.y - j.y) / pd * 1.4 * h; } }
     const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
     const vel = j.st.vel * ritmo * (s.t < j.lento ? 1 - AR.FRENO : 1) * (s.t < j.giro ? 1.1 : 1);
     let nx = j.x + mx * vel * dt, ny = j.y + my * vel * dt;
-    const enLava = (x, y) => E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 10) || (s.rayosOn && E.rayos && E.rayos.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
-    if (enLava(nx, ny) && !enLava(j.x, j.y)) { nx = j.x - my * vel * dt * j.giro; ny = j.y + mx * vel * dt * j.giro; }
-    if (this.libre(E, nx, j.y)) j.x = nx; else j.giro *= -1;
+    const enLava = (x, y) => E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 10 + 20 * h) || (s.rayosOn && E.rayos && E.rayos.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
+    if (enLava(nx, ny) && !enLava(j.x, j.y)) { nx = j.x - my * vel * dt * j.lado; ny = j.y + mx * vel * dt * j.lado; }
+    if (this.libre(E, nx, j.y)) j.x = nx; else j.lado *= -1;
     if (this.libre(E, j.x, ny)) j.y = ny;
     if (Math.abs(mx) > 0.1) j.cara = mx < 0 ? -1 : 1;
-    const alcance = (C.atk.alcance || 80) * j.st.alc + (C.atk.tipo === "melee" ? 10 : 0);
-    if (d < alcance && Math.random() < ritmo * 0.3) this.atacar(s, j, dx, dy);
-    if (s.t > j.cdE && Math.random() < ritmo * 0.02 && d < (j.clase === "arquero" ? 500 : j.clase === "asesino" ? 260 : 150)) this.especial(s, j, dx, dy);
+    // Atacar: los flojos fallan la puntería y tardan en reaccionar
+    if (d < alcance && Math.random() < 0.1 + 0.35 * h) {
+      const err = (1 - h) * 0.5 * (Math.random() - 0.5), ca = Math.cos(err), sa = Math.sin(err);
+      this.atacar(s, j, dx * ca - dy * sa, dx * sa + dy * ca);
+    }
+    // Especial cuando sirve de verdad
+    if (s.t > j.cdE && Math.random() < 0.01 + 0.05 * h) {
+      const cerca = rivales.filter(x => Math.hypot(x.x - j.x, x.y - j.y) < 130).length;
+      const sirve = j.clase === "guerrero" ? cerca >= 1 && (h < 0.5 || cerca >= 2 || b.hp < b.max * 0.6)
+        : j.clase === "mago" ? rivales.some(x => Math.hypot(x.x - j.x, x.y - j.y) < 160 * j.st.nova)
+        : j.clase === "arquero" ? d < 520 && d > 120
+        : d < 420 && d > 160;                                   // asesino: invisible para acercarse por sorpresa
+      if (sirve || Math.random() < 0.15 * (1 - h)) this.especial(s, j, dx, dy);
+    }
   },
 
   terminar(s) {
@@ -286,6 +321,8 @@ const Arena = {
       const multXp = s.online ? 1.2 : { facil: 0.6, normal: 1, dificil: 1.3 }[s.nivelCpu] || 1;
       a.xp = Math.min(250, Math.round((20 + a.kills * 12 + (a.lugar === 1 ? 30 : a.lugar === 2 && n > 2 ? 12 : 0)) * multXp));
     }
+    const yo = s.jug.find(j => !j.cpu);
+    if (!s.online && !s.horda && yo && typeof Mente !== "undefined") Mente.resultado("arena", yo.lugar === 1);
   },
 
   resultado(s, pid) {
@@ -818,7 +855,7 @@ const Arena = {
     const jug = [{ id: "yo", name: u ? u.nombre : "Tú", look: u ? u.look : null, arena: yo }];
     for (let i = 0; i < cpus; i++) {
       const lv = Math.max(1, Math.min(HE.MAX, Math.round(base + (Math.random() - 0.5) * 3)));
-      jug.push({ id: "cpu" + i, name: "🤖 " + nombres[i], cpu: true, nivel, look: { color: COLORES[(i * 3 + 2) % COLORES.length], acc: [] }, arena: Heroes.cpu(lv, yo.pre) });
+      jug.push({ id: "cpu" + i, name: "🤖 " + nombres[i], cpu: true, nivel, ia: typeof Mente !== "undefined" ? Mente.habilidad("arena", nivel) : null, look: { color: COLORES[(i * 3 + 2) % COLORES.length], acc: [] }, arena: Heroes.cpu(lv, yo.pre) });
     }
     S.arena = this.setup(jug, { esc, nivel });
     S.arenaCfg = { modo, nivel, esc };

@@ -98,6 +98,10 @@ const Nave = {
       if (v && v.vivo && !v.imp && NV.dist(yo, v) <= NV.R_MATAR + 20) {
         v.vivo = false; yo.kcd = ahora + NV.ESPERA_MATAR; yo.kills++;
         s.cuerpos.push({ id: v.id, name: v.name, look: v.look, x: v.x, y: v.y, t: ahora });
+        // Pistas para las compus: quién andaba cerca, y si alguna lo vio (con más nivel ven más)
+        const h = Nave.ia();
+        s.pistas = [...(s.pistas || []), s.jug.filter(j => j.vivo && j !== v && NV.dist(j, v) < 420).map(j => j.id)].slice(-6);
+        s.jug.forEach(b => { if (b.bot && b.vivo && !b.imp && NV.dist(b, v) < 380 && Math.random() < 0.25 + 0.6 * h) b.sabe = yo.id; });
         s.ultimoKill = { por: yo.id, n: (s.ultimoKill ? s.ultimoKill.n : 0) + 1 };
         Nave.revisarFin(s);
       }
@@ -153,6 +157,8 @@ const Nave = {
   },
 
   /* ---------- Compus ---------- */
+  /* Habilidad de 0 a 1 (la memoria de los bots, Mente) */
+  ia() { return typeof Mente !== "undefined" ? Mente.habilidad("nave") : 0.5; },
   moverCompus(s, dt) {
     const ahora = Date.now();
     for (const b of s.jug.filter(j => j.bot)) {
@@ -161,7 +167,8 @@ const Nave = {
       if (b.vivo) { const c = s.cuerpos.find(c => NV.dist(b, c) < 160 && !(b.imp && c.t > ahora - 8000)); if (c) { b.x = c.x; b.y = c.y; Nave.act(s, b.id, { t: "reportar", id: c.id }); return; } }
       // Impostor: eliminar si hay alguien solo cerca
       if (b.imp && b.vivo && ahora >= b.kcd) {
-        const vict = s.jug.find(v => v.vivo && !v.imp && NV.dist(b, v) < 260 && !s.jug.some(w => w !== v && w !== b && w.vivo && !w.imp && NV.dist(w, v) < 260));
+        const solo = 260 + 160 * Nave.ia();       // los buenos se aseguran de que no haya nadie mirando
+        const vict = s.jug.find(v => v.vivo && !v.imp && NV.dist(b, v) < 260 && !s.jug.some(w => w !== v && w !== b && w.vivo && !w.imp && NV.dist(w, v) < solo));
         if (vict) {
           if (NV.dist(b, vict) <= NV.R_MATAR) { Nave.act(s, b.id, { t: "matar", id: vict.id }); b.ruta = []; b.espera = ahora + 1500; continue; }
           b.ruta = [vict];
@@ -185,10 +192,16 @@ const Nave = {
     const ahora = Date.now(), r = s.reunion;
     if (!r.sospecha) {
       // Sospechoso: quien estaba más cerca del cuerpo o al azar
-      const vivos = s.jug.filter(j => j.vivo);
+      const vivos = s.jug.filter(j => j.vivo), h = Nave.ia();
+      // Cuántas veces estuvo cada uno cerca de un cuerpo
+      const marcas = {}; (s.pistas || []).forEach(l => l.forEach(id => marcas[id] = (marcas[id] || 0) + 1));
       r.sospecha = Object.fromEntries(s.jug.filter(j => j.bot && j.vivo).map(b => {
-        const otros = vivos.filter(x => x.id !== b.id);
-        const imp = b.imp ? pick(otros.filter(x => !x.imp)) : Math.random() < 0.55 ? pick(otros) : null;
+        const otros = vivos.filter(x => x.id !== b.id), visto = b.sabe && otros.find(x => x.id === b.sabe);
+        const masCerca = otros.filter(x => marcas[x.id]).sort((x, y) => marcas[y.id] - marcas[x.id])[0];
+        const imp = b.imp ? pick(otros.filter(x => !x.imp)) || pick(otros)
+          : visto ? visto
+          : masCerca && marcas[masCerca.id] >= 2 && Math.random() < h ? masCerca
+          : Math.random() < 0.55 - 0.25 * h ? pick(otros) : null;
         return [b.id, { a: imp ? imp.id : "saltar", t: ahora + 6000 + Math.random() * 20000 }];
       }));
     }
@@ -598,6 +611,7 @@ PANTALLAS.naveIntro = () => {
   <section class="screen">
     <div class="nave-intro"><span class="nave-mini grande">🚀</span><h2>La Nave</h2>
       <p class="sub">Muévete por la nave y haz tus tareas. Entre la tripulación hay un impostor que elimina a escondidas. Si encuentras un cuerpo, repórtalo: todos debaten y votan a quién echar.</p></div>
+${typeof Mente !== "undefined" ? Mente.chip("nave") : ""}
     <div class="panel"><span class="label">Cómo se juega</span>
       <ul class="reglas-pts">
         <li><span>🕹️ Moverse</span><b>Arrastra el dedo en la pantalla (o flechas)</b></li>

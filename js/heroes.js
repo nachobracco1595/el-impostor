@@ -349,6 +349,7 @@ PANTALLAS.arenaIntro = () => {
     ${prest}
     <div class="panel"><span class="label">Equipo de ${esc(nombrePj)}</span><p class="sub he-nota">Cada material se compra al llegar a su nivel. Lo que compraste lo podés cambiar cuando quieras.</p>${slotHTML}</div>
     ${Torre.panel(u)}
+    ${typeof Mente !== "undefined" ? Mente.chip("arena") : ""}
     <div class="panel"><span class="label">Escenario</span>
       <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, X]) => `<button class="chip-j ${cfg.esc === k ? "on" : ""}" data-esc="${k}">${X.ic} ${X.nombre}</button>`).join("")}</div>
       <span class="label">Contra la compu</span>

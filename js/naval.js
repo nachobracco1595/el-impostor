@@ -58,7 +58,16 @@ const Naval = {
     const R = s.jug[1 - yo], tiros = R.tiros;
     const tocadas = tiros.filter(c => { const b = R.barcos.find(x => x.celdas.includes(c)); return b && !Naval.hundido(b, tiros); });
     const vecinos = c => [c - 10, c + 10, c % 10 ? c - 1 : -1, c % 10 < 9 ? c + 1 : -1].filter(x => x >= 0 && x < 100 && !tiros.includes(x));
+    // h: habilidad (Mente). Los flojos a veces se olvidan de rematar; los buenos calculan dónde entran los barcos que faltan
+    // y se acuerdan de dónde solés esconderlos vos
+    const M = typeof Mente !== "undefined", h = M ? Mente.habilidad("naval", s.jug[yo].nivel) : 0.5;
+    let mapa = null;
+    if (M && !R.cpu) {
+      const D = Mente.de("naval"); mapa = D.mapa = D.mapa || Array(100).fill(0.17);
+      if (!s.menteNav && Mente.local()) { s.menteNav = true; const mias = new Set(R.barcos.flatMap(b => b.celdas)); for (let c = 0; c < 100; c++) mapa[c] = mapa[c] * 0.85 + (mias.has(c) ? 0.15 : 0); Mente.guardar(); }
+    }
     let cand = [];
+    if (tocadas.length && Math.random() < 0.35 * (1 - h)) return pick([...Array(100).keys()].filter(x => !tiros.includes(x)));
     if (tocadas.length >= 2) {
       const hor = Math.floor(tocadas[0] / 10) === Math.floor(tocadas[1] / 10);
       cand = tocadas.flatMap(vecinos).filter(x => hor ? Math.floor(x / 10) === Math.floor(tocadas[0] / 10) : x % 10 === tocadas[0] % 10);
@@ -71,6 +80,17 @@ const Naval = {
       const libres = [...Array(100).keys()].filter(x => !tiros.includes(x) && !pegado(x));
       const damero = libres.filter(x => (Math.floor(x / 10) + x % 10) % 2 === 0);
       cand = damero.length ? damero : libres.length ? libres : [...Array(100).keys()].filter(x => !tiros.includes(x));
+      if (h > 0.45 && libres.length) {
+        // Densidad: en cuántas posiciones posibles de los barcos que quedan entra cada casilla
+        const ok = new Set(libres), largos = R.barcos.filter(b => !Naval.hundido(b, tiros)).map(b => b.celdas.length), dens = {};
+        for (const L of largos) for (let c = 0; c < 100; c++) for (const [df, dc] of [[0, 1], [1, 0]]) {
+          const cel = []; for (let k = 0; k < L; k++) { const f = Math.floor(c / 10) + df * k, cc = c % 10 + dc * k; if (f > 9 || cc > 9) break; cel.push(f * 10 + cc); }
+          if (cel.length === L && cel.every(x => ok.has(x))) cel.forEach(x => dens[x] = (dens[x] || 0) + 1);
+        }
+        const peso = x => (dens[x] || 0) * (mapa ? 0.6 + 3 * h * mapa[x] : 1) + Math.random() * (1 - h) * 3;
+        const top = libres.reduce((a, x) => peso(x) > peso(a) ? x : a, libres[0]);
+        if (dens[top] && Math.random() < 0.4 + 0.6 * h) return top;
+      }
     }
     return pick(cand);
   },

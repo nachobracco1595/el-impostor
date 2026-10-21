@@ -170,12 +170,15 @@ const AJ = {
   },
   jugadaCompu(s, nivel) {
     const leg = shuffle(AJ.legales(s));
-    if (nivel === "facil" && Math.random() < 0.3) return pick(leg);
-    const prof = nivel === "facil" ? 1 : 2;
+    // h: habilidad (la dificultad elegida + lo que aprendió de vos). Con más nivel piensa más jugadas adelante y duda menos
+    const h = typeof Mente !== "undefined" ? Mente.habilidad("ajedrez", nivel) : nivel === "facil" ? 0.2 : 0.8;
+    if (Math.random() < 0.35 * Math.max(0, 1 - h * 2)) return pick(leg);
+    const piezas = s.b.filter(p => p !== ".").length;
+    const prof = h < 0.35 ? 1 : h > 0.85 && piezas <= 10 ? 3 : 2;
     const signo = s.turno === "w" ? 1 : -1;
     let mejor = null, mv = -Infinity;
     for (const m of leg) {
-      const v = signo * AJ.buscar(AJ.aplicar(s, m), prof, -Infinity, Infinity) + (nivel === "facil" ? Math.random() * 60 : Math.random() * 8);
+      const v = signo * AJ.buscar(AJ.aplicar(s, m), prof, -Infinity, Infinity) + Math.random() * (4 + 70 * (1 - h));
       if (v > mv) { mv = v; mejor = m; }
     }
     return mejor;

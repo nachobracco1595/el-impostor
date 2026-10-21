@@ -101,6 +101,12 @@ const Truco = {
     if (a.t === "siguiente") { if (s.fase === "mano") Truco.nuevaMano(s); return; }
     if (i < 0 || s.fase !== "juego") return;
     const A = Truco.acciones(s, i), eq = Truco.equipo(s, i), p = Truco.pend(s);
+    // Los bots anotan con qué mano cantás y cuánto te achicás, para aprender si faroleás
+    if (!s.jug[i].cpu && typeof Mente !== "undefined" && Mente.local() && A[a.k || a.t]) {
+      if (a.t === "truco" && !p) Mente.anotar("truco", "fuerzaTruco", Truco.fuerza(s, i));
+      if ((TR_ENVIDO[a.t] || a.t === "envido") && !(p && p.tipo === "envido")) Mente.anotar("truco", "envCanta", Truco.envidoDe(s.jug[i].orig));
+      if (p && p.tipo === "truco" && (a.t === "quiero" || a.t === "noquiero")) Mente.anotar("truco", "achica", a.t === "noquiero" ? 1 : 0);
+    }
     if (a.t === "jugar") {
       const J = s.jug[i];
       if (!A.jugar || !J.mano.includes(a.c)) return;
@@ -212,21 +218,26 @@ const Truco = {
   decidirCompu(s) {
     const i = Truco.actor(s), J = s.jug[i], A = Truco.acciones(s, i), p = Truco.pend(s), r = Math.random();
     const env = Truco.envidoDe(J.orig), f = Truco.fuerza(s, i), esMano = Truco.equipo(s, i) === Truco.equipo(s, s.mano);
+    // Lo que aprendieron de vos: si cantás con poco, te creen menos; si te achicás seguido, te farolean más
+    const M = typeof Mente !== "undefined", h = M ? Mente.habilidad("truco") : 0.5, vsVos = p ? !s.jug[p.quien].cpu : s.jug.some(j => !j.cpu);
+    const bluffT = M && vsVos ? Math.max(-3, Math.min(4, (17 - Mente.costumbre("truco", "fuerzaTruco", 17)) / 2)) * h : 0;
+    const bluffE = M && vsVos ? Math.max(-2, Math.min(3, (28 - Mente.costumbre("truco", "envCanta", 28)) / 2)) * h : 0;
+    const achica = M && vsVos ? Mente.costumbre("truco", "achica", 0.3) : 0.3, farol = 0.03 + 0.1 * h * Math.min(1, achica / 0.5);
     if (p && p.tipo === "envido") {
       const c = p.cadena, falta = c.includes("falta");
       if (A.falta && env >= 32 && r < 0.4) return { t: "falta" };
       if (A.real && env >= 30 && r < 0.5) return { t: "real" };
       if (A.envido && env >= 29 && r < 0.3) return { t: "envido" };
-      const umbral = (falta ? 30 : c.length > 1 ? 28 : 25) - (esMano ? 1 : 0);
+      const umbral = (falta ? 30 : c.length > 1 ? 28 : 25) - (esMano ? 1 : 0) - bluffE;
       return { t: env >= umbral || (!falta && r < 0.08) ? "quiero" : "noquiero" };
     }
     if (p && p.tipo === "truco") {
       if (A.envido && env >= 27 && r < 0.9) return { t: env >= 31 ? "real" : "envido" };
       if (A.truco && f >= 19 && r < 0.55) return { t: "truco" };
-      return { t: f >= 11 + (p.nivel - 2) * 2.5 || r < 0.1 ? "quiero" : "noquiero" };
+      return { t: f >= 11 + (p.nivel - 2) * 2.5 - bluffT || r < 0.12 * (1 - h) ? "quiero" : "noquiero" };
     }
     if (A.envido && env >= 27 && r < 0.75) return { t: env >= 31 && r < 0.4 ? "real" : "envido" };
-    if (A.truco && (f >= 17 ? r < 0.55 : r < 0.05)) return { t: "truco" };
+    if (A.truco && (f >= 17 ? r < 0.55 : r < farol)) return { t: "truco" };
     return { t: "jugar", c: Truco.cartaCompu(s, i) };
   },
   cartaCompu(s, i) {

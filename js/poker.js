@@ -79,6 +79,7 @@ const Poker = {
   sig(s, i, cond = j => !j.fuera) { for (let k = 1; k <= s.n; k++) { const x = (i + k) % s.n; if (cond(s.jug[x])) return x; } return -1; },
   ciegas(s) { return PK.CIEGAS[Math.min(PK.CIEGAS.length - 1, s.nivel)]; },
   nuevaMano(s) {
+    s.subio = null;
     const vivos = Poker.vivos(s);
     if (vivos.length <= 1) return Poker.terminar(s);
     s.manoN++; s.mov++;
@@ -126,6 +127,11 @@ const Poker = {
     const i = s.jug.findIndex(j => j.id === pid), A = Poker.acciones(s, i);
     if (!A) return;
     const J = s.jug[i];
+    // Los bots anotan cómo jugás: con qué fuerza subís (faroles) y cuánto te retirás cuando te apuestan
+    if (!J.cpu && typeof Mente !== "undefined" && Mente.local()) {
+      if (a.t === "raise" && A.subir) Mente.anotar("poker", "fuerzaSube", s.mesa.length ? Poker.chance(J.mano, s.mesa, 1, 40) : Poker.preflop(J.mano) + 0.12);
+      if (!A.pasar && (a.t === "fold" || a.t === "call")) Mente.anotar("poker", "seRetira", a.t === "fold" ? 1 : 0);
+    }
     if (a.t === "fold") { J.retirado = true; J.dicho = "Se retira"; }
     else if (a.t === "call") {
       if (A.pasar) J.dicho = "Pasa";
@@ -137,7 +143,7 @@ const Poker = {
       Poker.poner(s, i, hasta - J.apuesta);
       if (subida >= s.minSubida) { s.minSubida = subida; s.jug.forEach(x => { if (x !== J) x.actuo = false; }); }
       s.apuestaMax = Math.max(s.apuestaMax, J.apuesta);
-      J.dicho = J.allin ? `All-in ${J.apuesta}` : `Sube a ${J.apuesta}`;
+      J.dicho = J.allin ? `All-in ${J.apuesta}` : `Sube a ${J.apuesta}`; s.subio = i;
     } else return;
     J.actuo = true; s.mov++; s.ultimo = i;
     s.log = [...s.log, `${J.name}: ${J.dicho}`].slice(-6);
@@ -147,6 +153,7 @@ const Poker = {
   },
   /* Siguiente calle: flop, turn, river o showdown */
   avanzar(s) {
+    s.subio = null;
     s.jug.forEach(j => { j.apuesta = 0; j.actuo = false; if (!j.retirado && !j.fuera && !j.allin) j.dicho = null; });
     s.apuestaMax = 0; s.minSubida = Poker.ciegas(s)[1];
     const m = s.mazoRest;
@@ -238,16 +245,23 @@ const Poker = {
     const i = s.turno, J = s.jug[i], A = Poker.acciones(s, i); if (!A) return null;
     const estilo = J.estilo || "equilibrado", r = Math.random();
     const rivales = Math.max(1, Poker.enJuego(s).length - 1);
-    const fuerza = s.mesa.length ? Poker.chance(J.mano, s.mesa, Math.min(rivales, 4), J.nivel === "facil" ? 60 : 160) : Poker.preflop(J.mano) * (rivales > 2 ? 0.85 : 1) + (rivales === 1 ? 0.12 : 0);
+    // h: habilidad (dificultad + lo que aprendieron de vos). Con más nivel calculan mejor y se equivocan menos
+    const M = typeof Mente !== "undefined", h = M ? Mente.habilidad("poker", J.nivel) : J.nivel === "facil" ? 0.2 : 0.5;
+    const fuerza = s.mesa.length ? Poker.chance(J.mano, s.mesa, Math.min(rivales, 4), Math.round(50 + 170 * h)) : Poker.preflop(J.mano) * (rivales > 2 ? 0.85 : 1) + (rivales === 1 ? 0.12 : 0);
     const cuota = A.pagar / (s.pozo + A.pagar || 1);
     const agresion = { prudente: 0.7, equilibrado: 1, agresivo: 1.3, farolero: 1.1 }[estilo];
-    const ruido = (J.nivel === "facil" ? 0.18 : 0.08) * (r - 0.5);
-    const f = fuerza + ruido, [, bb] = Poker.ciegas(s);
+    const ruido = (0.2 - 0.16 * h) * (r - 0.5);
+    // Si la última subida fue tuya y aprendieron que subís con poco, te pagan más liviano
+    const ult = s.jug[s.subio], vosSubiste = M && ult && !ult.cpu && !A.pasar;
+    const lectura = vosSubiste ? Math.max(-0.12, Math.min(0.15, (0.62 - Mente.costumbre("poker", "fuerzaSube", 0.62)) * 0.6)) * h : 0;
+    const f = fuerza + ruido + lectura, [, bb] = Poker.ciegas(s);
+    const hayVos = s.jug.some(j => !j.cpu && !j.fuera && !j.retirado), teAchicas = M && hayVos ? Mente.costumbre("poker", "seRetira", 0.4) : 0.4;
     const subirA = mult => Math.round(Math.max(A.minHasta, Math.min(A.maxHasta, s.apuestaMax + Math.max(bb, s.pozo * mult))));
     // Fuerte: sube
     if (A.subir && f > (s.mesa.length ? 0.72 : 0.68) / agresion) return { t: "raise", hasta: f > 0.88 && r < 0.3 ? A.maxHasta : subirA(0.6 + r * 0.6) };
     // Farol de vez en cuando cuando nadie apostó
-    if (A.subir && A.pasar && r < (estilo === "farolero" ? 0.22 : 0.07)) return { t: "raise", hasta: subirA(0.5) };
+    // (si te retirás seguido, los buenos te farolean más)
+    if (A.subir && A.pasar && r < (estilo === "farolero" ? 0.22 : 0.07) * (1 + h * Math.max(-0.5, (teAchicas - 0.4) * 2.5))) return { t: "raise", hasta: subirA(0.5) };
     if (A.pasar) return { t: "call" };
     // Seguir si la chance alcanza para lo que cuesta
     if (f > cuota + (estilo === "prudente" ? 0.12 : 0.05) || A.pagar <= bb && f > 0.3) return { t: "call" };
@@ -424,6 +438,7 @@ PANTALLAS.pokerIntro = () => {
     <div class="panel"><span class="label">Bots en la mesa</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button aria-pressed="${c.bots === n}" data-pkb="${n}">${n}</button>`).join("")}</div>
       <span class="label">Cómo juegan</span><div class="seg">${[["facil", "Fácil"], ["normal", "Normal"], ["dificil", "Difícil"]].map(([k, t]) => `<button aria-pressed="${c.nivel === k}" data-pkn="${k}">${t}</button>`).join("")}</div>
       <span class="label">Fichas para cada uno</span><div class="seg">${[500, 1000, 2000].map(n => `<button aria-pressed="${c.fichas === n}" data-pkf="${n}">${n}</button>`).join("")}</div></div>
+${typeof Mente !== "undefined" ? Mente.chip("poker") : ""}
     <button class="btn tb-girar" id="pkJugar">🃏 Sentarme a jugar</button>
     <p class="summary center">¿Con amigos? Creá una sala en "Jugar online" y elegí Póker: los lugares que sobran los ocupan bots.</p>
     <button class="btn ghost" id="pkVolver">Volver</button>

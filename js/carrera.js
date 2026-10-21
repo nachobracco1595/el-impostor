@@ -104,7 +104,8 @@ const Carrera = {
     return d;
   },
   pensarBot(s, b, dt) {
-    const nivel = { facil: 0.55, normal: 0.8, dificil: 0.95 }[b.nivel || s.cfg.nivel] || 0.8;
+    // h de Mente: la dificultad elegida corrida por lo que aprendieron de vos (de 0.5 = torpe a 0.99 = casi perfecto)
+    const nivel = b.ia ?? (b.ia = typeof Mente !== "undefined" ? 0.5 + 0.49 * Mente.habilidad("carrera", b.nivel || s.cfg.nivel) : { facil: 0.55, normal: 0.8, dificil: 0.95 }[b.nivel || s.cfg.nivel] || 0.8);
     b.piensa = (b.piensa || 0) - dt;
     if (b.piensa <= 0) {
       b.piensa = 0.12 + (1 - nivel) * 0.3;
@@ -424,6 +425,7 @@ PANTALLAS.carreraIntro = () => {
     <div class="tb-hero"><span class="tb-neon">CARRERA LOCA</span><p class="sub">Llegá primero a la meta esquivando barras, péndulos, bloques, pozos, cintas y puertas falsas. Movete con el dedo y saltá con ⤴️.</p></div>
     <div class="panel"><span class="label">Bots en la carrera</span><div class="seg">${[3, 5, 7].map(n => `<button aria-pressed="${c.bots === n}" data-crb="${n}">${n}</button>`).join("")}</div>
       <span class="label">Qué tan buenos son</span><div class="seg">${[["facil", "Fáciles"], ["normal", "Normales"], ["dificil", "Difíciles"]].map(([k, t]) => `<button aria-pressed="${c.nivel === k}" data-crn="${k}">${t}</button>`).join("")}</div></div>
+${typeof Mente !== "undefined" ? Mente.chip("carrera") : ""}
     <button class="btn tb-girar" id="crJugar">🏁 ¡A correr!</button>
     <p class="summary center">¿Con amigos? Creá una sala en "Jugar online" y elegí Carrera Loca: los lugares que sobran los ocupan bots.</p>
     <button class="btn ghost" id="crAtras">Volver</button></section>`;

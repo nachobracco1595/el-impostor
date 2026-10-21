@@ -219,6 +219,7 @@ PANTALLAS.duelo = () => {
   app.innerHTML = `${head(0)}
   <section class="screen">
     <div><h2>${aj ? "Ajedrez" : "Batalla naval"}</h2><p class="sub">Elige quién juega y contra quién.</p></div>
+    ${d.b.startsWith("cpu") && typeof Mente !== "undefined" ? Mente.chip(S.mode) : ""}
     <div class="panel"><span class="label">${aj ? "Juega con blancas" : "Jugador 1"}</span>
       ${S.players.length ? `<div class="chips-j">${S.players.map(n => chip("a", n, n, avatar(n, 26))).join("")}</div>` : `<p class="empty">Agrega jugadores en la lista.</p>`}</div>
     <div class="panel"><span class="label">${aj ? "Rival (negras)" : "Rival"}</span>
@@ -244,6 +245,7 @@ PANTALLAS.players = () => {
   app.innerHTML = `${head(1)}
   <section class="screen">
     <div><h2>¿Quiénes juegan?</h2><p class="sub">${S.mode === "truco" || S.mode === "burako" ? "Las personas que juegan; los lugares que sobran los ocupan compus." : S.mode === "chinchon" ? "Las personas que juegan; abajo puedes sumar compus." : `Mínimo ${min} jugadores${S.mode !== "impostor" ? ", máximo 8" : ""}.`} El orden de la lista es el orden de la ronda.</p></div>
+    ${["liars", "truco", "burako", "chinchon"].includes(S.mode) && typeof Mente !== "undefined" ? Mente.chip(S.mode) : ""}
     <form class="add" id="addf"><input id="pname" maxlength="16" placeholder="Nombre del jugador" autocomplete="off" aria-label="Nombre del jugador"><button type="submit" aria-label="Agregar jugador">+</button></form>
     <div class="panel">
       <div class="headrow"><span class="label">${n} jugador${n === 1 ? "" : "es"}</span>${n ? `<button class="linkish" id="clr">Borrar todos</button>` : ""}</div>

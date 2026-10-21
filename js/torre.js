@@ -54,7 +54,7 @@ const Torre = {
     let k = 0;
     const mon = (extra = {}) => {
       const M = TO.MONSTRUOS[(f + k) % TO.MONSTRUOS.length];
-      return { id: `m${f}-${k++}`, name: M[0], ic: M[1], cpu: true, nivel: f >= 10 ? "dificil" : "normal", equipo: "m", sprite: M[3], look: { color: M[2], acc: [] }, arena: Heroes.cpu(lv, pre), fuerza, ...extra };
+      return { id: `m${f}-${k++}`, name: M[0], ic: M[1], cpu: true, nivel: f >= 10 ? "dificil" : "normal", ia: typeof Mente !== "undefined" ? Math.min(1, Mente.habilidad("torre", f >= 10 ? "dificil" : "normal") + f * 0.006) : null, equipo: "m", sprite: M[3], look: { color: M[2], acc: [] }, arena: Heroes.cpu(lv, pre), fuerza, ...extra };
     };
     const lista = [];
     for (let o = 0; o < olas; o++) lista.push(Array.from({ length: o === olas - 1 && jefe ? Math.max(1, porOla - 2) : porOla }, () => mon()));
@@ -120,6 +120,7 @@ const Torre = {
     s.horda.premio = gano ? this.premio(s.horda.piso) : null;
     if (typeof Sonido !== "undefined") Sonido.sfx(gano ? "victoria" : "derrota");
     if (!s.online) {
+      if (typeof Mente !== "undefined") Mente.resultado("torre", gano);
       const R = S.torre, yo = s.jug.find(j => j.equipo === "h");
       this.cobrar(this.vista(s), yo.clase, yo.st);
       if (gano && R) R.hp = Math.min(1, yo.hp / yo.max + 0.35); else S.torre = null;
@@ -225,6 +226,7 @@ const Torre = {
     const yo = Heroes.datos(u), C = AR.CLASES[yo.clase], p = yo.pj[yo.clase], e = p.evo.length ? Heroes.evoDe(yo.clase, p.evo[p.evo.length - 1]) : null;
     return `<div class="panel to-panel"><div class="headrow"><span class="label">🗼 Torre de hordas</span><small class="sub">Se reinicia en ${dias} día${dias === 1 ? "" : "s"}</small></div>
       <div class="to-datos"><div><b>${t.base}</b><small>arrancás en el piso</small></div><div><b>${t.mejor || 0}</b><small>tu mejor piso</small></div><div><b>❤️ ${q}/${this.max()}</b><small>vidas hoy</small></div></div>
+      ${typeof Mente !== "undefined" ? Mente.chip("torre") : ""}
       <p class="sub he-nota">Pasá olas de monstruos piso por piso: cada uno es más difícil y cada 5 hay un jefe, queda guardado y recuperás todas tus vidas. Cada vez que caés perdés una. Cada piso da monedas y experiencia.</p>
       <button class="linkish to-rank" id="toRank">🏆 Ver el ranking de la torre</button>
       <button class="btn tb-girar" id="toEntrar" ${q ? "" : "disabled"}>${q ? `🗼 Subir desde el piso ${t.base} con ${esc(e ? e.nombre : C.nombre)}` : "Sin vidas: comprá una o volvé mañana"}</button>

@@ -100,6 +100,7 @@ const Burako = {
     if (a.t === "robar" && s.fase === "robar") {
       if (a.de === "descarte") {
         if (!s.descarte.length) return;
+        (s.quiere = s.quiere || [[], []])[q] = [...s.quiere[q], s.descarte[s.descarte.length - 1]].slice(-5);   // lo que levantó: lo anotan los bots
         J.mano.push(...s.descarte); Burako.decir(s, `${J.name} levantó el pozo (${s.descarte.length})`);
         s.nuevas[i] = s.descarte.slice(); s.nuevasDe[i] = "pozo"; s.levanto = { i, fichas: s.descarte.slice(), k: s.mov + 1 }; s.descarte = [];
       } else {
@@ -206,6 +207,8 @@ const Burako = {
   },
   decidir(s) {
     const i = s.turno, J = s.jug[i], q = Burako.equipo(s, i);
+    // h: habilidad (Mente). Los flojos se olvidan de agregar y tiran sin mirar; los buenos se acuerdan de qué levantó el rival
+    const h = typeof Mente !== "undefined" ? Mente.habilidad("burako") : 0.5, distraido = Math.random() < 0.3 * (1 - h);
     if (s.fase === "robar") {
       const top = s.descarte[s.descarte.length - 1];
       const conTop = top && Burako.buscarJuego([...J.mano, top]);
@@ -215,7 +218,7 @@ const Burako = {
     }
     // Agregar a lo que ya está en la mesa (primero las fichas naturales)
     const fichas = Burako.ordenar(J.mano).sort((a, b) => Burako.esComodin(a) - Burako.esComodin(b));
-    for (let k = 0; k < s.mesa[q].length; k++) for (const t of fichas) {
+    if (!distraido) for (let k = 0; k < s.mesa[q].length; k++) for (const t of fichas) {
       const j = s.mesa[q][k];
       if (Burako.esComodin(t) && (j.fichas.some(Burako.esComodin) || j.canasta && j.limpia)) continue;
       const nuevo = Burako.juego([...j.fichas, t]);
@@ -223,7 +226,10 @@ const Burako = {
     }
     const nuevo = Burako.buscarJuego(J.mano);
     if (nuevo && Burako.puedeQuedar(s, i, J.mano.length - nuevo.length, [...s.mesa[q], Burako.juego(nuevo)])) return { t: "bajar", ids: nuevo };
-    const tira = J.mano.slice().sort((a, b) => Burako.util(s, i, a) - Burako.util(s, i, b) || Burako.valor(b) - Burako.valor(a))[0];
+    const junta = ((s.quiere || [])[1 - q] || []).filter(x => !Burako.esComodin(x));
+    const peligro = t => h * junta.reduce((u, x) => u + (x[0] === t[0] && Math.abs(Burako.num(x) - Burako.num(t)) <= 2 ? 6 : Burako.num(x) === Burako.num(t) ? 4 : 0), 0);
+    const orden = J.mano.slice().sort((a, b) => Burako.util(s, i, a) + peligro(a) - Burako.util(s, i, b) - peligro(b) || Burako.valor(b) - Burako.valor(a));
+    const tira = distraido && orden.length > 2 && !Burako.esComodin(orden[1]) ? orden[1] : orden[0];
     return { t: "tirar", id: tira };
   },
   jugarCompu(s) {

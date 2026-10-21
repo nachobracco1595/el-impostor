@@ -56,6 +56,7 @@ const Lie = {
       const cards = idx.map(i => yo.hand[i]);
       yo.hand = yo.hand.filter((_, i) => !idx.includes(i));
       s.last = { i: s.turn, cards, n: cards.length };
+      if (!yo.cpu && typeof Mente !== "undefined" && Mente.local()) Mente.anotar("liars", "miente", cards.some(c => c !== s.table && c !== "J") ? 1 : 0);
       let sig = Lie.siguiente(s, s.turn, (p, i) => p.alive && p.hand.length && i !== s.turn);
       if (sig < 0) sig = Lie.siguiente(s, s.turn, (p, i) => p.alive && i !== s.turn);
       s.turn = sig;
@@ -192,13 +193,18 @@ const Lie = {
     if (Lie.obligado(s)) return { t: "call" };
     if (s.last && s.last.i !== i) {
       // La mayoría dice la verdad si puede: se desconfía cuando es casi imposible que tenga tantas buenas
-      const p = Lie.creible(s, i), n = s.last.n, sospecha = n === 3 ? 0.35 : n === 2 ? 0.2 : 0.08;
-      if (p < sospecha || Math.random() < 0.06 || !yo.hand.length) return { t: "call" };
+      // Con más nivel recuerdan cuánto mentís vos y desconfían en proporción; los flojos tiran "¡mentira!" más al azar
+      const h = typeof Mente !== "undefined" ? Mente.habilidad("liars") : 0.5, quien = s.players[s.last.i];
+      let p = Lie.creible(s, i), n = s.last.n, sospecha = n === 3 ? 0.35 : n === 2 ? 0.2 : 0.08;
+      if (!quien.cpu && typeof Mente !== "undefined") { const miente = Mente.costumbre("liars", "miente", 0.2); p = Math.max(0, Math.min(1, p * (1 + h * ((1 - miente) / 0.8 - 1)))); }
+      if (p < sospecha * (0.8 + 0.5 * h) || Math.random() < 0.09 * (1 - h) + 0.02 || !yo.hand.length) return { t: "call" };
     }
     const buenas = yo.hand.map((c, k) => [c, k]).filter(([c]) => c === s.table || c === "J").sort((a, b) => (a[0] === "J") - (b[0] === "J"));
     const malas = yo.hand.map((c, k) => [c, k]).filter(([c]) => !(c === s.table || c === "J"));
     // Verdad: 1 o 2 de las buenas (los comodines al final). Mentira: 1 mala (o a veces se mezcla).
-    if (buenas.length && (Math.random() > 0.12 || !malas.length)) return { t: "play", cards: buenas.slice(0, Math.min(buenas.length, Math.random() < 0.5 ? 1 : 2)).map(x => x[1]) };
+    // Los buenos mienten más cuando les quedan pocas cartas (si no, se quedan sin poder jugar)
+    const hb = typeof Mente !== "undefined" ? Mente.habilidad("liars") : 0.5, mentir = 0.12 + (yo.hand.length <= 2 ? 0.15 * hb : 0);
+    if (buenas.length && (Math.random() > mentir || !malas.length)) return { t: "play", cards: buenas.slice(0, Math.min(buenas.length, Math.random() < 0.5 ? 1 : 2)).map(x => x[1]) };
     if (malas.length) return { t: "play", cards: Math.random() < 0.25 && buenas.length ? [malas[0][1], buenas[0][1]] : [malas[0][1]] };
     return { t: "play", cards: [0] };
   },

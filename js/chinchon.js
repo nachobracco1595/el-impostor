@@ -84,6 +84,7 @@ const Chin = {
   sig(s, i) { const n = s.jug.length; for (let k = 1; k <= n; k++) { const x = (i + k) % n; if (!s.jug[x].fuera) return x; } return i; },
 
   nuevaRonda(s) {
+    s.tomadas = {};
     Chin.usar(s.cfg);
     s.ronda++;
     s.mano = Chin.sig(s, s.mano);
@@ -102,7 +103,7 @@ const Chin = {
     if (a.t === "siguiente") { if (s.fase === "ronda" && (pid === null || pid === "H")) Chin.nuevaRonda(s); return; }
     if (!J || i !== s.turno || J.fuera) return;
     if (a.t === "robar" && s.fase === "robar") {
-      if (a.de === "descarte" && s.descarte.length) { J.mano.push(s.descarte.pop()); s.log = `${J.name} tomó del descarte`; }
+      if (a.de === "descarte" && s.descarte.length) { const c = s.descarte.pop(); J.mano.push(c); s.log = `${J.name} tomó del descarte`; (s.tomadas = s.tomadas || {})[i] = [...(s.tomadas[i] || []), c].slice(-6); }
       else {
         if (!s.mazo.length) {
           // Se acabó el mazo: se mezcla el descarte. Si ya pasó dos veces (o no alcanza), la ronda se anula.
@@ -159,14 +160,24 @@ const Chin = {
       const conTop = top ? Math.min(...J.mano.map((_, k) => Chin.analizar([...J.mano.filter((__, x) => x !== k), top]).resto)) : 99;
       Chin.act(s, J.id, { t: "robar", de: top && (Chin.esJ(top) || conTop < actual - 1) ? "descarte" : "mazo" });
     } else if (s.fase === "tirar") {
-      let mejor = null;
+      // h: habilidad. Los buenos no le tiran al de al lado lo que viene juntando (se acuerdan de lo que levantó del descarte)
+      const h = typeof Mente !== "undefined" ? Mente.habilidad("chinchon", J.nivel) : 0.5;
+      const sig = Chin.sig(s, i), junta = (s.tomadas || {})[sig] || [];
+      const leSirve = c => junta.some(t => !Chin.esJ(t) && (Chin.num(t) === Chin.num(c) || Chin.palo(t) === Chin.palo(c) && Math.abs(Chin.num(t) - Chin.num(c)) <= 2));
+      const opciones = [];
       for (const c of J.mano) {
         const resto = J.mano.filter(x => x !== c);
         const an = Chin.analizar(resto);
-        const v = an.resto * 100 - Chin.puntos(c) + (Chin.esJ(c) ? 5000 : 0);
-        if (!mejor || v < mejor.v) mejor = { c, v, resto: an.resto, chin: Chin.esChinchon(resto) };
+        const v = an.resto * 100 - Chin.puntos(c) + (Chin.esJ(c) ? 5000 : 0) + (leSirve(c) ? 150 * h : 0);
+        opciones.push({ c, v, resto: an.resto, chin: Chin.esChinchon(resto) });
       }
-      const cortar = mejor.chin || mejor.resto <= (J.nivel === "facil" ? 5 : 3);
+      opciones.sort((a, b) => a.v - b.v);
+      // Los flojos a veces se equivocan y tiran la segunda mejor
+      let mejor = opciones[0];
+      if (opciones[1] && !mejor.chin && Math.random() < 0.3 * (1 - h) && opciones[1].v < 5000) mejor = opciones[1];
+      // Cortar: los buenos cortan antes si el rival está por cerrar (le quedan pocas cartas sueltas por lo que levantó)
+      const apurado = h > 0.6 && junta.length >= 2;
+      const cortar = mejor.chin || mejor.resto <= (h < 0.3 ? 5 : apurado ? 5 : h > 0.75 ? 2 : 3) || mejor.resto <= 5 && Math.random() < 0.15 * h;
       Chin.act(s, J.id, { t: "tirar", c: mejor.c, cortar });
     }
   },

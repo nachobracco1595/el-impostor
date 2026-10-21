@@ -100,11 +100,31 @@ const Tarjeta = {
   async abrir(q) {
     const caja = document.createElement("div");
     caja.className = "modal-fondo tj-fondo";
-    caja.innerHTML = `<div class="modal tj-modal"><button class="tj-cerrar" aria-label="Cerrar">×</button><div class="tj-lugar"><p class="empty">Cargando perfil…</p></div></div>`;
-    document.body.appendChild(caja);
-    const cerrar = () => caja.remove();
+    caja.innerHTML = `<div class="modal tj-modal"><div class="tj-lugar"><p class="empty">Cargando perfil…</p></div><button class="btn ghost tj-cerrar-abajo">Cerrar</button></div>`;
+    // Si ya había una tarjeta abierta (por ejemplo, desde el link), se reemplaza
+    document.querySelectorAll(".tj-fondo").forEach(x => x.cerrarTarjeta ? x.cerrarTarjeta(true) : x.remove());
+    // La X va aparte (fuera del fondo con desenfoque) para que quede fija arriba aunque se baje
+    const x = document.createElement("button");
+    x.className = "tj-cerrar"; x.setAttribute("aria-label", "Cerrar"); x.textContent = "×";
+    document.body.append(caja, x);
+    document.documentElement.classList.add("tj-abierta");
+    // El gesto o el botón de "atrás" del teléfono también la cierra
+    let conHistoria = false;
+    try { history.pushState({ tarjeta: 1 }, ""); conHistoria = true; } catch {}
+    const alVolver = () => { conHistoria = false; cerrar(); };
+    const conTecla = e => { if (e.key === "Escape") cerrar(); };
+    const cerrar = (sinVolver = false) => {
+      if (!caja.isConnected) return;
+      caja.remove(); x.remove();
+      window.removeEventListener("popstate", alVolver); document.removeEventListener("keydown", conTecla);
+      if (!document.querySelector(".tj-fondo")) document.documentElement.classList.remove("tj-abierta");
+      if (conHistoria && !sinVolver) { conHistoria = false; history.back(); }
+    };
+    caja.cerrarTarjeta = cerrar;
+    window.addEventListener("popstate", alVolver); document.addEventListener("keydown", conTecla);
     caja.onclick = e => { if (e.target === caja) cerrar(); };
-    caja.querySelector(".tj-cerrar").onclick = cerrar;
+    x.onclick = () => cerrar();
+    caja.querySelector(".tj-cerrar-abajo").onclick = () => cerrar();
     const lugar = caja.querySelector(".tj-lugar");
     let t = q.id && this.cache[q.id];
     const pintar = () => {

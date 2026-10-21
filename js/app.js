@@ -155,41 +155,52 @@ setInterval(() => {
 }, 250);
 
 /* ---------- Inicio ---------- */
-/* Juegos del menú: [modo, nombre, descripción, arte, clase] */
+/* Juegos del menú: [modo, nombre, descripción, arte, clase, color] */
 function juegosMenu() {
   return [
-    ["impostor", "El Impostor", "Todos saben la palabra menos uno.", personaje("#ff4d63", "imp", 64), "t-imp"],
-    ["liars", "Mesa del Mentiroso", "Miente con las cartas o gatilla.", `<span class="cartas-mini">${carta("K")}${carta("J")}</span>`, "t-lie"],
-    ["casos", "Detectives", `${CASOS.length} casos para resolver en grupo.`, personaje("#e8e8e8", "civ", 64, ["sombrero", "lupa"]), "t-cas"],
-    ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi"],
-    ["truco", "Truco", "Envido, truco y vale cuatro.", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "t-tru"],
-    ["poker", "Póker", "Texas Hold'em contra bots o amigos.", `<span class="pk-mini">${Poker.carta("As")}${Poker.carta("Kh")}</span>`, "t-pk"],
-    ["burako", "Burako", "Escaleras, piernas y canastas.", `<span class="bk-mini">${Burako.ficha("R07a")}${Burako.ficha("A08a")}${Burako.ficha("J00a")}</span>`, "t-bk"],
-    ["naval", "Batalla naval", "Tocado… ¡y hundido!", `<span class="naval-mini">${"<i></i>".repeat(9)}</span>`, "t-nav"],
-    ["nave", "La Nave", "Tareas, impostores y votación.", `<span class="nave-mini">🚀</span>`, "t-nave"],
-    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj"],
-    ["carrera", "Carrera Loca", "Obstáculos, saltos y a la meta.", `<span class="tr-mini">🏃💨🏁</span>`, "t-car"],
-    ["arena", "Arena", "Clases, armaduras y ELO.", `<span class="tr-mini">⚔️🛡️</span>`, "t-arena"],
-    ["casino", "Casino", "Ruleta, tragamonedas, blackjack y bingo.", `<span class="tr-mini">🎰🎡</span>`, "t-casino"],
-    ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", `<span class="tr-mini">🪓⛏️🎣</span>`, "t-trab"]
+    ["impostor", "El Impostor", "Todos saben la palabra menos uno.", personaje("#ff4d63", "imp", 64), "t-imp", "#ff4d63"],
+    ["liars", "Mesa del Mentiroso", "Miente con las cartas o gatilla.", `<span class="cartas-mini">${carta("K")}${carta("J")}</span>`, "t-lie", "#3ddcb1"],
+    ["casos", "Detectives", `${CASOS.length} casos para resolver en grupo.`, personaje("#e8e8e8", "civ", 64, ["sombrero", "lupa"]), "t-cas", "#e0b46c"],
+    ["chinchon", "Chinchón", "Escaleras, grupos y a cortar.", `<span class="ce-mini">${Chin.carta("O1")}${Chin.carta("E7")}</span>`, "t-chi", "#3ddcb1"],
+    ["truco", "Truco", "Envido, truco y vale cuatro.", `<span class="tr-mini">${Chin.carta("E1")}${Chin.carta("B1")}</span>`, "t-tru", "#51cf66"],
+    ["poker", "Póker", "Texas Hold'em contra bots o amigos.", `<span class="pk-mini">${Poker.carta("As")}${Poker.carta("Kh")}</span>`, "t-pk", "#20c997"],
+    ["burako", "Burako", "Escaleras, piernas y canastas.", `<span class="bk-mini">${Burako.ficha("R07a")}${Burako.ficha("A08a")}${Burako.ficha("J00a")}</span>`, "t-bk", "#4dabf7"],
+    ["naval", "Batalla naval", "Tocado… ¡y hundido!", MenuArte.naval(), "t-nav", "#4dabf7"],
+    ["nave", "La Nave", "Tareas, impostores y votación.", MenuArte.nave(), "t-nave", "#748ffc"],
+    ["ajedrez", "Ajedrez", "Contra la compu o un amigo.", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "t-aj", "#e0b46c"],
+    ["carrera", "Carrera Loca", "Obstáculos, saltos y a la meta.", MenuArte.carrera(), "t-car", "#69db7c"],
+    ["arena", "Arena y Torre", "Héroes con clases, evoluciones y prestigio. Duelos con ELO y hordas piso por piso.", MenuArte.arena(), "t-arena", "#ff6b7d"],
+    ["casino", "Casino", "Ruleta, tragamonedas, blackjack y bingo.", MenuArte.casino(), "t-casino", "#ff5fa2"],
+    ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", MenuArte.trabajos(), "t-trab", "#94d82d"]
   ];
 }
+/* Secciones del inicio */
+const MENU_SECCIONES = [
+  ["⚔️ Acción", ["arena", "carrera"]],
+  ["🎉 Para jugar en grupo", ["impostor", "nave", "liars", "casos"]],
+  ["🃏 Cartas y fichas", ["truco", "chinchon", "poker", "burako"]],
+  ["♟️ Duelos", ["ajedrez", "naval"]],
+  ["🪙 Monedas", ["casino", "trabajos"]]
+];
 
 PANTALLAS.home = () => {
-  app.innerHTML = `${Cuenta.barra()}
-  <section class="screen hero">
-    <img class="hero-logo" src="img/icono.svg" alt="" width="132" height="132">
+  const J = Object.fromEntries(juegosMenu().map(x => [x[0], x]));
+  const tile = (m, ancho) => { const [, n, d, art, cls, col] = J[m];
+    return `<button class="tile ${cls} ${ancho ? "ancho" : ""}" data-modo="${m}" style="--ac:${col}"><span class="tile-glow"></span>
+      <span class="tile-art">${art}</span><span class="tile-txt"><b>${n}</b><small>${d}</small></span><span class="tile-cta">Jugar <i>›</i></span></button>`; };
+  app.innerHTML = `${Cuenta.inicio()}
+  <section class="screen hero home-hero">
+    <img class="hero-logo" src="img/icono.svg" alt="" width="96" height="96">
     <h1 class="titulo">Mesa <span>Loca</span></h1>
-    <p class="sub center">Juegos para jugar con amigos: el Impostor, el Truco, la Arena, el Chinchón, La Nave y muchos más. En un solo teléfono o cada uno en el suyo.</p>
+    <p class="sub center">Juegos para jugar con amigos, en un solo teléfono o cada uno en el suyo.</p>
   </section>
   ${typeof Evento !== "undefined" ? Evento.cartel() : ""}
   ${typeof Referidos !== "undefined" ? Referidos.cartel() : ""}
-  <section class="juegos-grid">${juegosMenu().map(([m, n, d, art, cls]) => `<button class="tile ${cls}" data-modo="${m}">
-      <span class="tile-art">${art}</span><b>${n}</b><small>${d}</small><span class="tile-cta">Jugar</span></button>`).join("")}</section>
-  <article class="juego online">
-    <div class="juego-txt"><h2>Jugar online</h2><p>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código a los demás.</p></div>
-    <div class="juego-acc row"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
-  </article>`;
+  <article class="online-banner"><span class="ob-art">${MenuArte.online()}</span>
+    <div class="ob-txt"><b>Jugar online</b><small>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código.</small></div>
+    <div class="ob-acc"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
+  </article>
+  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "carrera")).join("")}</div></section>`).join("")}`;
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");

@@ -54,6 +54,7 @@ const Social = {
       });
       this.ultimoVisto = Math.max(this.ultimoVisto || 1, ...ms.data.map(m => m.id));
       if (S.screen === "charla") await this.cargarCharla();
+      Tarjeta.revisarPendiente();
       Nube.revisarRegalos(BD.sesion());
       if (antes !== this.avisos() || ["amigos", "charla", "home"].includes(S.screen)) render();
     } catch (e) { console.error(e); }
@@ -67,11 +68,17 @@ const Social = {
     if (!error) data.forEach(p => this.perfiles[p.id] = p);
   },
 
+  /* Por código (#ABC123) encuentra a cualquiera; por nombre, solo a los perfiles públicos */
   async buscar(q) {
-    const { data, error } = await Nube.sb.from("perfiles").select("id,nombre,look").ilike("nombre", `%${q}%`).limit(12);
-    if (error) throw new Error("No se pudo buscar.");
-    data.forEach(p => this.perfiles[p.id] = p);
-    return data.filter(p => p.id !== this.yo());
+    q = q.trim();
+    const porCodigo = Tarjeta.codigoValido(q) ? Tarjeta.traer({ tag: q.replace("#", "") }).catch(() => null) : Promise.resolve(null);
+    const porNombre = q.startsWith("#") ? Promise.resolve({ data: [] }) : Nube.sb.from("perfiles").select("id,nombre,look,tag").eq("publico", true).ilike("nombre", `%${q}%`).limit(12);
+    const [t, r] = await Promise.all([porCodigo, porNombre]);
+    if (r.error) throw new Error("No se pudo buscar.");
+    const lista = (r.data || []).slice();
+    if (t && !lista.some(p => p.id === t.id)) lista.unshift({ id: t.id, nombre: t.nombre, look: t.look, tag: t.tag, codigo: true });
+    lista.forEach(p => this.perfiles[p.id] = { ...this.perfiles[p.id], ...p });
+    return lista.filter(p => p.id !== this.yo());
   },
   async pedir(id) {
     // Si el otro ya me había pedido, se acepta directamente
@@ -127,15 +134,16 @@ PANTALLAS.amigos = () => {
   const res = UI.busqueda || null;
   app.innerHTML = `${head(0)}
   <section class="screen">
-    <div><h2>Amigos</h2><p class="sub">Busca a tus amigos por su nombre, chatea e invítalos a tu sala.</p></div>
+    <div><h2>Amigos</h2><p class="sub">Agregalos con su código o búscalos por su nombre si su perfil es público. Chateá e invitalos a tu sala.</p></div>
+    ${(() => { const u = BD.sesion(); return u && u.tag ? `<div class="tj-mio linea"><div><small>Tu código</small><button class="tj-tag" data-copiar-tag="${esc(u.tag)}">#${esc(u.tag)} <i>📋</i></button></div><button class="btn ghost chico" id="aMiTarjeta">👤 Mi tarjeta</button><button class="btn ghost chico" id="aCompartir">📤</button></div>` : ""; })()}
     <button class="ref-banner chico" id="refInvitar"><span class="ev-ic">🤝</span><div><b>¿Tus amigos no juegan todavía?</b><small>Mándales tu link: ganan los dos monedas.</small></div><span class="ref-flecha">›</span></button>
-    <form class="add" id="fBus"><input id="qAmigo" maxlength="16" placeholder="Buscar por nombre" autocomplete="off" value="${esc(UI.qAmigo || "")}" aria-label="Buscar amigos"><button type="submit" aria-label="Buscar">🔍</button></form>
+    <form class="add" id="fBus"><input id="qAmigo" maxlength="16" placeholder="Código (#ABC123) o nombre" autocomplete="off" value="${esc(UI.qAmigo || "")}" aria-label="Buscar amigos"><button type="submit" aria-label="Buscar">🔍</button></form>
     ${res ? `<div class="panel"><span class="label">Resultados</span>${res.length ? `<ul class="players">${res.map(p => {
         const ya = amigos.includes(p.id), pedido = env.includes(p.id);
-        return `<li>${retrato(look(p), 34)}<span class="name">${esc(p.nombre)}</span>${ya ? `<span class="badge">Amigo</span>` : pedido ? `<span class="badge">Pedido</span>` : `<button class="btn chico" data-pedir="${p.id}">Agregar</button>`}</li>`; }).join("")}</ul>` : `<p class="empty">No encontramos a nadie con ese nombre.</p>`}</div>` : ""}
-    ${pend.length ? `<div class="panel"><span class="label">Te quieren agregar</span><ul class="players">${pend.map(a => `<li>${retrato(look(P(a.de)), 34)}<span class="name">${esc(P(a.de).nombre)}</span><button class="btn chico" data-aceptar="${a.de}">Aceptar</button><button class="x" data-quitar="${a.de}" aria-label="Rechazar">×</button></li>`).join("")}</ul></div>` : ""}
+        return `<li><button class="tj-ver" data-tarjeta="${p.id}" aria-label="Ver la tarjeta de ${esc(p.nombre)}">${retrato(look(p), 34)}<span class="name">${esc(p.nombre)}${p.tag ? `<small class="tit-mini">#${esc(p.tag)}</small>` : ""}</span></button>${ya ? `<span class="badge">Amigo</span>` : pedido ? `<span class="badge">Pedido</span>` : `<button class="btn chico" data-pedir="${p.id}">Agregar</button>`}</li>`; }).join("")}</ul>` : `<p class="empty">No encontramos a nadie. Si su perfil es privado, pedile su código.</p>`}</div>` : ""}
+    ${pend.length ? `<div class="panel"><span class="label">Te quieren agregar</span><ul class="players">${pend.map(a => `<li><button class="tj-ver" data-tarjeta="${a.de}">${retrato(look(P(a.de)), 34)}<span class="name">${esc(P(a.de).nombre)}</span></button><button class="btn chico" data-aceptar="${a.de}">Aceptar</button><button class="x" data-quitar="${a.de}" aria-label="Rechazar">×</button></li>`).join("")}</ul></div>` : ""}
     <div class="panel"><span class="label">Tus amigos (${amigos.length})</span>
-      ${amigos.length ? `<ul class="players">${amigos.map(id => `<li class="amigo" data-charla="${id}">${retrato(look(P(id)), 38)}<span class="name">${esc(P(id).nombre)}${P(id).look && P(id).look.titulo ? `<small class="tit-mini">${esc(P(id).look.titulo)}</small>` : ""}</span>${sinLeer(id) ? `<span class="burbuja">${sinLeer(id)}</span>` : ""}<span class="ir">💬</span></li>`).join("")}</ul>` : `<p class="empty">Todavía no tienes amigos agregados. Búscalos arriba por su nombre.</p>`}
+      ${amigos.length ? `<ul class="players">${amigos.map(id => `<li class="amigo" data-charla="${id}"><button class="tj-ver solo" data-tarjeta="${id}" aria-label="Ver la tarjeta de ${esc(P(id).nombre)}">${retrato(look(P(id)), 38)}</button><span class="name">${esc(P(id).nombre)}${P(id).look && P(id).look.titulo ? `<small class="tit-mini">${esc(P(id).look.titulo)}</small>` : ""}</span>${sinLeer(id) ? `<span class="burbuja">${sinLeer(id)}</span>` : ""}<span class="ir">💬</span></li>`).join("")}</ul>` : `<p class="empty">Todavía no tienes amigos agregados. Pediles su código o búscalos arriba.</p>`}
       ${env.length ? `<p class="summary">Esperando respuesta: ${env.map(id => esc(P(id).nombre)).join(", ")}</p>` : ""}
     </div>
     <button class="btn ghost" id="aVolver">Volver</button>
@@ -151,6 +159,10 @@ PANTALLAS.amigos = () => {
   app.querySelectorAll("[data-aceptar]").forEach(b => b.onclick = async () => { b.disabled = true; try { await Social.aceptar(b.dataset.aceptar); } catch {} render(); });
   app.querySelectorAll("[data-quitar]").forEach(b => b.onclick = async () => { await Social.quitar(b.dataset.quitar); render(); });
   app.querySelectorAll("[data-charla]").forEach(li => li.onclick = () => { UI.charla = li.dataset.charla; Social.charla = []; go("charla"); Social.cargarCharla().then(render); });
+  app.querySelectorAll("[data-tarjeta]").forEach(b => b.onclick = e => { e.stopPropagation(); Tarjeta.abrir({ id: b.dataset.tarjeta }); });
+  app.querySelectorAll(".tj-mio [data-copiar-tag]").forEach(b => b.onclick = () => Tarjeta.copiar("#" + b.dataset.copiarTag, `Código #${b.dataset.copiarTag} copiado`, "Pasáselo a tus amigos para que te agreguen."));
+  on("aMiTarjeta", () => Tarjeta.abrir({ id: Social.yo() }));
+  on("aCompartir", () => Tarjeta.compartir(BD.sesion()));
   on("aVolver", () => { UI.busqueda = null; go("home"); });
   on("refInvitar", () => go("invitar"));
 };

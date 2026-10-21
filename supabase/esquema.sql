@@ -73,11 +73,15 @@ create policy "borrar mi perfil" on public.perfiles for delete to authenticated
 create or replace function public.perfiles_controlar() returns trigger
 language plpgsql as $$
 begin
-  -- Los ajustes del administrador (cobrar_regalos) pasan sin estos controles
+  -- El código de amigo (tag) no cambia nunca (la columna se agrega más abajo)
+  if old.tag is not null then new.tag := old.tag; end if;
+  -- Los ajustes del administrador (cobrar_regalos, cambiar_nombre) pasan sin estos controles
   if current_setting('impostor.ajuste', true) = '1' then
     new.id := old.id; new.creado := old.creado; new.actualizado := now();
     return new;
   end if;
+  -- El nombre solo se cambia con cambiar_nombre (cuesta monedas)
+  new.nombre := old.nombre; new.cambios_nombre := old.cambios_nombre;
   if new.puntos < old.puntos or new.puntos > old.puntos + 500 then
     raise exception 'Cambio de puntos no permitido' using errcode = '42501';
   end if;
@@ -478,4 +482,71 @@ begin
     'neto', (select coalesce(sum(monedas), 0) from public.actividad where tipo = 'timba' and creado >= desde),
     'porJuego', (select coalesce(jsonb_object_agg(juego, jsonb_build_object('jugadas', n, 'neto', neto)), '{}'::jsonb) from (
       select juego, count(*) as n, sum(monedas) as neto from public.actividad where tipo = 'timba' and creado >= desde group by juego) x));
+end $$;
+
+-- ============ Código de amigo, perfil público y cambio de nombre ============
+-- Cada perfil tiene un código único de 6 letras y números (sin 0/O ni 1/I para que no se confundan).
+-- Los amigos se guardan por id, así que los perfiles que ya existían no pierden ninguna amistad.
+create or replace function public.nuevo_tag() returns text
+language plpgsql volatile set search_path = public as $$
+declare abc constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; t text;
+begin
+  loop
+    t := '';
+    for i in 1..6 loop t := t || substr(abc, 1 + floor(random() * 32)::integer, 1); end loop;
+    exit when not exists (select 1 from public.perfiles where tag = t);
+  end loop;
+  return t;
+end $$;
+alter table public.perfiles add column if not exists tag text;
+-- Público: cualquiera puede ver su tarjeta y encontrarlo por nombre. Si no, solo sus amigos (y se lo agrega con el código).
+alter table public.perfiles add column if not exists publico boolean not null default false;
+alter table public.perfiles add column if not exists cambios_nombre integer not null default 0;
+update public.perfiles set tag = public.nuevo_tag() where tag is null;
+alter table public.perfiles alter column tag set default public.nuevo_tag();
+alter table public.perfiles alter column tag set not null;
+create unique index if not exists perfiles_tag_idx on public.perfiles (tag);
+create index if not exists perfiles_publico_idx on public.perfiles (publico) where publico;
+
+-- Al crear el perfil el código lo pone el servidor (no se puede elegir uno)
+create or replace function public.perfiles_alta() returns trigger
+language plpgsql set search_path = public as $$ begin new.tag := public.nuevo_tag(); new.cambios_nombre := 0; return new; end $$;
+drop trigger if exists perfiles_alta on public.perfiles;
+create trigger perfiles_alta before insert on public.perfiles for each row execute function public.perfiles_alta();
+
+-- Cambiar el nombre: cuesta 500 monedas (siempre el mismo precio; la app muestra el mismo número)
+create or replace function public.cambiar_nombre(nuevo text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare yo public.perfiles; precio constant integer := 500; n text := btrim(coalesce(nuevo, ''));
+begin
+  if auth.uid() is null then raise exception 'Necesitas iniciar sesión' using errcode = '42501'; end if;
+  if char_length(n) < 2 or char_length(n) > 16 or n ~ '[<>]' then return jsonb_build_object('ok', false, 'motivo', 'nombre'); end if;
+  select * into yo from public.perfiles where id = auth.uid() for update;
+  if not found then return jsonb_build_object('ok', false, 'motivo', 'perfil'); end if;
+  if n = yo.nombre then return jsonb_build_object('ok', false, 'motivo', 'igual'); end if;
+  if yo.monedas < precio then return jsonb_build_object('ok', false, 'motivo', 'monedas', 'monedas', yo.monedas, 'precio', precio); end if;
+  perform set_config('impostor.ajuste', '1', true);
+  update public.perfiles set nombre = n, monedas = monedas - precio, cambios_nombre = cambios_nombre + 1 where id = yo.id returning * into yo;
+  perform set_config('impostor.ajuste', '0', true);
+  insert into public.actividad (usuario, tipo, juego, monedas) values (yo.id, 'compra', 'nombre', -precio);
+  return jsonb_build_object('ok', true, 'nombre', yo.nombre, 'monedas', yo.monedas, 'precio', precio);
+end $$;
+
+-- Tarjeta de un perfil (por id o por código). Completa si es público, si es amigo o si es uno mismo;
+-- si es privado, solo nombre, personaje y código (para poder mandarle la solicitud).
+create or replace function public.tarjeta(quien uuid default null, codigo text default null) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare p public.perfiles; amigo boolean; c text := upper(regexp_replace(coalesce(codigo, ''), '[^A-Za-z0-9]', '', 'g'));
+begin
+  if quien is not null then select * into p from public.perfiles where id = quien;
+  else select * into p from public.perfiles where tag = c; end if;
+  if not found then return null; end if;
+  amigo := exists (select 1 from public.amistades a where a.estado = 'aceptada'
+    and ((a.de = auth.uid() and a.para = p.id) or (a.para = auth.uid() and a.de = p.id)));
+  if p.publico or amigo or p.id = auth.uid() then
+    return jsonb_build_object('id', p.id, 'nombre', p.nombre, 'look', p.look, 'tag', p.tag, 'publico', p.publico, 'completa', true, 'amigo', amigo,
+      'puntos', p.puntos, 'racha', p.racha, 'mejor_racha', p.mejor_racha, 'stats', p.stats, 'logros', p.logros, 'creado', p.creado,
+      'arena', p.diario -> 'arena', 'torre', p.diario -> 'torre');
+  end if;
+  return jsonb_build_object('id', p.id, 'nombre', p.nombre, 'look', p.look, 'tag', p.tag, 'publico', false, 'completa', false, 'amigo', false, 'puntos', p.puntos);
 end $$;

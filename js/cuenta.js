@@ -37,7 +37,25 @@ const Cuenta = {
       <button class="yo-chip" id="miPerfil">${retrato(u.look, 34)}<span><b>${esc(u.nombre)}${u.nube ? " ☁️" : ""}</b><small>Nv ${nv.n} · ${u.puntos} pts</small></span></button>
       <div class="barra-acc"><button class="btn ghost chico ${regalo ? "aviso" : ""}" id="verTienda" aria-label="Tienda, ${u.monedas} monedas">🪙 ${u.monedas}</button>${typeof Social !== "undefined" ? Social.boton() : ""}<button class="btn ghost chico" id="verRanking" aria-label="Ranking">🏆</button></div></div>`;
   },
+  /* Encabezado del inicio: tu tarjeta de jugador (o la invitación a crear tu cuenta) */
+  inicio() {
+    const u = BD.sesion();
+    if (!u) return `${this.barra()}<button class="yo-card invita" id="entrar2"><span class="yc-ic">✨</span><span class="yc-info"><b>Creá tu cuenta gratis</b><small>Guardá tus puntos y monedas, conseguí tu código de amigo y tu tarjeta de jugador.</small></span><span class="yc-flecha">›</span></button>`;
+    const nv = nivelDe(u.puntos);
+    Eco.completar(u);
+    const regalo = Eco.diario(u).puede || (Eco.mision(u).hechas >= Eco.mision(u).meta && !Eco.mision(u).cobrada);
+    return `<div class="yo-card" style="--tc:${esc(u.look.color || "#748ffc")}">
+      <button class="yc-pj" id="miPerfil" aria-label="Mi perfil">${retrato(u.look, 62)}<span class="yc-nv">${nv.n}</span></button>
+      <div class="yc-info"><button class="yc-nombre" id="miPerfil2"><b>${esc(u.nombre)}</b>${u.nube ? `<i title="Cuenta en la nube">☁️</i>` : ""}</button>
+        <small>${esc(nv.titulo)}${u.tag ? ` · <span class="yc-tag">#${esc(u.tag)}</span>` : ""}</small>
+        <div class="xp"><i style="width:${nv.pct}%"></i></div></div>
+      <div class="yc-acc"><button class="yc-mon ${regalo ? "aviso" : ""}" id="verTienda" aria-label="Tienda, ${u.monedas} monedas">🪙 <b>${u.monedas}</b></button>
+        <div class="yc-btns">${typeof Social !== "undefined" ? Social.boton() : ""}<button class="btn ghost chico" id="verRanking" aria-label="Ranking">🏆</button></div></div>
+    </div>`;
+  },
   conectarBarra() {
+    on("entrar2", () => go("cuenta"));
+    on("miPerfil2", () => go("perfil"));
     on("entrar", () => go("cuenta"));
     on("miPerfil", () => go("perfil"));
     on("verRanking", () => go("ranking"));
@@ -269,6 +287,7 @@ PANTALLAS.perfil = () => {
       <div class="stat"><b>${u.racha}${u.racha >= 3 ? "🔥" : ""}</b><small>Racha</small></div>
       <div class="stat"><b>${Object.keys(u.logros).length}/${LOGROS.length}</b><small>Logros</small></div>
     </div>
+    ${Tarjeta.panel(u)}
     <div class="panel"><span class="label">Por juego</span>
       <div class="juego-stats">
         <div><b>🎭 El Impostor</b><span>${st.impostor.p} pts · ${st.impostor.g}/${st.impostor.j} ganadas (${pct(st.impostor.g, st.impostor.j)})</span><small>Fue impostor ${st.impostor.imp} ${st.impostor.imp === 1 ? "vez" : "veces"} y ganó ${st.impostor.impG} · Ganó como inocente ${st.impostor.inoG}</small></div>
@@ -298,6 +317,7 @@ PANTALLAS.perfil = () => {
     ${UI.borrarPerfil ? `<div class="panel confirm"><b>¿Borrar el perfil de ${esc(u.nombre)}${u.nube ? " de la nube" : ""}? Se pierden sus puntos y logros.</b><div class="row"><button class="btn ghost" id="noB">No</button><button class="btn danger" id="siB">Sí, borrar</button></div></div>` : `<button class="linkish" id="borrar">${u.nube ? "Borrar mi perfil de la nube" : "Borrar este perfil"}</button>`}
   </section>`;
   on("editar", () => { UI.editLook = lookABorrador(u.look); render(); });
+  Tarjeta.conectarPanel(u);
   if (u.nube && u.pendiente) Nube.subir(u).then(() => { if (S.screen === "perfil" && !u.pendiente) render(); });
   on("salir", async () => { UI.msgBD = ""; if (u.nube) await Nube.salir(); else BD.salir(); go("home"); });
   on("rank", () => go("ranking"));
@@ -353,7 +373,7 @@ PANTALLAS.ranking = () => {
       <div class="podio">${orden.map(i => { const f = podio[i]; return `<div class="podio-p p${i + 1}">
         ${i === 0 ? `<span class="corona">👑</span>` : ""}${retrato(f.u.look, i === 0 ? 86 : 66)}
         <b>${esc(f.u.nombre)}</b><small>${tab === "torre" ? `piso ${f.puntos}` : `${f.puntos} ${tab === "arena" ? "ELO" : "pts"}`}</small><div class="escalon">${i + 1}</div></div>`; }).join("")}</div>
-      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""}"><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>${tab === "torre" ? `🚩 guardado en el piso ${Math.max(1, f.base || 1)}` : `Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas`}</small></span><strong>${tab === "torre" ? `🗼 ${f.puntos}` : f.puntos}</strong></li>`).join("")}</ol>`
+      <ol class="tabla-rank">${filas.map((f, i) => `<li class="${yo && yo.id === f.u.id ? "yo" : ""} ${enNube && Social.disponible() ? "toca" : ""}" ${enNube && Social.disponible() ? `data-tarjeta="${f.u.id}" role="button" tabindex="0"` : ""}><span class="pos">${i + 1}</span>${retrato(f.u.look, 34)}<span class="nm"><b>${esc(f.u.nombre)}</b>${f.u.look.titulo ? `<em class="tit-mini">${esc(f.u.look.titulo)}</em>` : ""}<small>${tab === "torre" ? `🚩 guardado en el piso ${Math.max(1, f.base || 1)}` : `Nivel ${nivelDe(f.u.puntos).n} · ${f.g}/${f.j} ganadas`}</small></span><strong>${tab === "torre" ? `🗼 ${f.puntos}` : f.puntos}</strong></li>`).join("")}</ol>`
       : `<div class="panel center"><p class="empty">Todavía no hay nadie en este ranking. Crea tu perfil y jueguen para aparecer acá.</p><button class="btn" id="crear">Crear perfil</button></div>`}
     <details class="panel"><summary class="label">¿Cómo se ganan puntos?</summary>
       <ul class="reglas-pts">${Puntos.REGLAS.map(([t, p]) => `<li><span>${esc(t)}</span><b>${esc(p)}</b></li>`).join("")}</ul>
@@ -362,6 +382,7 @@ PANTALLAS.ranking = () => {
   </section>`;
   app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { UI.tabRank = b.dataset.tab; render(); });
   app.querySelectorAll("[data-scope]").forEach(b => b.onclick = () => { UI.rankScope = b.dataset.scope; render(); });
+  app.querySelectorAll("[data-tarjeta]").forEach(li => li.onclick = () => Tarjeta.abrir({ id: li.dataset.tarjeta }));
   on("crear", () => { UI.creando = !Nube.config(); go("cuenta"); });
   on("volver", () => go("home"));
 };

@@ -141,7 +141,11 @@ const BD = {
     nube.stats = nube.stats || {};
     for (const j in base) nube.stats[j] = Object.assign(base[j], nube.stats[j] || {});
     let u = nube;
-    if (local && local.nube && (total(local, "j") > total(nube, "j") || (local.monedas || 0) !== (nube.monedas || 0) && total(local, "j") === total(nube, "j") && (local.diario || {}).ultimo > ((nube.diario || {}).ultimo || ""))) { u = local; u.pendiente = true; }
+    if (local && local.nube && (total(local, "j") > total(nube, "j") || (local.monedas || 0) !== (nube.monedas || 0) && total(local, "j") === total(nube, "j") && (local.diario || {}).ultimo > ((nube.diario || {}).ultimo || ""))) {
+      u = local; u.pendiente = true;
+      // El nombre (se cambia en el servidor) y el código siempre salen de la nube
+      u.nombre = nube.nombre; u.tag = nube.tag;
+    }
     else u.pendiente = false;
     this.datos.usuarios[uid] = u;
     this.datos.sesion = uid;

@@ -161,10 +161,10 @@ const Nube = {
   },
 
   aFila(u) {
-    return { nombre: u.nombre, look: u.look, puntos: u.puntos, racha: u.racha, mejor_racha: u.mejorRacha, stats: u.stats, logros: u.logros, historial: u.historial, contadas: u.contadas, monedas: u.monedas || 0, inventario: u.inv || [], diario: u.diario || {} };
+    return { nombre: u.nombre, look: u.look, puntos: u.puntos, racha: u.racha, mejor_racha: u.mejorRacha, stats: u.stats, logros: u.logros, historial: u.historial, contadas: u.contadas, monedas: u.monedas || 0, inventario: u.inv || [], diario: u.diario || {}, publico: !!u.publico };
   },
   deFila(r) {
-    return { nombre: r.nombre, look: r.look, puntos: r.puntos, racha: r.racha, mejorRacha: r.mejor_racha, stats: r.stats, logros: r.logros || {}, historial: r.historial || [], contadas: r.contadas || [], monedas: r.monedas || 0, inv: r.inventario || [], diario: r.diario || {}, creado: Date.parse(r.creado) || Date.now() };
+    return { nombre: r.nombre, look: r.look, puntos: r.puntos, racha: r.racha, mejorRacha: r.mejor_racha, stats: r.stats, logros: r.logros || {}, historial: r.historial || [], contadas: r.contadas || [], monedas: r.monedas || 0, inv: r.inventario || [], diario: r.diario || {}, creado: Date.parse(r.creado) || Date.now(), tag: r.tag || null, publico: !!r.publico };
   },
 
   async crearPerfil(nombre, look) {
@@ -173,6 +173,8 @@ const Nube = {
     const { error } = await this.sb.from("perfiles").insert({ id: u.id, ...this.aFila(u) });
     if (error) { console.error(error); throw new Error("No se pudo guardar tu perfil en la nube. Prueba de nuevo."); }
     u.pendiente = false; this.listo = u.id; BD.guardar();
+    // El código de amigo lo pone el servidor
+    this.sb.from("perfiles").select("tag").eq("id", u.id).limit(1).then(({ data }) => { if (data && data[0]) { u.tag = data[0].tag; BD.guardar(); render(); } });
     Referidos.canjear().catch(() => {}).then(() => this.revisarRegalos(u));
     return u;
   },

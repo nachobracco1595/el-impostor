@@ -7,7 +7,7 @@
      En un teléfono, varias personas juegan una detrás de otra. */
 const CI = {
   G: 1700, SALTO: 640, VEL: 205, ATRAS: 120, VEL_BOLA: 150, LARGO: 3000, CP: 750, VIDAS: 3, ALTO: 96, DURACION: 300,
-  BOLA: 28, SEGURO: 260, ETAPAS: [["leon", "🦁 El león y los aros de fuego"], ["cuerda", "🐒 La cuerda floja"], ["pelotas", "🔴 Las pelotas"]]
+  BOLA: 28, SEGURO: 260, ETAPAS: [["leon", "El león y los aros de fuego"], ["cuerda", "La cuerda floja"], ["pelotas", "Las pelotas"]]
 };
 
 const Circo = {
@@ -193,10 +193,18 @@ const Circo = {
       if (a.fin && J.fin == null) { J.fin = s.t; J.completo = !!a.comp; }
     }
   },
+  /* Lo que suma a la cuenta (el puntaje de la función es otra cosa: es solo para esta partida) */
+  textoCuenta(v, yo) {
+    if (!yo || typeof Puntos === "undefined" || !BD.sesion()) return "";
+    const r = Circo.resultado({ fase: "fin", id: v.id, jug: v.jug.map(j => ({ ...j, cpu: j.cpu })) }, yo.id); if (!r) return "";
+    const c = Puntos.calcular(r);
+    return `El puntaje de la función queda en tu récord. A tu cuenta se suman <b>+${c.puntos} puntos</b>${c.gano ? " y la partida cuenta como ganada" : ""}.`;
+  },
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;
     const J = s.jug.find(j => j.id === pid); if (!J) return null;
-    return { juego: "circo", id: s.id, gano: s.jug.length > 1 && J.puesto === 1, puesto: J.puesto, n: s.jug.length, vsCompu: s.jug.every(j => j === J || j.cpu), total: J.pts, etapas: J.etapas, completo: J.completo };
+    // Solo (sin rivales) se gana completando la función
+    return { juego: "circo", id: s.id, gano: s.jug.length > 1 ? J.puesto === 1 : !!J.completo, puesto: J.puesto, n: s.jug.length, vsCompu: s.jug.every(j => j === J || j.cpu), total: J.pts, etapas: J.etapas, completo: J.completo };
   },
   view(s, pid) {
     return { game: "circo", id: s.id, me: pid, semilla: s.semilla, fase: s.fase, t: s.t,
@@ -283,7 +291,7 @@ const Circo = {
     app.innerHTML = `<div class="nave circo" id="ciRoot"><canvas id="ciCanvas"></canvas>
       <div class="cr-top" id="ciTop"></div><div class="ar-centro" id="ciCentro" hidden></div>
       <div class="ci-ctrl"><button class="ci-b" id="ciAtras" aria-label="Para atrás">◀</button><button class="ci-b" id="ciAdelante" aria-label="Para adelante">▶</button></div>
-      <button class="md-accion ci-saltar" id="ciSaltar" aria-label="Saltar">⤴️</button>
+      <button class="md-accion ci-saltar" id="ciSaltar" aria-label="Saltar">SALTAR</button>
       <button class="nv-salir" id="ciSalir" aria-label="Salir">✕</button>
       <div class="ar-fin" id="ciFin" hidden></div></div>`;
     const local = Circo.opts.local, s = S.extra;
@@ -355,7 +363,7 @@ const Circo = {
     for (const { o, x } of obs) {
       if (o.t === "aro") Circo.aro(ctx, X(x), Y(o.cy), o.ri * esc, t, true, o.bonus);
       else if (o.t === "olla") Circo.olla(ctx, X(x), piso, esc, t);
-      else if (o.t === "mono") { const my = Circo.yMono(o, C); ctx.font = `${34 * esc}px ${FE}`; ctx.textAlign = "center"; ctx.fillText(o.azul ? "🐵" : "🐒", X(x), Y(my) - 2); ctx.textAlign = "start"; if (o.azul) { ctx.fillStyle = "rgba(77,171,247,.35)"; ctx.beginPath(); ctx.ellipse(X(x), piso + 2, 14 * esc, 4 * esc, 0, 0, 7); ctx.fill(); } }
+      else if (o.t === "mono") { const my = Circo.yMono(o, C); Circo.mono(ctx, X(x), Y(my), esc, t, o.azul, my > 2); if (o.azul) { ctx.fillStyle = "rgba(77,171,247,.35)"; ctx.beginPath(); ctx.ellipse(X(x), piso + 2, 14 * esc, 4 * esc, 0, 0, 7); ctx.fill(); } }
       else if (o.t === "bola" && !C.usadas.includes(o.id) && o.id !== C.bola) Circo.pelota(ctx, X(x), Y(0), CI.BOLA * esc, o.color, x / CI.BOLA);
     }
     // La pelota que dejaste, rodando hacia atrás
@@ -376,7 +384,7 @@ const Circo = {
     const cen = byId("ciCentro"), tt = Circo.opts.local ? S.extra.t : now / 1000 - U.off;
     if (cen) {
       const falta = Math.ceil(-tt);
-      const txt = v.fase === "cuenta" || tt < 0 ? (falta > 0 ? String(falta) : "¡YA!") : C.muerto > 0 ? (C.vidas > 0 ? (C.porque === "mono" ? "¡El mono!" : C.porque === "cayo" || C.porque === "choca" ? "¡Te caíste!" : "¡Te quemaste!") : "Fin de la función") : U.cartelEt && now - U.cartelEt.t < 2200 ? U.cartelEt.txt : C.fin != null ? (C.completo ? "🎉 ¡Función completa!" : "Fin de la función") : "";
+      const txt = v.fase === "cuenta" || tt < 0 ? (falta > 0 ? String(falta) : "¡YA!") : C.muerto > 0 ? (C.vidas > 0 ? (C.porque === "mono" ? "¡El mono!" : C.porque === "cayo" || C.porque === "choca" ? "¡Te caíste!" : "¡Te quemaste!") : "Fin de la función") : U.cartelEt && now - U.cartelEt.t < 2200 ? U.cartelEt.txt : C.fin != null ? (C.completo ? "¡Función completa!" : "Fin de la función") : "";
       if (v.fase === "fin") { cen.hidden = true; return; }
       cen.hidden = !txt; if (cen.textContent !== txt) { cen.textContent = txt; cen.classList.remove("pop"); void cen.offsetWidth; cen.classList.add("pop"); }
     }
@@ -389,8 +397,48 @@ const Circo = {
     if (!atras) {
       // Llamas alrededor
       for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2, fx = Math.cos(a) * r * 0.28, fy = Math.sin(a) * r, fl = 7 + Math.sin(t * 14 + k * 2.1) * 4; ctx.fillStyle = k % 2 ? "#ffd43b" : "#ff6b00"; ctx.beginPath(); ctx.moveTo(fx - 4, fy); ctx.quadraticCurveTo(fx + Math.sin(t * 9 + k) * 3, fy - fl * 2, fx + 4, fy); ctx.fill(); }
-      if (bonus) { ctx.font = `${r * 0.45}px ${FE}`; ctx.textAlign = "center"; ctx.fillText("💰", 0, r * 0.18); ctx.textAlign = "start"; }
+      if (bonus) { // Bolsa de monedas colgando del aro
+        const s = r * 0.022, g = Math.sin(t * 3) * 0.12;
+        ctx.save(); ctx.translate(0, r * 0.05); ctx.rotate(g);
+        ctx.strokeStyle = "#f1e3c8"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, -10 * s); ctx.stroke();
+        ctx.fillStyle = "#c08a2c"; ctx.beginPath(); ctx.moveTo(-5 * s, -10 * s); ctx.lineTo(5 * s, -10 * s); ctx.quadraticCurveTo(14 * s, 4 * s, 9 * s, 12 * s); ctx.lineTo(-9 * s, 12 * s); ctx.quadraticCurveTo(-14 * s, 4 * s, -5 * s, -10 * s); ctx.fill();
+        ctx.fillStyle = "#8a5a14"; ctx.fillRect(-6 * s, -9 * s, 12 * s, 2.5 * s);
+        ctx.fillStyle = "#ffd43b"; ctx.beginPath(); ctx.arc(0, 3 * s, 4.5 * s, 0, 7); ctx.fill();
+        ctx.fillStyle = "#c08a2c"; ctx.fillRect(-0.8 * s, 0, 1.6 * s, 6 * s);
+        ctx.restore();
+      }
     }
+    ctx.restore();
+  },
+  /* Mono de la cuerda floja, mirando hacia el payaso; el azul salta */
+  mono(ctx, x, y, esc, t, azul, enAire) {
+    const piel = azul ? "#3b6fd1" : "#7a4a24", osc = azul ? "#274f9e" : "#5a3418", cara = azul ? "#cfe0ff" : "#e9c29a", p = Math.sin(t * 12) * (enAire ? 0 : 1), s = esc;
+    ctx.save(); ctx.translate(x, y);
+    // Cola enroscada
+    ctx.strokeStyle = osc; ctx.lineWidth = 3 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(7 * s, -12 * s); ctx.bezierCurveTo(20 * s, -10 * s, 22 * s, -30 * s, 13 * s, -30 * s); ctx.stroke();
+    // Patas
+    ctx.strokeStyle = osc; ctx.lineWidth = 4 * s; ctx.beginPath();
+    if (enAire) { ctx.moveTo(-3 * s, -8 * s); ctx.lineTo(-7 * s, -3 * s); ctx.moveTo(4 * s, -8 * s); ctx.lineTo(8 * s, -3 * s); }
+    else { ctx.moveTo(-3 * s, -8 * s); ctx.lineTo(-4 * s + p * 3 * s, 0); ctx.moveTo(4 * s, -8 * s); ctx.lineTo(4 * s - p * 3 * s, 0); }
+    ctx.stroke();
+    // Cuerpo y panza
+    ctx.fillStyle = piel; ctx.beginPath(); ctx.ellipse(0, -15 * s, 9 * s, 10 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = cara; ctx.beginPath(); ctx.ellipse(-1 * s, -13 * s, 5 * s, 6.5 * s, 0, 0, 7); ctx.fill();
+    // Brazos (arriba si salta, balanceándose si camina)
+    ctx.strokeStyle = piel; ctx.lineWidth = 3.5 * s; ctx.beginPath();
+    if (enAire) { ctx.moveTo(-6 * s, -20 * s); ctx.lineTo(-12 * s, -32 * s); ctx.moveTo(6 * s, -20 * s); ctx.lineTo(12 * s, -32 * s); }
+    else { ctx.moveTo(-6 * s, -19 * s); ctx.lineTo(-12 * s, -10 * s - p * 3 * s); ctx.moveTo(6 * s, -19 * s); ctx.lineTo(10 * s, -10 * s + p * 3 * s); }
+    ctx.stroke();
+    // Cabeza, orejas y cara
+    const hy = -31 * s;
+    ctx.fillStyle = piel; ctx.beginPath(); ctx.arc(-9 * s, hy, 4 * s, 0, 7); ctx.arc(9 * s, hy, 4 * s, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, hy, 9.5 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = cara; ctx.beginPath(); ctx.arc(-9 * s, hy, 2 * s, 0, 7); ctx.arc(9 * s, hy, 2 * s, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-1.5 * s, hy + 1.5 * s, 6.5 * s, 6 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1b1726"; ctx.beginPath(); ctx.arc(-4 * s, hy - 1 * s, 1.5 * s, 0, 7); ctx.arc(1.5 * s, hy - 1 * s, 1.5 * s, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#1b1726"; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.arc(-1.5 * s, hy + 3 * s, 2.5 * s, 0.2, Math.PI - 0.2); ctx.stroke();
+    // Gorrito de circo
+    ctx.fillStyle = azul ? "#ffd43b" : "#ff4d63"; ctx.beginPath(); ctx.moveTo(-4 * s, hy - 8 * s); ctx.lineTo(4 * s, hy - 8 * s); ctx.lineTo(1 * s, hy - 17 * s); ctx.fill();
     ctx.restore();
   },
   olla(ctx, x, piso, esc, t) {
@@ -448,7 +496,7 @@ const Circo = {
     const C = U.yo, top = byId("ciTop");
     if (top) {
       const lider = v.jug.slice().sort((a, b) => b.pts - a.pts)[0];
-      top.innerHTML = `<span class="ar-chip yo"><b>⭐ ${C.pts}</b></span><span class="ar-chip"><b>${"❤️".repeat(Math.max(0, C.vidas))}${"🖤".repeat(Math.max(0, CI.VIDAS - C.vidas))}</b></span><span class="ar-chip"><b>Etapa ${C.et + 1}/3</b></span>${lider && lider.id !== v.me && v.jug.length > 1 ? `<span class="ar-chip"><b>👑 ${esc(lider.name.replace(/^🤖\s*/, "🤖"))} ${lider.pts}</b></span>` : ""}
+      top.innerHTML = `<span class="ar-chip yo"><small>Puntaje</small> <b>${C.pts}</b></span><span class="ar-chip ci-vidas">${Array.from({ length: CI.VIDAS }, (_, k) => `<i class="${k < C.vidas ? "on" : ""}"></i>`).join("")}</span><span class="ar-chip"><b>Etapa ${C.et + 1}/3</b></span>${lider && lider.id !== v.me && v.jug.length > 1 ? `<span class="ar-chip"><small>Primero</small> <b>${esc(lider.name.replace(/^🤖\s*/, ""))} ${lider.pts}</b></span>` : ""}
         <div class="ci-barra"><i style="width:${Math.min(100, ((C.et * CI.LARGO + Math.min(CI.LARGO, C.x)) / (3 * CI.LARGO)) * 100)}%"></i></div>`;
     }
     const fin = byId("ciFin");
@@ -457,7 +505,7 @@ const Circo = {
       if (v.fase === "fin" && !fin.dataset.listo) {
         fin.dataset.listo = 1;
         const orden = v.jug.slice().sort((a, b) => a.puesto - b.puesto), yo = v.jug.find(j => j.id === v.me);
-        fin.innerHTML = Turnero.tablaFin(v, orden.map(j => ({ puesto: j.puesto, name: j.name, yo: j.id === v.me, txt: `${j.pts} pts · ${j.completo ? "🎉 completa" : `etapa ${j.et + 1}`}` })), yo && yo.puesto === 1 && v.jug.length > 1 ? "🏆 ¡La estrella del circo!" : "🎪 Fin de la función", "", Circo.send, Circo.opts);
+        fin.innerHTML = Turnero.tablaFin(v, orden.map(j => ({ puesto: j.puesto, name: j.name, yo: j.id === v.me, txt: `${j.pts} de puntaje · ${j.completo ? "función completa" : `llegó a la etapa ${j.et + 1}`}` })), yo && (v.jug.length > 1 ? yo.puesto === 1 : yo.completo) ? "¡La estrella del circo!" : "Fin de la función", Circo.textoCuenta(v, yo), Circo.send, Circo.opts);
         Turnero.conectarFin(Circo.send, Circo.opts);
       }
     }

@@ -296,6 +296,8 @@ const Puntos = {
     ["Arco: cada flecha al centro (X)", "+2"],
     ["Arco: 80% del máximo o más", "+8"],
     ["Circo: cada etapa superada / función completa", "+4 / +10"],
+    ["Circo: cada 500 de puntaje en la función (desde 1000)", "+1 (hasta +20)"],
+    ["Circo solo, sin rivales: terminar la función cuenta como ganada", "+8"],
     ["Preguntas Locas: cada respuesta correcta / cada personaje", "+1 / +2"],
     ["Impostor: ganar como inocente", "+10"],
     ["Impostor: ganar como impostor", "+25"],
@@ -402,8 +404,9 @@ const Puntos = {
       if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "Ganaste la partida", r.vsCompu ? 12 : 25]); }
     } else if (r.juego === "circo") {
       if (r.etapas) d.push([`${r.etapas} etapa${r.etapas > 1 ? "s" : ""} superada${r.etapas > 1 ? "s" : ""}`, 4 * r.etapas]);
+      if (r.total >= 1000) d.push([`Puntaje de la función (${r.total})`, Math.min(20, Math.floor(r.total / 500))]);
       if (r.completo) d.push(["¡Función completa!", 10]);
-      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "La estrella del circo", r.vsCompu ? 12 : 25]); }
+      if (r.gano) { gano = true; d.push(r.n === 1 ? ["Terminaste la función sin rivales", 8] : [r.vsCompu ? "Le ganaste a los bots" : "La estrella del circo", r.vsCompu ? 12 : 25]); }
     } else if (r.juego === "casos") {
       if (r.soplon) { if (!r.resuelto) { gano = true; d.push(["Ganaste como soplón", 35]); } }
       else {

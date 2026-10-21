@@ -1671,3 +1671,8 @@ html.tj-abierta, html.tj-abierta body { overflow: hidden; }
 .he-skin.puesta { border-color: var(--teal); } .he-skin.puesta small { color: var(--teal); }
 .he-skin.viendo { border-color: var(--spot); box-shadow: 0 0 12px rgba(255, 197, 61, .4); }
 .he-skin-acc { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 197, 61, .1); font-size: 13px; }
+.cr-top .ar-chip.ci-vidas { display: inline-flex; gap: 6px; align-items: center; }
+.ar-chip.ci-vidas i { position: static; display: block; flex: none; width: 13px; height: 13px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+.ar-chip.ci-vidas i.on { background: #ff4d63; box-shadow: 0 0 6px rgba(255, 77, 99, .7); }
+.ci-saltar { font-size: 17px; font-weight: 900; letter-spacing: 1px; color: #2a1a00; }
+.cr-top .ar-chip small { opacity: .7; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }

@@ -120,7 +120,7 @@ const Net = {
       if (!R.game) {
         if (pid !== "H") return;
         if (a.t === "sel") R.sel = a.game;
-        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "blackjack" ? Blackjack.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : R.sel === "torre" ? Torre.empezarOn(R) : ImpOn.empezar(R)) || ""; }
+        if (a.t === "start") { R.err = (R.sel === "liars" ? Lie.empezarOn(R) : R.sel === "casos" ? Casos.empezarOn(R) : R.sel === "ajedrez" ? Ajedrez.empezarOn(R) : R.sel === "naval" ? Naval.empezarOn(R) : R.sel === "chinchon" ? Chin.empezarOn(R) : R.sel === "truco" ? Truco.empezarOn(R) : R.sel === "burako" ? Burako.empezarOn(R) : R.sel === "poker" ? Poker.empezarOn(R) : R.sel === "carrera" ? Carrera.empezarOn(R) : R.sel === "bingo" ? Bingo.empezarOn(R) : R.sel === "blackjack" ? Blackjack.empezarOn(R) : R.sel === "nave" ? Nave.empezarOn(R) : R.sel === "arena" ? Arena.empezarOn(R) : R.sel === "torre" ? Torre.empezarOn(R) : EXTRA[R.sel] ? EXTRA[R.sel].empezarOn(R) : ImpOn.empezar(R)) || ""; }
         if (a.t === "kick") { R.players = R.players.filter(p => p.id !== a.id || p.id === "H"); const c = this.conns[a.id]; if (c) { c.send({ t: "error", msg: "El anfitrión te sacó de la sala." }); setTimeout(() => c.close(), 300); } }
       } else if (R.game === "impostor") ImpOn.act(R, pid, a);
       else if (R.game === "liars") Lie.actOn(R, pid, a);
@@ -136,15 +136,16 @@ const Net = {
       else if (R.game === "blackjack") Blackjack.actOn(R, pid, a);
       else if (R.game === "nave") Nave.actOn(R, pid, a);
       else if (R.game === "arena") Arena.actOn(R, pid, a);
+      else if (EXTRA[R.game]) EXTRA[R.game].actOn(R, pid, a);
     } catch (e) { console.error(e); }
     // En La Nave las posiciones se reparten con el reloj (10 por segundo), no con cada movimiento
-    if (!((R.game === "nave" || R.game === "arena" || R.game === "carrera") && a.t === "pos")) this.broadcast();
+    if (!((R.game === "nave" || R.game === "arena" || R.game === "carrera" || R.game === "circo") && a.t === "pos")) this.broadcast();
   },
 
   viewFor(pid) {
     const v = this.vistaJuego(pid), R = this.R;
     v.looks = Object.fromEntries(R.players.filter(p => p.look).map(p => [p.name, p.look]));
-    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "truco" ? Truco.resultado(R.tru, pid) : R.game === "burako" ? Burako.resultado(R.bk, pid) : R.game === "poker" ? Poker.resultado(R.pk, pid) : R.game === "carrera" ? Carrera.resultado(R.car, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : R.game === "arena" ? Arena.resultado(R.arena, pid) : null;
+    v.resultado = R.game === "impostor" ? ImpOn.resultado(R, pid) : R.game === "liars" ? Lie.resultado(R.lie, pid) : R.game === "casos" ? Casos.resultado(R.casos, pid, false) : R.game === "ajedrez" ? Ajedrez.resultado(R.aj, pid) : R.game === "naval" ? Naval.resultado(R.nav, pid) : R.game === "chinchon" ? Chin.resultado(R.chi, pid) : R.game === "truco" ? Truco.resultado(R.tru, pid) : R.game === "burako" ? Burako.resultado(R.bk, pid) : R.game === "poker" ? Poker.resultado(R.pk, pid) : R.game === "carrera" ? Carrera.resultado(R.car, pid) : R.game === "nave" ? Nave.resultado(R.nave, pid) : R.game === "arena" ? Arena.resultado(R.arena, pid) : EXTRA[R.game] ? EXTRA[R.game].resultado(R.ex, pid) : null;
     return v;
   },
 
@@ -164,8 +165,9 @@ const Net = {
     if (R.game === "blackjack") return { ...Blackjack.view(R.bj, pid), isHost: pid === "H" };
     if (R.game === "nave") return { ...Nave.view(R.nave, pid), isHost: pid === "H" };
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
+    if (EXTRA[R.game] && R.ex) return { ...EXTRA[R.game].view(R.ex, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, exCfg: Object.fromEntries(Object.entries(EXTRA).map(([k, m]) => [k, { ...m.cfg(), personas: undefined }])), biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H", torre: p.id === "H" ? Torre.info() : p.torre || null })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -355,6 +357,8 @@ PANTALLAS.online = () => {
   if (v.game === "nave") return Nave.render(v, enviar, op);
   if (v.game === "arena") return Arena.render(v, enviar, op);
   if (UI.arena) Arena.parar();
+  if (EXTRA[v.game]) return EXTRA[v.game].render(v, enviar, op);
+  if (UI.bw) Bowling.parar(); if (UI.ac) Arco.parar(); if (UI.ci) Circo.parar();
   if (document.body.classList.contains("en-nave")) Nave.parar();
   if (v.game === "casos") { if (v.phase === "intro") UI.vistas = new Set(); marcarResuelto(v); return Casos.render(v, a => Net.send(a), { local: false, isHost: v.isHost }); }
   renderLobby(v);
@@ -377,7 +381,8 @@ function renderLobby(v) {
     nave: ["La Nave", `<span class="nave-mini">🚀</span>`, "3 a 10"],
     arena: ["Arena", `<span class="nave-mini">⚔️</span>`, "2 a 8"],
     torre: ["Torre de hordas", `<span class="nave-mini">🗼</span>`, "1 a 4"],
-    ajedrez: ["Ajedrez", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "2 jugadores"]
+    ajedrez: ["Ajedrez", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "2 jugadores"],
+    ...Object.fromEntries(Object.entries(EXTRA).map(([k, m]) => [k, [m.lobbyInfo[0], `<span class="nave-mini">${m.lobbyInfo[1]}</span>`, m.lobbyInfo[2]]]))
   };
   app.innerHTML = `${Net.cabecera()}
   <section class="screen">
@@ -423,6 +428,7 @@ function renderLobby(v) {
         : v.sel === "arena" ? `<p class="summary">Todos contra todos: gana el último en pie. Cada uno pelea con su héroe y su equipo (se arman en Inicio → Arena). Cambia el ELO y da monedas.</p>
           ${Heroes.selector()}
           <div class="chips-j">${Object.entries(AR.ESCENARIOS).map(([k, E]) => `<button class="chip-j ${v.arEsc === k ? "on" : ""}" ${H ? `data-aresc="${k}"` : "disabled"}>${E.ic} ${E.nombre}</button>`).join("")}</div>`
+        : EXTRA[v.sel] ? EXTRA[v.sel].lobby(v, H)
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
         : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
         : v.sel === "liars" ? `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.${Math.max(2, v.lieMesa) > v.players.length ? ` Se suman ${Math.min(8, Math.max(2, v.lieMesa)) - v.players.length} bot${Math.min(8, Math.max(2, v.lieMesa)) - v.players.length > 1 ? "s" : ""} para completar la mesa.` : ""}</p>
@@ -462,6 +468,7 @@ function renderLobby(v) {
   on("trJuntos", () => { S.trCfg.juntos = !S.trCfg.juntos; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-aresc]").forEach(b => b.onclick = () => { S.arenaEsc = b.dataset.aresc; Net.cfgCambiada(); });
   Heroes.conectarSelector();
+  Turnero.conectarLobby();
   if (["arena", "torre", "carrera", "nave"].includes(v.sel) && ArenaPixi.quiere() && !(ArenaPixi.listo && ArenaPixi.imgsListas)) {
     ArenaPixi.cargar(); ArenaPixi.cargarImagenes();
     const caja = app.querySelector(".elige ~ .summary");
@@ -485,6 +492,7 @@ const Turno = {
     if (v.game === "burako" && (v.fase === "robar" || v.fase === "jugar") && v.yo >= 0) return { mio: v.turno === v.yo, quien: v.jug[v.turno].name.replace(/^🤖\s*/, ""), que: v.fase === "robar" ? "robar" : "bajar o tirar" };
     if (v.game === "truco" && v.fase === "juego" && v.yo >= 0) return { mio: v.actor === v.yo, quien: v.jug[v.actor].name.replace(/^🤖\s*/, ""), que: v.pend && v.pend.resp === v.yo ? "responder" : "jugar" };
     if (v.game === "ajedrez" && v.s && v.miColor && !Ajedrez.terminado(v.s)) { const t = v.s.pos.turno; return { mio: v.miColor === t, quien: v.s.jug[t === "w" ? 0 : 1].name, que: "mover" }; }
+    if (EXTRA[v.game] && EXTRA[v.game].turnoInfo) return EXTRA[v.game].turnoInfo(v);
     if (v.game === "liars") {
       if (v.phase === "turn") return { mio: v.turnId === v.me, quien: v.turnName, que: "jugar tus cartas" };
       if (v.phase === "reveal" && v.rev) return { mio: v.rev.shooterId === v.me, quien: v.rev.shooter, que: "gatillar" };
@@ -498,7 +506,7 @@ const Turno = {
   },
   revisar(v) {
     const e = this.estado(v), mio = !!(e && e.mio), p = this.pill();
-    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker", "blackjack"].includes(v.game));
+    const porTurnos = !!(v && ["naval", "chinchon", "ajedrez", "liars", "truco", "burako", "poker", "blackjack", "bowling", "arco"].includes(v.game));
     document.body.classList.toggle("mi-turno", mio); document.body.classList.toggle("con-turno", !!e || porTurnos);
     p.hidden = !e;
     if (e) { p.classList.toggle("mio", mio); p.innerHTML = mio ? `🎯 <b>¡Es tu turno!</b> <small>Te toca ${esc(e.que)}</small>` : `⏳ Turno de <b>${esc(e.quien)}</b>`; }

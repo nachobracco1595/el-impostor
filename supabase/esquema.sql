@@ -37,6 +37,12 @@ alter table public.perfiles add column if not exists pts_truco    integer genera
 alter table public.perfiles add column if not exists pts_arena    integer generated always as (coalesce((stats -> 'arena' ->> 'p')::integer, 0)) stored;
 alter table public.perfiles add column if not exists elo_arena    integer generated always as (coalesce((stats -> 'arena' ->> 'elo')::integer, 1000)) stored;
 create index if not exists perfiles_elo_arena_idx on public.perfiles (elo_arena desc);
+alter table public.perfiles add column if not exists pts_bowling  integer generated always as (coalesce((stats -> 'bowling' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists pts_arco     integer generated always as (coalesce((stats -> 'arco' ->> 'p')::integer, 0)) stored;
+alter table public.perfiles add column if not exists pts_circo    integer generated always as (coalesce((stats -> 'circo' ->> 'p')::integer, 0)) stored;
+create index if not exists perfiles_bowling_idx on public.perfiles (pts_bowling desc);
+create index if not exists perfiles_arco_idx on public.perfiles (pts_arco desc);
+create index if not exists perfiles_circo_idx on public.perfiles (pts_circo desc);
 
 create index if not exists perfiles_puntos_idx on public.perfiles (puntos desc);
 create index if not exists perfiles_impostor_idx on public.perfiles (pts_impostor desc);

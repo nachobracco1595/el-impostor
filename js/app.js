@@ -171,12 +171,16 @@ function juegosMenu() {
     ["carrera", "Carrera Loca", "Obstáculos, saltos y a la meta.", MenuArte.carrera(), "t-car", "#69db7c"],
     ["arena", "Arena y Torre", "Héroes con clases, evoluciones y prestigio. Duelos con ELO y hordas piso por piso.", MenuArte.arena(), "t-arena", "#ff6b7d"],
     ["casino", "Casino", "Ruleta, tragamonedas, blackjack y bingo.", MenuArte.casino(), "t-casino", "#ff5fa2"],
-    ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", MenuArte.trabajos(), "t-trab", "#94d82d"]
+    ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", MenuArte.trabajos(), "t-trab", "#94d82d"],
+    ["circo", "Circo", "Aros de fuego, cuerda floja y pelotas.", MenuArte.circo(), "t-circo", "#ff922b"],
+    ["bowling", "Bowling", "Strikes, spares y efecto con el dedo.", MenuArte.bowling(), "t-bowl", "#9775fa"],
+    ["arco", "Arco y flecha", "Diana, viento y pulso firme.", MenuArte.arco(), "t-arco", "#ffd43b"]
   ];
 }
 /* Secciones del inicio */
 const MENU_SECCIONES = [
-  ["⚔️ Acción", ["arena", "carrera"]],
+  ["⚔️ Acción", ["arena", "carrera", "circo"]],
+  ["🎯 Puntería", ["bowling", "arco"]],
   ["🎉 Para jugar en grupo", ["impostor", "nave", "liars", "casos"]],
   ["🃏 Cartas y fichas", ["truco", "chinchon", "poker", "burako"]],
   ["♟️ Duelos", ["ajedrez", "naval"]],
@@ -200,7 +204,7 @@ PANTALLAS.home = () => {
     <div class="ob-txt"><b>Jugar online</b><small>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código.</small></div>
     <div class="ob-acc"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
   </article>
-  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "carrera")).join("")}</div></section>`).join("")}`;
+  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena")).join("")}</div></section>`).join("")}`;
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");
@@ -209,6 +213,7 @@ PANTALLAS.home = () => {
     if (S.mode === "poker") return go("pokerIntro");
     if (S.mode === "carrera") return go("carreraIntro");
     if (S.mode === "arena") return go("arenaIntro");
+    if (EXTRA[S.mode]) return go(S.mode + "Intro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });
   Cuenta.conectarBarra();

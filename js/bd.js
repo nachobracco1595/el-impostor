@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -49,7 +49,14 @@ const LOGROS = [
   { id: "banca", ic: "🎩", nombre: "Le gané a la banca", desc: "Gana 25 manos de blackjack con monedas.", ok: u => (u.stats.timba || {}).bjGanadas >= 25 },
   { id: "racha3", ic: "🔥", nombre: "En racha", desc: "Gana 3 partidas seguidas.", ok: u => u.mejorRacha >= 3 },
   { id: "racha5", ic: "⚡", nombre: "Imparable", desc: "Gana 5 partidas seguidas.", ok: u => u.mejorRacha >= 5 },
-  { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 }
+  { id: "mil", ic: "💯", nombre: "Mil puntos", desc: "Llega a 1000 puntos.", ok: u => u.puntos >= 1000 },
+  { id: "chuza", ic: "🎳", nombre: "¡Chuza!", desc: "Haz tu primer strike en el bowling.", ok: u => u.stats.bowling.strikes >= 1 },
+  { id: "turkey", ic: "🦃", nombre: "Turkey", desc: "Haz 3 strikes seguidos en el bowling.", ok: u => u.stats.bowling.turkeys >= 1 },
+  { id: "bolo200", ic: "🏅", nombre: "Bolo de oro", desc: "Haz 200 puntos en una partida de bowling de 10 cuadros.", ok: u => u.stats.bowling.mejor >= 200 },
+  { id: "robin", ic: "🏹", nombre: "Robin Hood", desc: "Clava 10 flechas en el centro (X).", ok: u => u.stats.arco.x >= 10 },
+  { id: "halcon", ic: "🦅", nombre: "Ojo de halcón", desc: "Haz 100 puntos o más en un torneo de arco de 4 rondas.", ok: u => u.stats.arco.mejor >= 100 },
+  { id: "domador", ic: "🦁", nombre: "Domador", desc: "Termina las tres etapas del circo.", ok: u => u.stats.circo.completo >= 1 },
+  { id: "estrella", ic: "🎪", nombre: "Estrella del circo", desc: "Haz 10.000 puntos en una función de circo.", ok: u => u.stats.circo.mejor >= 10000 }
 ];
 
 function total(u, k) { return Object.keys(JUEGOS).reduce((s, j) => s + (u.stats[j][k] || 0), 0); }
@@ -68,6 +75,9 @@ function statsVacias() {
     ajedrez: { j: 0, g: 0, p: 0, tablas: 0, mates: 0, dificilG: 0 },
     nave: { j: 0, g: 0, p: 0, kills: 0, tareas: 0, impG: 0, triple: 0 },
     arena: { j: 0, g: 0, p: 0, elo: 1000, mejorElo: 1000, kills: 0 },
+    bowling: { j: 0, g: 0, p: 0, mejor: 0, strikes: 0, spares: 0, turkeys: 0 },
+    arco: { j: 0, g: 0, p: 0, mejor: 0, x: 0, dieces: 0 },
+    circo: { j: 0, g: 0, p: 0, mejor: 0, completo: 0, etapas: 0 },
     // El casino no suma partidas ni puntos: solo lleva la cuenta
     timba: { j: 0, g: 0, p: 0, jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0, blackjacks: 0, bjGanadas: 0 }
   };
@@ -202,6 +212,12 @@ const BD = {
       if (!res.vsCompu) st.elo = Math.max(0, (st.elo || 1000) + Math.max(-60, Math.min(60, res.dElo | 0)));
       st.mejorElo = Math.max(st.mejorElo || 1000, st.elo);
       if (typeof Heroes !== "undefined" && res.clase) Heroes.ganarXp(u, res.clase, res.xp | 0);
+    } else if (res.juego === "bowling") {
+      st.strikes += res.strikes | 0; st.spares += res.spares | 0; if (res.turkey) st.turkeys++; if (res.cuadros === 10) st.mejor = Math.max(st.mejor || 0, res.total | 0);
+    } else if (res.juego === "arco") {
+      st.x += res.centros | 0; st.dieces += res.dieces | 0; if (res.max === 120) st.mejor = Math.max(st.mejor || 0, res.total | 0);
+    } else if (res.juego === "circo") {
+      st.etapas += res.etapas | 0; if (res.completo) st.completo++; st.mejor = Math.max(st.mejor || 0, res.total | 0);
     } else if (res.juego === "casos") {
       if (res.resuelto && !res.soplon && !st.resueltos.includes(res.casoId)) st.resueltos.push(res.casoId);
       if (res.soplon && calc.gano) st.soplonG++;
@@ -269,6 +285,12 @@ function nivelDe(puntos) {
 const Puntos = {
   REGLAS: [
     ["Participar en cualquier partida", "+5"],
+    ["Bowling: cada strike / cada spare", "+2 / +1"],
+    ["Bowling: 150 o más / 200 o más", "+5 / +10"],
+    ["Bowling, Arco o Circo: ganar (persona / bots)", "+25 / +12"],
+    ["Arco: cada flecha al centro (X)", "+2"],
+    ["Arco: 80% del máximo o más", "+8"],
+    ["Circo: cada etapa superada / función completa", "+4 / +10"],
     ["Impostor: ganar como inocente", "+10"],
     ["Impostor: ganar como impostor", "+25"],
     ["Impostor: adivinar la palabra al ser descubierto", "+10 extra"],
@@ -358,6 +380,20 @@ const Puntos = {
       if (r.kills) d.push([`Eliminaste a ${r.kills}`, 5 * r.kills]);
       if (r.gano) { gano = true; d.push([r.vsCompu ? "Ganaste la pelea contra la compu" : "Ganaste la pelea", r.vsCompu ? 10 : 25]); }
       else if (r.lugar === 2 && r.n > 2) d.push(["Segundo puesto", 8]);
+    } else if (r.juego === "bowling") {
+      if (r.strikes) d.push([`${r.strikes} strike${r.strikes > 1 ? "s" : ""}`, 2 * Math.min(12, r.strikes)]);
+      if (r.spares) d.push([`${r.spares} spare${r.spares > 1 ? "s" : ""}`, Math.min(10, r.spares)]);
+      const t = r.cuadros === 10 ? r.total : r.total * 2;
+      if (t >= 200) d.push(["Más de 200 puntos", 10]); else if (t >= 150) d.push(["Más de 150 puntos", 5]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "Ganaste la partida", r.vsCompu ? 12 : 25]); }
+    } else if (r.juego === "arco") {
+      if (r.centros) d.push([`${r.centros} flecha${r.centros > 1 ? "s" : ""} al centro`, 2 * Math.min(12, r.centros)]);
+      if (r.max && r.total >= r.max * 0.8) d.push(["Más del 80% del máximo", 8]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "Ganaste el torneo", r.vsCompu ? 12 : 25]); }
+    } else if (r.juego === "circo") {
+      if (r.etapas) d.push([`${r.etapas} etapa${r.etapas > 1 ? "s" : ""} superada${r.etapas > 1 ? "s" : ""}`, 4 * r.etapas]);
+      if (r.completo) d.push(["¡Función completa!", 10]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "La estrella del circo", r.vsCompu ? 12 : 25]); }
     } else if (r.juego === "casos") {
       if (r.soplon) { if (!r.resuelto) { gano = true; d.push(["Ganaste como soplón", 35]); } }
       else {

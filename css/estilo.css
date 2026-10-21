@@ -1568,3 +1568,41 @@ html.tj-abierta, html.tj-abierta body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .juegos-grid .tile:hover .tile-art > *, .yc-mon.aviso { animation: none; } .ma-flota { animation: none !important; } }
 .ma-flota { animation: maFlota 3s ease-in-out infinite; transform-box: fill-box; }
 @keyframes maFlota { 50% { translate: 0 -3px; } }
+
+/* ---------- Bowling, Arco y flecha y Circo ---------- */
+.bowling canvas, .arco canvas, .circo canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.bowling .nv-salir, .arco .nv-salir, .circo .nv-salir { top: calc(10px + env(safe-area-inset-top, 0px)); right: 10px; z-index: 3; }
+.bw-top { position: absolute; left: 8px; right: 54px; top: calc(8px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.bw-tabla { display: flex; flex-direction: column; gap: 3px; }
+.bw-fila { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 10px; background: rgba(15, 13, 24, .78); border: 1px solid transparent; font-size: 11px; }
+.bw-fila.on { border-color: var(--spot); box-shadow: 0 0 12px rgba(255, 197, 61, .35); }
+.bw-fila.yo b { color: var(--spot); }
+.bw-fila > b { width: 62px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bw-fila > strong { margin-left: auto; font-family: var(--display); font-weight: 400; font-size: 15px; min-width: 30px; text-align: right; }
+.bw-cuadros { display: flex; gap: 1px; flex: 1; min-width: 0; }
+.bw-cuadros span { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 1px 0; border-radius: 4px; background: rgba(255, 255, 255, .06); line-height: 1.1; }
+.bw-cuadros span.act { background: rgba(255, 197, 61, .25); }
+.bw-cuadros i { font-style: normal; font-weight: 800; font-size: 10px; letter-spacing: -.02em; color: #ffd8a8; min-height: 11px; }
+.bw-cuadros em { font-style: normal; font-size: 9.5px; color: var(--muted); min-height: 10px; }
+.bw-ayuda { position: absolute; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); text-align: center; padding: 8px 12px; border-radius: 16px; background: rgba(15, 13, 24, .82); font-size: 14px; pointer-events: none; }
+.bw-ayuda:empty, .bw-ayuda[hidden] { display: none; }
+.bw-ayuda small { color: var(--muted); font-size: 12px; }
+.bw-cartel { font-size: 44px; top: 42%; width: 92%; text-align: center; line-height: 1.05; z-index: 2; }
+.bw-cartel[data-m="strike"] { color: var(--spot); text-shadow: 0 0 24px rgba(255, 197, 61, .9), 0 6px 0 #0008; font-size: 50px; }
+.bw-cartel[data-m="spare"] { color: var(--teal); }
+.bw-cartel[data-m="canal"] { color: #adb5bd; font-size: 40px; }
+.ac-info { display: flex; justify-content: space-between; gap: 6px; padding: 5px 10px; border-radius: 10px; background: rgba(15, 13, 24, .78); font-size: 12px; }
+.ac-flechas { display: flex; gap: 3px; flex: 1; }
+.ac-flechas i { font-style: normal; min-width: 20px; text-align: center; padding: 1px 3px; border-radius: 5px; background: rgba(255, 255, 255, .1); font-weight: 800; }
+.ac-flechas i.oro { background: rgba(252, 196, 25, .35); } .ac-flechas i.x { background: #fcc419; color: #3a2400; }
+.arco .bw-ayuda { background: rgba(15, 13, 24, .7); }
+.ci-ctrl { position: absolute; left: 14px; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 12px; }
+.ci-b { width: 76px; height: 76px; border-radius: 22px; font-size: 30px; color: #fff; background: rgba(255, 255, 255, .14); border: 2px solid rgba(255, 255, 255, .3); backdrop-filter: blur(3px); }
+.ci-b.on, .ci-b:active { background: rgba(255, 197, 61, .45); border-color: var(--spot); }
+.ci-saltar { font-size: 40px; }
+.circo .cr-top { left: 8px; right: 54px; align-items: center; }
+.ci-barra { flex-basis: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.ci-barra i { display: block; height: 100%; background: linear-gradient(90deg, var(--spot), var(--red)); }
+.circo .ar-centro { font-size: 40px; top: 30%; white-space: nowrap; }
+.ex-arte svg { width: 150px; height: auto; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
+.ex-intro .players { margin-bottom: 4px; }

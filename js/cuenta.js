@@ -83,6 +83,7 @@ const Cuenta = {
     else if (S.screen === "burako" && S.bk) deLocal(S.bk.jug.filter(j => !j.cpu), p => Burako.resultado(S.bk, p.id));
     else if (S.screen === "truco" && S.tru) deLocal(S.tru.jug.filter(j => !j.cpu), p => Truco.resultado(S.tru, p.id));
     else if (S.screen === "chinchon" && S.chi) deLocal(S.chi.jug.filter(j => !j.cpu), p => Chin.resultado(S.chi, p.id));
+    else if (typeof EXTRA !== "undefined" && EXTRA[S.screen] && S.extra && S.extra.juego === S.screen) deLocal(S.extra.jug.filter(j => !j.cpu), p => EXTRA[S.screen].resultado(S.extra, p.id));
     const hechos = pend.map(([u, r]) => r && BD.registrar(u.id, r)).filter(Boolean);
     if (!hechos.length) return;
     if (hechos.length === 1) {
@@ -299,6 +300,9 @@ PANTALLAS.perfil = () => {
         <div><b>🗡️ Truco</b><span>${st.truco.p} pts · ${st.truco.g}/${st.truco.j} ganadas (${pct(st.truco.g, st.truco.j)})</span><small>${st.truco.envidos} envidos ganados · ${st.truco.vale4} vale cuatro</small></div>
         <div><b>⚓ Batalla naval</b><span>${st.naval.p} pts · ${st.naval.g}/${st.naval.j} ganadas (${pct(st.naval.g, st.naval.j)})</span><small>${st.naval.hundidos} barcos hundidos</small></div>
         <div><b>♚ Ajedrez</b><span>${st.ajedrez.p} pts · ${st.ajedrez.g}/${st.ajedrez.j} ganadas (${pct(st.ajedrez.g, st.ajedrez.j)})</span><small>${st.ajedrez.mates} mates · ${st.ajedrez.tablas} tablas</small></div>
+        <div><b>🎳 Bowling</b><span>${st.bowling.p} pts · ${st.bowling.g}/${st.bowling.j} ganadas (${pct(st.bowling.g, st.bowling.j)})</span><small>${st.bowling.strikes} strikes · ${st.bowling.spares} spares${st.bowling.mejor ? ` · mejor partida ${st.bowling.mejor}` : ""}</small></div>
+        <div><b>🏹 Arco y flecha</b><span>${st.arco.p} pts · ${st.arco.g}/${st.arco.j} ganadas (${pct(st.arco.g, st.arco.j)})</span><small>${st.arco.x} flechas al centro${st.arco.mejor ? ` · mejor torneo ${st.arco.mejor}/120` : ""}</small></div>
+        <div><b>🎪 Circo</b><span>${st.circo.p} pts · ${st.circo.g}/${st.circo.j} ganadas (${pct(st.circo.g, st.circo.j)})</span><small>${st.circo.etapas} etapas superadas${st.circo.mejor ? ` · récord ${st.circo.mejor}` : ""}</small></div>
         <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
         ${st.timba && st.timba.jugadas ? `<div><b>🎰 Casino</b><span>${st.timba.jugadas} jugadas · ${st.timba.ganado - st.timba.apostado >= 0 ? "+" : ""}${st.timba.ganado - st.timba.apostado} 🪙 en total</span><small>Mayor premio: ${st.timba.mayor} 🪙 · ${st.timba.plenos} plenos · ${st.timba.jackpots} jackpots · ${st.timba.bingos} bingos</small></div>` : ""}
         <div><b>🔍 Detectives</b><span>${st.casos.p} pts · ${st.casos.g}/${st.casos.j} ganadas (${pct(st.casos.g, st.casos.j)})</span><small>Casos resueltos: ${st.casos.resueltos.length} de ${CASOS.length}</small></div>
@@ -361,7 +365,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}

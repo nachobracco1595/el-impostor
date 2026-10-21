@@ -6,7 +6,7 @@
 const MENTE = {
   BASE: { facil: 0.2, normal: 0.5, dificil: 0.8 },
   SUBE: 7, BAJA: 3, INICIO: 40,
-  NOMBRES: { arena: "Arena", torre: "Torre", truco: "Truco", liars: "Mentiroso", poker: "Póker", chinchon: "Chinchón", burako: "Burako", ajedrez: "Ajedrez", naval: "Batalla naval", carrera: "Carrera", nave: "La Nave" }
+  NOMBRES: { arena: "Arena", torre: "Torre", truco: "Truco", liars: "Mentiroso", poker: "Póker", chinchon: "Chinchón", burako: "Burako", ajedrez: "Ajedrez", naval: "Batalla naval", carrera: "Carrera", nave: "La Nave", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo" }
 };
 
 const Mente = {
@@ -60,6 +60,7 @@ const Mente = {
       chinchon: [S.chi, s => s.jug, () => Chin], burako: [S.bk, s => s.jug, () => Burako], ajedrez: [S.aj, s => s.jug, () => Ajedrez],
       naval: [S.nav, s => s.jug, () => Naval], carrera: [S.car, s => s.jug, () => Carrera], nave: [S.nave, s => s.jug, () => Nave]
     };
+    if (typeof EXTRA !== "undefined" && S.extra && EXTRA[S.extra.juego]) J[S.extra.juego] = [S.extra, s => s.jug, () => EXTRA[S.extra.juego]];
     for (const juego in J) {
       const [st, lista, mod] = J[juego]; if (!st || st.menteOk) continue;
       const jug = lista(st) || [], yo = jug.find(j => !j.cpu && !j.bot);

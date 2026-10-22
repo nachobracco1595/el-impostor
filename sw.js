@@ -3,7 +3,7 @@
      después se lee de la caché del teléfono al instante, incluso sin internet.
    - Todo lo demás pide siempre la versión nueva a internet; solo si no hay conexión usa la copia guardada. */
 // Si se cambia PixiJS o el arte de img/arena, subir el número de RECURSOS para que los teléfonos bajen lo nuevo
-const CACHE = "mesa-loca-v2", RECURSOS = "mesa-loca-recursos-v1";
+const CACHE = "mesa-loca-v3", RECURSOS = "mesa-loca-recursos-v1";
 self.addEventListener("install", e => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE && k !== RECURSOS) await caches.delete(k);
@@ -24,7 +24,8 @@ self.addEventListener("fetch", e => {
     }));
     return;
   }
-  e.respondWith(fetch(req).then(res => {
+  // "no-cache": siempre pregunta si hay versión nueva (si no cambió, el servidor contesta rápido sin mandar el archivo)
+  e.respondWith(fetch(req, { cache: "no-cache" }).then(res => {
     if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(req, copia)); }
     return res;
   }).catch(() => caches.match(req).then(r => r || caches.match("./index.html"))));

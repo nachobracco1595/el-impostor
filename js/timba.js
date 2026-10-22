@@ -4,10 +4,11 @@
      así las ganancias grandes no chocan con el control de "no subir más de 500 monedas de una vez".
    - Con perfil local se guarda en el teléfono. */
 
+const num = n => new Intl.NumberFormat("es").format(Math.round(n || 0));
 const Timba = {
-  cfg() { return Object.assign({ activo: true, maxApuesta: 500 }, (typeof Nube !== "undefined" && Nube.cfg && Nube.cfg.timba) || {}); },
+  cfg() { return Object.assign({ activo: true, maxApuesta: 2000, pozoPct: 2, pozoCada: 300000, pozoBase: 2000 }, (typeof Nube !== "undefined" && Nube.cfg && Nube.cfg.timba) || {}); },
   abierto() { return this.cfg().activo !== false; },
-  maxApuesta() { return Math.max(10, Math.min(5000, +this.cfg().maxApuesta || 500)); },
+  maxApuesta() { return Math.max(10, Math.min(50000, +this.cfg().maxApuesta || 2000)); },
   /* Azar del navegador (más parejo que Math.random) */
   azar(n) { try { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; } catch { return Math.floor(Math.random() * n); } },
   stats(u) {
@@ -15,7 +16,8 @@ const Timba = {
     return u.stats.timba;
   },
   /* Lo que se ve en pantalla: mientras gira, el premio todavía no aparece */
-  saldo(u) { return Math.max(0, (u.monedas || 0) - (UI.timbaPend || 0)); },
+  saldo(u) { return Math.max(0, (u.monedas || 0) - (UI.timbaPend || 0) - (UI.pozoPend || 0)); },
+  pintarSaldo() { const u = BD.sesion(), e = byId("tbSaldo"); if (u && e) e.textContent = `🪙 ${num(Timba.saldo(u))}`; },
 
   /* Mueve monedas: apuesta (sale) y premio (entra) en una sola jugada */
   mover(u, juego, apuesta, premio, extra = {}) {
@@ -27,17 +29,97 @@ const Timba = {
     for (const k of ["plenos", "jackpots", "lineas", "bingos", "blackjacks", "bjGanadas"]) st[k] += extra[k] | 0;
     u.monedas += premio - apuesta;
     BD.guardar();
+    if (!(u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Nube.user.id === u.id)) this.pozoLocal(u, juego, apuesta);
     if (u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Nube.user.id === u.id) {
       Nube.enCola(async () => {
         const { data, error } = await Nube.sb.rpc("timba_jugar", { juego, apuesta, premio });
         if (error) { console.warn("timba", error.message); Eco.guardar(u); return; }        // sin el SQL nuevo: se sube como siempre
-        if (data && data.ok) { if (!u.pendiente) { u.monedas = data.monedas; BD.guardar(); } this.subirLuego(u); }
+        if (data && data.ok) {
+          if (data.pozo != null) this.ponerPozo({ monto: +data.pozo });
+          if (+data.ganoPozo > 0) this.ganarPozo(u, +data.ganoPozo, juego);
+          if (!u.pendiente) { u.monedas = data.monedas; BD.guardar(); } this.subirLuego(u);
+        }
         else if (data && data.motivo === "saldo") { u.monedas = data.monedas; BD.guardar(); Toast.mostrar(`<div class="t-ic">⚠️</div><div class="t-txt"><b>No alcanzaban las monedas</b><span>Tu saldo se corrigió con el de la nube.</span></div>`, "info"); render(); }
         else if (data && data.motivo === "datos") Eco.guardar(u);                                   // juego que el SQL todavía no conoce: se sube como siempre
         else if (data && data.motivo === "cerrado") { u.monedas -= premio - apuesta; BD.guardar(); Toast.mostrar(`<div class="t-ic">🔒</div><div class="t-txt"><b>El casino está cerrado</b><span>Lo cerró el administrador. No se movieron monedas.</span></div>`, "info"); go("home"); }
       });
     }
     return true;
+  },
+  /* ---------- Pozo acumulado ----------
+     Con cuenta: es uno solo para todos y lo maneja el servidor (cada apuesta le suma y cada tirada de tragamonedas lo sortea).
+     Con perfil local: un pozo de este teléfono que funciona igual. */
+  pozo: { monto: null },
+  ponerPozo(p) { Object.assign(this.pozo, p); this.pintarPozo(); },
+  enLaNube() { return typeof Nube !== "undefined" && !!Nube.sb && !!Nube.user; },
+  cargarPozo() {
+    if (!this.enLaNube()) { this.ponerPozo({ monto: store.get("pozoLocal", this.cfg().pozoBase), local: true }); return; }
+    if (Date.now() - (this.pozoLeido || 0) < 8000) return;
+    this.pozoLeido = Date.now();
+    Nube.sb.from("pozo").select("monto, ganador, ganado, juego, cuando").eq("id", 1).maybeSingle().then(({ data, error }) => {
+      if (error || !data) { if (this.pozo.monto == null) this.ponerPozo({ monto: null, sinSql: true }); return; }
+      this.ponerPozo({ monto: +data.monto, ganador: data.ganador, ganado: +data.ganado || 0, cuando: data.cuando, local: false, sinSql: false });
+    });
+  },
+  pozoLocal(u, juego, apuesta) {
+    if (apuesta <= 0) return;
+    const c = this.cfg(); let p = store.get("pozoLocal", c.pozoBase) + Math.ceil(apuesta * c.pozoPct / 100);
+    if (juego === "tragamonedas" && Math.random() < apuesta / c.pozoCada) { const gana = p; p = c.pozoBase; u.monedas += gana; BD.guardar(); this.ganarPozo(u, gana, juego, true); }
+    store.set("pozoLocal", p); this.ponerPozo({ monto: p, local: true });
+  },
+  /* Lo ganó: se festeja cuando terminan de girar los rodillos */
+  ganarPozo(u, monto, juego, local) {
+    const st = this.stats(u); st.jackpots++; st.pozos = (st.pozos || 0) + 1; st.ganado += monto; st.mayor = Math.max(st.mayor, monto);
+    UI.pozoPend = (UI.pozoPend || 0) + monto; this.pintarSaldo();
+    if (!local) this.ponerPozo({ ganador: u.nombre, ganado: monto, cuando: new Date().toISOString() });
+    const mostrar = () => {
+      if ((UI.sl && UI.sl.girando) || (UI.rul && UI.rul.girando)) return setTimeout(mostrar, 400);
+      UI.pozoPend = Math.max(0, (UI.pozoPend || 0) - monto);
+      this.granPremio(monto, 0, true).then(() => { this.pintarSaldo(); this.logros(u); Eco.guardar(u); if (["casino", "slots"].includes(S.screen)) render(); });
+    };
+    setTimeout(mostrar, 300);
+  },
+  /* Contador del pozo: sube de a poco hasta el valor nuevo */
+  pintarPozo() {
+    const els = document.querySelectorAll("[data-pozo]"); if (!els.length) return;
+    const meta = this.pozo.monto;
+    if (meta == null) { els.forEach(e => e.textContent = "—"); return; }
+    cancelAnimationFrame(this.rafPozo);
+    const desde = this.pozoVisto == null ? meta : this.pozoVisto, t0 = performance.now();
+    const paso = now => { const k = Math.min(1, (now - t0) / 1200), v = Math.round(desde + (meta - desde) * k); this.pozoVisto = v; document.querySelectorAll("[data-pozo]").forEach(e => e.textContent = num(v)); if (k < 1) this.rafPozo = requestAnimationFrame(paso); };
+    this.rafPozo = requestAnimationFrame(paso);
+    const ult = document.querySelector("[data-pozo-ult]");
+    if (ult) ult.textContent = this.pozo.local ? "Pozo de este teléfono (con cuenta en la nube es uno solo para todos)" : this.pozo.ganador ? `Último: ${this.pozo.ganador} se llevó ${num(this.pozo.ganado)} 🪙` : "¡Todavía nadie se lo llevó!";
+  },
+  bannerPozo() {
+    this.cargarPozo();
+    return `<div class="tb-pozo"><small>POZO ACUMULADO</small><b><span class="tb-pozo-m">🪙</span> <span data-pozo>${this.pozo.monto == null ? "—" : num(this.pozo.monto)}</span></b><small data-pozo-ult></small></div>`;
+  },
+  /* Cartel grande en el medio (giros gratis, fin del bonus) */
+  cartel(titulo, sub, ms = 1700) {
+    return new Promise(res => {
+      const d = document.createElement("div"); d.className = "tb-cartel"; d.innerHTML = `<div><b>${titulo}</b><span>${sub || ""}</span></div>`;
+      document.body.appendChild(d); const listo = () => { if (d.isConnected) { d.remove(); res(); } };
+      d.onclick = listo; setTimeout(listo, ms);
+    });
+  },
+  /* GRAN PREMIO / MEGA PREMIO / POZO: el número sube contando */
+  granPremio(monto, apuesta, pozo) {
+    return new Promise(res => {
+      const x = apuesta ? monto / apuesta : 0, titulo = pozo ? "¡¡POZO ACUMULADO!!" : x >= 100 ? "¡ÉPICO!" : x >= 50 ? "¡MEGA PREMIO!" : "¡GRAN PREMIO!";
+      const d = document.createElement("div"); d.className = "tb-gran" + (pozo ? " pozo" : "");
+      d.innerHTML = `<div><b>${titulo}</b><strong id="tbGranN">0</strong><span>🪙</span><small>Tocá para seguir</small></div>`;
+      document.body.appendChild(d);
+      if (typeof Sonido !== "undefined") Sonido.sfx("victoria");
+      Timba.lluvia(); if (pozo) setTimeout(() => Timba.lluvia(), 900);
+      try { navigator.vibrate && navigator.vibrate([100, 50, 100, 50, 300]); } catch {}
+      const dur = pozo ? 3500 : 2200, t0 = performance.now(), n = d.querySelector("#tbGranN");
+      const paso = now => { const k = Math.min(1, (now - t0) / dur); n.textContent = num(monto * (1 - Math.pow(1 - k, 3))); if (k < 1 && d.isConnected) requestAnimationFrame(paso); };
+      requestAnimationFrame(paso);
+      let ok = false; const listo = () => { if (ok) return; ok = true; d.remove(); res(); };
+      d.onclick = () => { if (performance.now() - t0 > 600) listo(); };
+      setTimeout(listo, dur + (pozo ? 3000 : 1500));
+    });
   },
   /* Las estadísticas del casino se suben un rato después (las monedas ya las guardó el servidor) */
   subirLuego(u) { clearTimeout(this.tSubir); this.tSubir = setTimeout(() => Nube.subir(u), 4000); },
@@ -72,7 +154,7 @@ const Timba = {
     return false;
   },
   cabecera(u, titulo, volver = "casino") {
-    return `${head(0)}<div class="tb-cab"><button class="linkish" id="tbAtras">‹ ${volver === "casino" ? "Casino" : "Inicio"}</button><b>${titulo}</b><span class="chip-mon" id="tbSaldo">🪙 ${Timba.saldo(u)}</span></div>`;
+    return `${head(0)}<div class="tb-cab"><button class="linkish" id="tbAtras">‹ ${volver === "casino" ? "Casino" : "Inicio"}</button><b>${titulo}</b><span class="chip-mon" id="tbSaldo">🪙 ${num(Timba.saldo(u))}</span></div>`;
   }
 };
 
@@ -80,7 +162,11 @@ const Timba = {
 const RU = {
   RUEDA: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26],
   ROJOS: new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]),
-  FICHAS: [5, 10, 25, 50, 100],
+  FICHAS: [5, 10, 25, 100, 500, 1000, 5000],
+  corto: v => v >= 1000 ? (v % 1000 ? (v / 1000).toFixed(1) : v / 1000) + "K" : String(v),
+  /* Apuestas de adentro con varios números: "g:1-2" medio (paga 17 a 1), "g:1-2-3" calle (11 a 1), "g:1-2-4-5" cuarto (8 a 1), "g:1-…-6" línea (5 a 1) */
+  nums: clave => clave.slice(2).split("-").map(Number),
+  NOMBRE: { 2: "Medio", 3: "Calle", 4: "Cuarto", 6: "Línea" },
   /* Apuestas de afuera: [clave, texto, paga (con lo apostado), condición] */
   AFUERA: [
     ["doc1", "1ª docena", 3, n => n >= 1 && n <= 12], ["doc2", "2ª docena", 3, n => n >= 13 && n <= 24], ["doc3", "3ª docena", 3, n => n >= 25],
@@ -91,6 +177,7 @@ const RU = {
   color: n => n === 0 ? "verde" : RU.ROJOS.has(n) ? "rojo" : "negro",
   gana(clave, n) {
     if (clave.startsWith("n")) return +clave.slice(1) === n ? 36 : 0;
+    if (clave.startsWith("g:")) { const xs = RU.nums(clave); return xs.includes(n) ? 36 / xs.length : 0; }
     const a = RU.AFUERA.find(x => x[0] === clave);
     return a && n > 0 && a[3](n) ? a[2] : 0;
   },
@@ -118,13 +205,24 @@ PANTALLAS.ruleta = () => {
   if (Timba.sinPerfil("Ruleta")) return;
   const u = BD.sesion(), R = UI.rul = UI.rul || { ficha: 10, ap: {}, prev: {}, hist: [], rot: 0, bola: 0, girando: false, res: null, deshacer: [] };
   const maximo = () => Math.min(Timba.maxApuesta(), Timba.saldo(u));
-  const ficha = k => R.ap[k] ? `<span class="ru-ficha f${RU.FICHAS.filter(f => f <= R.ap[k]).pop() || 5}">${R.ap[k]}</span>` : "";
+  const ficha = k => R.ap[k] ? `<span class="ru-ficha f${RU.FICHAS.filter(f => f <= R.ap[k]).pop() || 5}">${RU.corto(R.ap[k])}</span>` : "";
+  // Zonas en los bordes y esquinas de cada número: medio, cuarto, calle y línea
+  const zona = (xs, cls) => { const k = "g:" + xs.join("-"); return `<span class="ru-z ${cls} ${ganadora(k)}" data-ap="${k}" aria-label="${RU.NOMBRE[xs.length]} ${xs.join(", ")}">${ficha(k)}</span>`; };
+  const zonas = (n, f, c) => {
+    let z = "";
+    if (c < 2) z += zona([n, n + 1], "der");
+    if (f < 11) z += zona([n, n + 3], "aba");
+    if (c < 2 && f < 11) z += zona([n, n + 1, n + 3, n + 4], "esq");
+    if (c === 0) { z += zona([n, n + 1, n + 2], "izq"); if (f < 11) z += zona([n, n + 1, n + 2, n + 3, n + 4, n + 5], "izq-aba"); }
+    if (f === 0) { z += zona([0, n], "arr"); if (c < 2) z += zona([0, n, n + 1], "arr-der"); }
+    return z;
+  };
   const ganadora = k => R.res && !R.girando && RU.gana(k, R.res.n) ? "gana" : "";
-  const celda = (k, txt, cls, pos) => `<button class="ru-c ${cls} ${ganadora(k)}" data-ap="${k}" style="${pos}">${txt}${ficha(k)}</button>`;
+  const celda = (k, txt, cls, pos, extra = "") => `<button class="ru-c ${cls} ${ganadora(k)}" data-ap="${k}" style="${pos}">${txt}${extra}${ficha(k)}</button>`;
   // Paño vertical (cómodo en el teléfono): el 0 arriba, 12 filas de 3 números, docenas a la izquierda,
   // apuestas simples a la derecha y los "2 a 1" abajo de cada columna
   let pano = celda("n0", "0", "verde cero", "grid-row:1;grid-column:2/5");
-  for (let f = 0; f < 12; f++) for (let c = 0; c < 3; c++) { const n = f * 3 + c + 1; pano += celda("n" + n, n, RU.color(n), `grid-row:${f + 2};grid-column:${c + 2}`); }
+  for (let f = 0; f < 12; f++) for (let c = 0; c < 3; c++) { const n = f * 3 + c + 1; pano += celda("n" + n, n, RU.color(n), `grid-row:${f + 2};grid-column:${c + 2}`, zonas(n, f, c)); }
   ["doc1", "doc2", "doc3"].forEach((k, d) => pano += celda(k, `${d + 1}ª<br>doc.`, "afuera lado", `grid-row:${d * 4 + 2}/${d * 4 + 6};grid-column:1`));
   [["bajo", "1<br>a<br>18"], ["par", "Par"], ["rojo", "◆"], ["negro", "◆"], ["impar", "Im-<br>par"], ["alto", "19<br>a<br>36"]]
     .forEach(([k, t], x) => pano += celda(k, t, `afuera lado ${k === "rojo" ? "rojo" : k === "negro" ? "negro" : ""}`, `grid-row:${x * 2 + 2}/${x * 2 + 4};grid-column:5`));
@@ -133,16 +231,16 @@ PANTALLAS.ruleta = () => {
   app.innerHTML = `${Timba.cabecera(u, "🎡 Ruleta")}<section class="screen ruleta">
     <div class="ru-mesa" id="ruMesa">
       <div class="ru-rueda-box">${RU.rueda(R.rot, R.bola)}
-        <div class="ru-res ${R.res && !R.girando ? RU.color(R.res.n) : ""}" id="ruRes">${R.res && !R.girando ? `<b>${R.res.n}</b><small>${R.res.premio ? `+${R.res.premio} 🪙` : "Sin premio"}</small>` : R.girando ? "<small>¡No va más!</small>" : "<small>Hagan sus apuestas</small>"}</div>
+        <div class="ru-res ${R.res && !R.girando ? RU.color(R.res.n) : ""}" id="ruRes">${R.res && !R.girando ? `<b>${R.res.n}</b><small>${R.res.premio ? `+${num(R.res.premio)} 🪙` : "Sin premio"}</small>` : R.girando ? "<small>¡No va más!</small>" : "<small>Hagan sus apuestas</small>"}</div>
       </div>
       <div class="ru-hist">${R.hist.slice(0, 12).map(n => `<i class="${RU.color(n)}">${n}</i>`).join("") || `<small class="sub">Acá aparecen los últimos números.</small>`}</div>
     </div>
-    <p class="tb-linea">Elegí la ficha abajo y tocá el paño para apostar. Cada toque suma una ficha.</p>
+    <p class="tb-linea">Elegí la ficha abajo y tocá el paño. En el medio de un número es pleno; en el borde entre dos, <b>medio</b>; en la esquina entre cuatro, <b>cuarto</b>; en el borde izquierdo de una fila, <b>calle</b> (y entre dos filas, <b>línea</b>).</p>
     <div class="ru-pano ${R.girando ? "quieto" : ""}">${pano}</div>
-    <details class="panel"><summary class="label">Cómo se paga</summary><p class="summary">Pleno (un número): 35 a 1. Docenas y columnas (2 a 1): 2 a 1. Rojo/negro, par/impar, 1-18/19-36: 1 a 1. Si sale el 0 pierden todas las apuestas de afuera.</p></details>
+    <details class="panel"><summary class="label">Cómo se paga</summary><p class="summary">Pleno (un número): 35 a 1. Medio (2 números): 17 a 1. Calle (3 números de una fila): 11 a 1. Cuarto (4 números en esquina): 8 a 1. Línea (6 números, dos filas): 5 a 1. Docenas y columnas (2 a 1): 2 a 1. Rojo/negro, par/impar, 1-18/19-36: 1 a 1. Si sale el 0 pierden todas las apuestas de afuera (el 0 entra en los medios y calles con el 0).</p></details>
     <p class="tb-aviso">Las monedas son del juego: no se compran ni se cambian por plata. Jugá por diversión.</p>
     <div class="ru-barra">
-      <div class="ru-fichas" role="radiogroup" aria-label="Valor de la ficha">${RU.FICHAS.map(f => `<button class="ru-ficha grande f${f} ${R.ficha === f ? "on" : ""}" data-ficha="${f}" aria-pressed="${R.ficha === f}">${f}</button>`).join("")}</div>
+      <div class="ru-fichas" role="radiogroup" aria-label="Valor de la ficha">${RU.FICHAS.map(f => `<button class="ru-ficha grande f${f} ${R.ficha === f ? "on" : ""}" data-ficha="${f}" aria-pressed="${R.ficha === f}">${RU.corto(f)}</button>`).join("")}</div>
       <div class="ru-acc">
         <button class="btn ghost chico" id="ruDes" aria-label="Deshacer la última ficha">↶</button>
         <button class="btn ghost chico" id="ruBorrar" aria-label="Borrar todas las apuestas">✕</button>
@@ -155,12 +253,12 @@ PANTALLAS.ruleta = () => {
   // Actualiza fichas y botones sin redibujar toda la pantalla (así no salta ni parpadea al tocar)
   const refrescar = () => {
     const t = RU.total(R.ap), mx = maximo();
-    app.querySelectorAll("[data-ap]").forEach(b => { const vieja = b.querySelector(".ru-ficha"); if (vieja) vieja.remove(); if (R.ap[b.dataset.ap]) b.insertAdjacentHTML("beforeend", ficha(b.dataset.ap)); });
-    byId("ruTot").innerHTML = R.girando ? "Girando…" : `Apostado <b>${t}</b> 🪙 · máx. ${mx}${R.res && R.res.premio ? ` · <b class="ok">Ganaste ${R.res.premio}</b>` : ""}`;
+    app.querySelectorAll("[data-ap]").forEach(b => { const vieja = b.querySelector(":scope > .ru-ficha"); if (vieja) vieja.remove(); if (R.ap[b.dataset.ap]) b.insertAdjacentHTML("beforeend", ficha(b.dataset.ap)); });
+    byId("ruTot").innerHTML = R.girando ? "Girando…" : `Apostado <b>${num(t)}</b> 🪙 · máx. ${num(mx)}${R.res && R.res.premio ? ` · <b class="ok">Ganaste ${R.res.premio}</b>` : ""}`;
     byId("ruDes").disabled = !R.deshacer.length || R.girando;
     byId("ruBorrar").disabled = !t || R.girando;
     byId("ruRep").disabled = !!t || !RU.total(R.prev) || RU.total(R.prev) > mx || R.girando;
-    const g = byId("ruGirar"); g.disabled = !t || t > u.monedas || R.girando; g.textContent = R.girando ? "Girando…" : t ? `🎡 Girar · ${t}` : "🎡 Girar";
+    const g = byId("ruGirar"); g.disabled = !t || t > u.monedas || R.girando; g.textContent = R.girando ? "Girando…" : t ? `🎡 Girar · ${num(t)}` : "🎡 Girar";
   };
   refrescar();
   on("tbAtras", () => { if (!R.girando) go("casino"); });
@@ -170,7 +268,8 @@ PANTALLAS.ruleta = () => {
     app.querySelectorAll("[data-ficha]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
   });
   const limpiarResultado = () => { if (!R.res) return; R.res = null; app.querySelectorAll(".ru-c.gana").forEach(x => x.classList.remove("gana")); };
-  app.querySelectorAll("[data-ap]").forEach(b => b.onclick = () => {
+  app.querySelectorAll("[data-ap]").forEach(b => b.onclick = e => {
+    e.stopPropagation();
     const k = b.dataset.ap, mx = maximo();
     limpiarResultado();
     if (RU.total(R.ap) + R.ficha > mx) { Toast.mostrar(`<div class="t-ic">🪙</div><div class="t-txt"><b>Llegaste al máximo</b><span>Puedes apostar hasta ${mx} 🪙 por tirada.</span></div>`, "info"); return; }
@@ -214,127 +313,16 @@ PANTALLAS.ruleta = () => {
   });
 };
 
-/* ---------- Tragamonedas ----------
-   Cada casilla sale al azar según el peso de cada símbolo. Las líneas pagan de izquierda a derecha.
-   paga[símbolo][cantidad] = veces la apuesta de esa línea. El comodín reemplaza a cualquiera; el scatter paga en cualquier lugar. */
-const MAQUINAS = {
-  frutas: {
-    nombre: "Frutillitas", ic: "🍒", desc: "La clásica: 3 rodillos y 1 línea.", tema: "frutas", cols: 3, filas: 1, lineas: [[0, 0, 0]], apuestas: [1, 5, 10, 25, 50],
-    simbolos: [["🍒", 8], ["🍋", 7], ["🍊", 6], ["🍉", 5], ["🔔", 4], ["⭐", 2], ["7️⃣", 1]],
-    paga: { "🍒": { 1: 1, 2: 3, 3: 10 }, "🍋": { 3: 12 }, "🍊": { 3: 18 }, "🍉": { 3: 30 }, "🔔": { 3: 60 }, "⭐": { 3: 150 }, "7️⃣": { 3: 250 } }, jackpot: "7️⃣"
-  },
-  pirata: {
-    nombre: "Tesoro pirata", ic: "🏴‍☠️", desc: "3×3 con 5 líneas. La bandera pirata es comodín.", tema: "pirata", cols: 3, filas: 3,
-    lineas: [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]], apuestas: [1, 2, 5, 10, 20], comodin: "🏴‍☠️",
-    simbolos: [["⚓", 9], ["🦀", 8], ["🐙", 6], ["🗝️", 5], ["💰", 3], ["💎", 2], ["🏴‍☠️", 1]],
-    paga: { "⚓": { 3: 8 }, "🦀": { 3: 11 }, "🐙": { 3: 18 }, "🗝️": { 3: 30 }, "💰": { 3: 75 }, "💎": { 3: 150 }, "🏴‍☠️": { 3: 300 } }, jackpot: "🏴‍☠️"
-  },
-  deluxe: {
-    nombre: "Mesa Loca Deluxe", ic: "🤪", desc: "5 rodillos, 10 líneas y 🎉 que paga en cualquier lado.", tema: "deluxe", cols: 5, filas: 3,
-    lineas: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2], [0, 0, 1, 2, 2], [2, 2, 1, 0, 0], [1, 0, 0, 0, 1], [1, 2, 2, 2, 1], [1, 0, 1, 2, 1]],
-    apuestas: [1, 2, 5, 10], scatter: "🎉",
-    simbolos: [["🃏", 10], ["🎲", 9], ["🍀", 7], ["🔔", 5], ["💎", 3], ["7️⃣", 2], ["🎉", 2]],
-    paga: { "🃏": { 3: 7, 4: 15, 5: 40 }, "🎲": { 3: 9, 4: 20, 5: 50 }, "🍀": { 3: 14, 4: 35, 5: 90 }, "🔔": { 3: 24, 4: 70, 5: 150 }, "💎": { 3: 45, 4: 140, 5: 400 }, "7️⃣": { 3: 70, 4: 250, 5: 1000 }, "🎉": { 3: 4, 4: 20, 5: 80 } }, jackpot: "7️⃣"
-  }
-};
-
-const Slots = {
-  simbolo(m) {
-    const tot = m.simbolos.reduce((t, s) => t + s[1], 0);
-    let r = Timba.azar(tot);
-    for (const [s, w] of m.simbolos) { if (r < w) return s; r -= w; }
-    return m.simbolos[0][0];
-  },
-  tirar(m) { return Array.from({ length: m.cols }, () => Array.from({ length: m.filas }, () => Slots.simbolo(m))); },
-  /* grid[col][fila] → { premio, lineas: [{ l, celdas, sym, n, pago }], jackpot } */
-  evaluar(m, grid, apLinea) {
-    const out = { premio: 0, lineas: [], jackpot: false };
-    m.lineas.forEach((ln, l) => {
-      const syms = ln.map((f, c) => grid[c][f]);
-      let base = syms.find(s => s !== m.comodin && s !== m.scatter) || syms[0];
-      if (base === m.scatter) return;
-      let n = 0; while (n < syms.length && (syms[n] === base || syms[n] === m.comodin)) n++;
-      // Tres comodines solos pagan como comodín
-      if (m.comodin && syms.slice(0, n).every(s => s === m.comodin)) base = m.comodin;
-      const pago = (m.paga[base] || {})[n] || 0;
-      if (pago) {
-        out.premio += pago * apLinea; out.lineas.push({ l, celdas: ln.slice(0, n).map((f, c) => [c, f]), sym: base, n, pago: pago * apLinea });
-        if (base === m.jackpot && n === m.cols) out.jackpot = true;
-      }
-    });
-    if (m.scatter) {
-      const celdas = []; grid.forEach((col, c) => col.forEach((s, f) => { if (s === m.scatter) celdas.push([c, f]); }));
-      const pago = (m.paga[m.scatter] || {})[Math.min(5, celdas.length)] || 0;
-      if (pago) { const p = pago * apLinea * m.lineas.length; out.premio += p; out.lineas.push({ l: -1, celdas, sym: m.scatter, n: celdas.length, pago: p }); }
-    }
-    return out;
-  }
-};
-
-PANTALLAS.slots = () => {
-  if (Timba.sinPerfil("Tragamonedas")) return;
-  const u = BD.sesion(), m = MAQUINAS[UI.maquina] || MAQUINAS.frutas, id = UI.maquina in MAQUINAS ? UI.maquina : "frutas";
-  const T = UI.sl = UI.sl && UI.sl.id === id ? UI.sl : { id, ap: m.apuestas[0], grid: Slots.tirar(m), res: null, girando: false };
-  const total = T.ap * m.lineas.length, ganadoras = new Set(T.res && !T.girando ? T.res.lineas.flatMap(x => x.celdas.map(c => c.join(","))) : []);
-  const rod = T.grid.map((col, c) => `<div class="sl-rod" data-col="${c}"><div class="sl-tira">${col.map((s, f) => `<span class="sl-c ${ganadoras.has(c + "," + f) ? "gana" : ""}">${s}</span>`).join("")}</div></div>`).join("");
-  app.innerHTML = `${Timba.cabecera(u, `${m.ic} ${esc(m.nombre)}`)}<section class="screen slots">
-    <div class="sl-maq ${m.tema} ${T.res && T.res.jackpot && !T.girando ? "jackpot" : ""}" style="--cols:${m.cols};--filas:${m.filas}">
-      <div class="sl-luces"></div>
-      <div class="sl-titulo">${esc(m.nombre)}</div>
-      <div class="sl-ventana">${rod}${m.filas > 1 ? `<div class="sl-marca"></div>` : `<div class="sl-marca uno"></div>`}</div>
-      <div class="sl-lcd" id="slLcd">${T.girando ? "¡Suerte!" : T.res ? (T.res.premio ? `${T.res.jackpot ? "¡¡JACKPOT!! " : "¡Ganaste! "}+${T.res.premio} 🪙` : "Sin premio, ¡otra!") : `${m.lineas.length} línea${m.lineas.length > 1 ? "s" : ""} · ${esc(m.desc)}`}</div>
-    </div>
-    ${T.res && !T.girando && T.res.lineas.length ? `<p class="tb-linea">${T.res.lineas.map(x => `${x.l < 0 ? `${x.n} × ${x.sym} sueltos` : `Línea ${x.l + 1}: ${x.n} × ${x.sym}`} <b>+${x.pago}</b>`).join(" · ")}</p>` : ""}
-    <div class="sl-apuesta"><span class="label">${m.lineas.length > 1 ? "Por línea" : "Apuesta"}</span>
-      <div class="seg">${m.apuestas.map(a => `<button aria-pressed="${T.ap === a}" data-slap="${a}" ${T.girando || a * m.lineas.length > Math.min(Timba.maxApuesta(), u.monedas) ? "disabled" : ""}>${a}</button>`).join("")}</div>
-      <small class="sub">Total por tirada: <b>${total}</b> 🪙</small></div>
-    <button class="btn tb-girar" id="slGirar" ${total <= u.monedas && !T.girando ? "" : "disabled"}>${T.girando ? "Girando…" : `🎰 Girar · ${total} 🪙`}</button>
-    <details class="panel"><summary class="label">Tabla de premios</summary>
-      <table class="sl-tabla">${Object.entries(m.paga).map(([s, p]) => `<tr><td>${s}${s === m.comodin ? "<small> comodín</small>" : s === m.scatter ? "<small> en cualquier lado</small>" : ""}</td>${Object.entries(p).map(([n, x]) => `<td>${n === "1" ? "1" : n}× <b>${x}</b></td>`).join("")}</tr>`).join("")}</table>
-      <p class="summary">${m.lineas.length > 1 ? `Los premios son por cada línea, de izquierda a derecha.${m.scatter ? ` ${m.scatter} paga sobre la apuesta total.` : ""}` : "El premio es por las veces que apostaste."}</p></details>
-    <p class="tb-aviso">Las monedas son del juego: no se compran ni se cambian por plata. Jugá por diversión.</p>
-  </section>`;
-  on("tbAtras", () => { if (!T.girando) go("casino"); });
-  if (T.girando) return;
-  app.querySelectorAll("[data-slap]").forEach(b => b.onclick = () => { T.ap = +b.dataset.slap; render(); });
-  on("slGirar", () => {
-    if (total > u.monedas) return;
-    const grid = Slots.tirar(m), res = Slots.evaluar(m, grid, T.ap);
-    if (!Timba.mover(u, "tragamonedas", total, res.premio, { jackpots: res.jackpot ? 1 : 0 })) return;
-    UI.timbaPend = res.premio;
-    const viejo = T.grid; T.girando = true; T.res = null;
-    render();
-    if (typeof Sonido !== "undefined") Sonido.sfx("rodillo");
-    // Cada rodillo es una tira larga: arriba lo que se veía, al medio símbolos al azar y abajo el resultado
-    const H = app.querySelector(".sl-c").getBoundingClientRect().height;
-    app.querySelectorAll(".sl-rod").forEach((el, c) => {
-      const largo = 14 + c * 5, tira = el.querySelector(".sl-tira");
-      const syms = [...viejo[c], ...Array.from({ length: largo }, () => Slots.simbolo(m)), ...grid[c]];
-      tira.innerHTML = syms.map(s => `<span class="sl-c">${s}</span>`).join("");
-      tira.style.transform = "translateY(0)";
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        tira.style.transition = `transform ${1.1 + c * 0.35}s cubic-bezier(.25,.1,.3,1.08)`;
-        tira.style.transform = `translateY(${-(syms.length - m.filas) * H}px)`;
-      }));
-      setTimeout(() => { if (typeof Sonido !== "undefined") Sonido.sfx("clic"); }, (1.1 + c * 0.35) * 1000);
-    });
-    setTimeout(() => {
-      T.grid = grid; T.res = res; T.girando = false; UI.timbaPend = 0;
-      if (S.screen === "slots") render();
-      Timba.festejo(res.premio, total, res.jackpot);
-      Timba.logros(u);
-    }, (1.1 + (m.cols - 1) * 0.35) * 1000 + 250);
-  });
-};
-
 /* ---------- Entrada del casino ---------- */
 PANTALLAS.casino = () => {
   if (Timba.sinPerfil("Casino")) return;
   if (typeof Blackjack !== "undefined") Blackjack.pendientes();
   const u = BD.sesion(), st = Timba.stats(u);
   app.innerHTML = `${Timba.cabecera(u, "🎰 Casino", "inicio")}<section class="screen casino">
-    <div class="tb-hero"><span class="tb-neon">CASINO</span><p class="sub">Apuesta tus monedas del juego. ${st.jugadas ? `Llevas ${st.jugadas} jugadas · tu mayor premio: <b>${st.mayor} 🪙</b>.` : "¡Que la suerte te acompañe!"}</p></div>
-    <button class="tb-juego ru" id="tbRuleta"><span class="tb-art">🎡</span><div><b>Ruleta</b><small>Europea, con un solo cero. Plenos 35 a 1.</small></div></button>
+    <div class="tb-hero"><span class="tb-neon">CASINO</span><p class="sub">Apuesta tus monedas del juego. ${st.jugadas ? `Llevas ${num(st.jugadas)} jugadas · tu mayor premio: <b>${num(st.mayor)} 🪙</b>.` : "¡Que la suerte te acompañe!"}</p></div>
+    ${Timba.bannerPozo()}
+    <p class="tb-linea">Cada apuesta del casino (ruleta, máquinas, blackjack y bingo) suma al pozo, y cualquier tirada de tragamonedas se lo puede llevar entero.</p>
+    <button class="tb-juego ru" id="tbRuleta"><span class="tb-art">🎡</span><div><b>Ruleta</b><small>Europea, con un solo cero. Plenos, medios, cuartos, calles y líneas.</small></div></button>
     <span class="label">Tragamonedas</span>
     <div class="tb-maqs">${Object.entries(MAQUINAS).map(([k, m]) => `<button class="tb-juego ${m.tema}" data-maq="${k}"><span class="tb-art">${m.ic}</span><div><b>${esc(m.nombre)}</b><small>${esc(m.desc)}</small></div></button>`).join("")}</div>
     <button class="tb-juego bj" id="tbBlackjack"><span class="tb-art">♠️</span><div><b>Blackjack 21</b><small>Contra la banca. Blackjack paga 3 a 2. Doblá y separá.</small></div></button>
@@ -348,4 +336,8 @@ PANTALLAS.casino = () => {
   on("tbPoker", () => go("pokerIntro"));
   on("tbBlackjack", () => go("blackjack"));
   app.querySelectorAll("[data-maq]").forEach(b => b.onclick = () => { UI.maquina = b.dataset.maq; go("slots"); });
+  Timba.pintarPozo();
 };
+
+/* Mientras estás en el casino, el pozo se actualiza solo (sube con lo que apuestan los demás) */
+setInterval(() => { if (typeof S !== "undefined" && ["casino", "slots", "ruleta", "blackjack", "bingoSolo"].includes(S.screen) && !document.hidden) { Timba.cargarPozo(); Timba.pintarPozo(); } }, 10000);

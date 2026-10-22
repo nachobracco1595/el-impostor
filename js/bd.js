@@ -43,7 +43,7 @@ const LOGROS = [
   { id: "gladiador", ic: "🛡️", nombre: "Gladiador", desc: "Gana 10 peleas en la Arena.", ok: u => u.stats.arena.g >= 10 },
   { id: "elo1500", ic: "🏟️", nombre: "Leyenda de la Arena", desc: "Llega a 1500 de ELO en la Arena.", ok: u => u.stats.arena.mejorElo >= 1500 },
   { id: "pleno", ic: "🎡", nombre: "¡Pleno!", desc: "Acierta el número justo en la ruleta.", ok: u => (u.stats.timba || {}).plenos >= 1 },
-  { id: "jackpot", ic: "🎰", nombre: "Jackpot", desc: "Saca el premio mayor de una tragamonedas.", ok: u => (u.stats.timba || {}).jackpots >= 1 },
+  { id: "jackpot", ic: "🎰", nombre: "Jackpot", desc: "Gana el pozo acumulado o un premio de 100 veces la apuesta en una tragamonedas.", ok: u => (u.stats.timba || {}).jackpots >= 1 },
   { id: "bingo", ic: "🎱", nombre: "¡Bingo!", desc: "Canta bingo con un cartón comprado.", ok: u => (u.stats.timba || {}).bingos >= 1 },
   { id: "blackjack", ic: "♠️", nombre: "¡Blackjack!", desc: "Saca 21 de entrada apostando monedas.", ok: u => (u.stats.timba || {}).blackjacks >= 1 },
   { id: "banca", ic: "🎩", nombre: "Le gané a la banca", desc: "Gana 25 manos de blackjack con monedas.", ok: u => (u.stats.timba || {}).bjGanadas >= 25 },

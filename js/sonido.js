@@ -159,6 +159,38 @@ const Sonido = {
         if (k === 4 || k === 12) S2.hat(t, 0.04);
       }
     },
+    casino: {   // lounge de casino: walking bass, piano eléctrico, vibráfono y metales cada tanto
+      bpm: 132, swing: 0.3, gain: 2,
+      tocar(S2, t, i, d) {
+        const bar = Math.floor(i / 16) % 8, k = i % 16;
+        // Cmaj7 A7 Dm7 G7 | Em7 A7 Dm7 G7
+        const acordes = [[60, 64, 67, 71], [61, 64, 67, 69], [62, 65, 69, 72], [62, 65, 67, 71], [64, 67, 71, 74], [61, 64, 67, 69], [62, 65, 69, 72], [62, 65, 67, 71]];
+        const walk = [[36, 40, 43, 45], [33, 37, 40, 43], [38, 41, 45, 44], [43, 41, 40, 38], [40, 43, 47, 45], [45, 44, 43, 40], [38, 41, 45, 42], [43, 47, 45, 41]][bar];
+        if (k % 4 === 0) S2.bajoRedondo(t, walk[k / 4], d * 3.4, 0.36);
+        if (k === 0 || k === 8) S2.bombo(t, 0.35);
+        if (k % 4 === 0) S2.hat(t, 0.05); if (k % 4 === 2) S2.hat(t, 0.035);
+        if (k === 4 || k === 12) S2.escobilla(t, 0.07);
+        if (k === 2 || k === 10 || (k === 14 && bar % 2)) S2.rhodes(t, acordes[bar], d * 3, 0.035);
+        // Vibráfono: melodía que cambia cada 2 compases
+        const mel = [[76, 79, 83, 81], [76, 73, 72, 69], [77, 74, 72, 69], [74, 71, 67, 65], [79, 83, 86, 83], [81, 79, 76, 73], [77, 81, 79, 77], [74, 77, 76, 74]][bar];
+        if ([0, 3, 6, 11].includes(k) && (bar % 4 !== 3 || k < 6)) S2.campana(t, mel[[0, 3, 6, 11].indexOf(k)], 0.03, 0.9);
+        // Metales: golpe al final de cada vuelta
+        if (bar === 7 && (k === 10 || k === 14)) acordes[bar].forEach(m => S2.osc("sawtooth", S2.nota(m), t, d * 1.6, 0.025, S2.musicBus, { lp: 2200, a: 0.01, dec: d * 1.6, rev: 0.4 }));
+      }
+    },
+    bonus: {    // ronda de bonus: rápido y brillante
+      bpm: 150, swing: 0, gain: 1.6,
+      tocar(S2, t, i, d) {
+        const bar = Math.floor(i / 16) % 4, k = i % 16;
+        const acordes = [[60, 64, 67], [65, 69, 72], [67, 71, 74], [65, 69, 72]], a = acordes[bar];
+        if (k % 4 === 0) S2.bombo(t, 0.6);
+        if (k === 4 || k === 12) S2.caja(t, 0.22);
+        if (k % 2 === 1) S2.hat(t, 0.05);
+        if (k % 2 === 0) S2.bajo(t, a[0] - 24 + (k % 8 === 6 ? 12 : 0), d * 1.5, 0.22);
+        S2.pluck(t, a[k % 3] + 12 + (k >= 8 ? 12 : 0), 0.05, 0.12);
+        if (k === 0) S2.campana(t, a[2] + 24, 0.03, 1.2);
+      }
+    },
     noir: {
       bpm: 84, swing: 0.34,
       tocar(S2, t, i, d) {
@@ -178,7 +210,8 @@ const Sonido = {
   programar() {
     if (!this.ctx || !this.pista) return;
     if (!this.musicaOn) { this.proximo = this.ctx.currentTime; return; }
-    const P2 = this.PISTAS[this.pista], d = 60 / P2.bpm / 4;
+    const P2 = this.PISTAS[this.pista]; if (!P2) return;
+    const d = 60 / P2.bpm / 4;
     while (this.proximo < this.ctx.currentTime + 0.15) {
       const t = this.proximo + (this.paso % 2 ? P2.swing * d : 0);
       try { P2.tocar(this, Math.max(t, this.ctx.currentTime), this.paso, d); } catch {}
@@ -293,7 +326,7 @@ function escenaMusical() {
   if (sc === "ajedrez" || (sc === "duelo" && S.mode === "ajedrez")) return "ajedrez";
   if (sc === "naval" || (sc === "duelo" && S.mode === "naval")) return "naval";
   if (sc === "chinchon" || sc === "truco" || sc === "burako" || sc === "poker" || sc === "pokerIntro") return "bar";
-  if (["casino", "ruleta", "slots", "bingo", "bingoSolo", "blackjack"].includes(sc)) return "bar";
+  if (["casino", "ruleta", "slots", "bingo", "bingoSolo", "blackjack"].includes(sc)) return "casino";
   if (sc === "trabajo" || sc === "trabajos") return "ajedrez";
   if (sc === "arena" || sc === "carrera") return "tension";
   if (sc === "arenaIntro") return "naval";
@@ -305,7 +338,8 @@ function escenaMusical() {
     if (v.game === "ajedrez") return "ajedrez";
     if (v.game === "arena" || v.game === "carrera") return "tension";
     if (v.game === "naval") return "naval";
-    if (v.game === "chinchon" || v.game === "truco" || v.game === "bingo" || v.game === "blackjack" || v.game === "burako" || v.game === "poker") return "bar";
+    if (v.game === "bingo" || v.game === "blackjack") return "casino";
+    if (v.game === "chinchon" || v.game === "truco" || v.game === "burako" || v.game === "poker") return "bar";
     if (v.game === "nave") return v.fase === "reunion" || v.fase === "expulsion" ? "tension" : "espacio";
     if (v.game === "impostor") return v.phase === "roles" ? "misterio" : v.phase === "end" ? "menu" : "tension";
   }

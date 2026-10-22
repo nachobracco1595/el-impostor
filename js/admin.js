@@ -49,7 +49,7 @@ async function cargar() {
   P.duenos = null;
   P.torre = Object.assign({ inicio: "2026-10-20T00:00:00Z", dias: 28, intentos: 5 }, (to.data && to.data.valor) || {});
   P.timba = tb.error ? null : tb.data;
-  P.timbaCfg = Object.assign({ activo: true, maxApuesta: 500 }, (tc.data && tc.data.valor) || {});
+  P.timbaCfg = Object.assign({ activo: true, maxApuesta: 2000, pozoPct: 2, pozoCada: 300000, pozoBase: 2000 }, (tc.data && tc.data.valor) || {});
   P.refs = rf.error ? null : rf.data;
   P.refCfg = Object.assign({ activo: true, premioInvitado: 100, premioInvitador: 150, partidas: 3, maxPorDia: 5 }, (rc.data && rc.data.valor) || {});
   P.evento = Object.assign({ id: null, trabajo: true, multi: 1, mensaje: "", items: {} }, (ev.data && ev.data.valor) || {});
@@ -133,7 +133,13 @@ function pintar() {
       ${P.timba && Object.keys(P.timba.porJuego || {}).length ? `<ul class="tb-panel">${Object.entries(P.timba.porJuego).map(([j, x]) => `<li><b>${esc(NOMBRES[j] || j)}</b><span>${num(x.jugadas)} jugadas</span><span class="${x.neto >= 0 ? "pos" : "neg"}">${x.neto >= 0 ? "+" : "−"}${num(Math.abs(x.neto))} 🪙</span></li>`).join("")}</ul>` : ""}
       <form id="fTimba" class="ads-form">
         <label class="opt"><span class="txt"><b>Casino abierto</b><small>Ruleta, tragamonedas, blackjack y bingo con monedas. Si lo cierras, nadie puede apostar.</small></span><input type="checkbox" id="tbOn" ${P.timbaCfg.activo ? "checked" : ""}></label>
-        <label class="campo-l">Apuesta máxima por tirada (ruleta y tragamonedas)<input class="campo" id="tbMax" type="number" min="10" max="5000" value="${P.timbaCfg.maxApuesta}"></label>
+        <label class="campo-l">Apuesta máxima por tirada (ruleta, tragamonedas y blackjack)<input class="campo" id="tbMax" type="number" min="10" max="50000" value="${P.timbaCfg.maxApuesta}"></label>
+        <span class="label">💰 Pozo acumulado ${P.timba && P.timba.pozo != null ? `· ahora: <b>${num(P.timba.pozo)} 🪙</b>` : ""}</span>
+        <div class="row"><label class="campo-l">% de cada apuesta que va al pozo<input class="campo" id="tbPct" type="number" min="0" max="50" step="0.5" value="${P.timbaCfg.pozoPct}"></label>
+          <label class="campo-l">Pozo inicial (después de que lo ganen)<input class="campo" id="tbBase" type="number" min="0" max="1000000" value="${P.timbaCfg.pozoBase}"></label></div>
+        <label class="campo-l">Chance de ganarlo: 1 en ___ monedas apostadas en máquinas<input class="campo" id="tbCada" type="number" min="1000" max="100000000" step="1000" value="${P.timbaCfg.pozoCada}"></label>
+        <small class="sub">Con ${num(P.timbaCfg.pozoCada)}, una tirada de 100 🪙 tiene 1 chance en ${num(Math.round(P.timbaCfg.pozoCada / 100))}. Más grande = el pozo crece más antes de que alguien se lo lleve.</small>
+        ${P.timba && (P.timba.ganadores || []).length ? `<ul class="tb-panel">${P.timba.ganadores.map(g => `<li><b>${esc(g.nombre || "—")}</b><span>${fecha(g.creado)}</span><span class="pos">+${num(g.monto)} 🪙</span></li>`).join("")}</ul>` : ""}
         <button class="btn" type="submit">Guardar</button><p class="summary" id="tbMsg"></p>
       </form>
     </article>
@@ -238,7 +244,9 @@ function pintar() {
   const ft = document.getElementById("fTimba");
   if (ft) ft.onsubmit = async e => {
     e.preventDefault();
-    const valor = { activo: document.getElementById("tbOn").checked, maxApuesta: Math.max(10, Math.min(5000, Math.round(+document.getElementById("tbMax").value || 500))) };
+    const n = (id, a, b, d) => { const v = +document.getElementById(id).value; return Math.max(a, Math.min(b, Number.isFinite(v) && document.getElementById(id).value !== "" ? v : d)); };
+    const valor = { ...P.timbaCfg, activo: document.getElementById("tbOn").checked, maxApuesta: Math.round(n("tbMax", 10, 50000, 2000)),
+      pozoPct: n("tbPct", 0, 50, 2), pozoBase: Math.round(n("tbBase", 0, 1000000, 2000)), pozoCada: Math.round(n("tbCada", 1000, 100000000, 300000)) };
     let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "timba").select("clave");
     if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "timba", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
     document.getElementById("tbMsg").textContent = error ? "No se pudo guardar: " + error.message : "Guardado.";

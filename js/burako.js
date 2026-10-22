@@ -272,7 +272,10 @@ const Burako = {
   },
   render(v, send, opts) {
     // Mientras se arrastra una ficha no se redibuja (si juega otro, se muestra al soltar)
-    if (UI.bk && UI.bk.arrastrando && UI.bk.id === v.id && byId("bkMano")) { UI.bk.pendiente = true; return; }
+    if (UI.bk && UI.bk.arrastrando && UI.bk.id === v.id && byId("bkMano") && document.querySelector(".bk-f.fantasma")) { UI.bk.pendiente = true; return; }
+    // Si quedó un dedo apoyado en una ficha (sin llegar a arrastrar), se suelta: si no, al vencer la espera
+    // arrancaba un arrastre sobre la mano vieja, nadie lo soltaba y la pantalla dejaba de redibujarse
+    if (UI.bk && UI.bk.soltar) UI.bk.soltar();
     document.querySelectorAll(".bk-f.fantasma").forEach(x => x.remove());
     const yo = v.yo >= 0 ? v.yo : 0, miEq = v.yo >= 0 ? v.jug[yo].eq : 0, U = UI.bk = UI.bk && UI.bk.id === v.id ? UI.bk : { id: v.id, sel: [], orden: store.get("bkOrden", "color"), manual: [] };
     U.sel = U.sel.filter(t => v.mano.includes(t));
@@ -426,8 +429,10 @@ const Burako = {
     const caja = byId("bkMano"); if (!caja) return;
     let d = null;
     const soltar = () => { if (!d) return; clearTimeout(d.espera); U.arrastrando = false; if (d.fantasma) d.fantasma.remove(); caja.querySelectorAll(".antes, .despues, .arrastrando").forEach(x => x.classList.remove("antes", "despues", "arrastrando")); d = null; };
+    U.soltar = soltar;
     const empezar = () => {
       if (!d || d.fantasma) return;
+      if (!d.el.isConnected) return soltar();                    // la mano se redibujó mientras esperaba
       const r = d.el.getBoundingClientRect();
       d.fantasma = d.el.cloneNode(true); d.fantasma.className += " fantasma"; d.fantasma.removeAttribute("data-f"); d.fantasma.removeAttribute("data-mf");
       Object.assign(d.fantasma.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });

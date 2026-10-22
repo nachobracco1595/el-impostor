@@ -454,28 +454,73 @@ end $$;
 -- Así las ganancias grandes no chocan con el control de perfiles_controlar (+500 por vez).
 insert into public.config (clave, valor) values ('timba', '{"activo": true, "maxApuesta": 500}') on conflict do nothing;
 
+-- Pozo acumulado (jackpot) compartido por todos: cada apuesta del casino le suma un porcentaje
+-- y en cada tirada de tragamonedas el servidor sortea si alguien se lo lleva (más chances cuanto más apuesta).
+create table if not exists public.pozo (
+  id       integer primary key default 1 check (id = 1),
+  monto    bigint not null default 2000,
+  ganador  text,
+  ganado   bigint,
+  juego    text,
+  cuando   timestamptz
+);
+insert into public.pozo (id) values (1) on conflict do nothing;
+alter table public.pozo enable row level security;
+grant select on public.pozo to anon, authenticated;
+drop policy if exists "todos ven el pozo" on public.pozo;
+create policy "todos ven el pozo" on public.pozo for select to anon, authenticated using (true);
+
+create table if not exists public.pozo_ganadores (
+  id       bigint generated always as identity primary key,
+  usuario  uuid references public.perfiles (id) on delete set null,
+  nombre   text,
+  monto    bigint not null,
+  juego    text,
+  creado   timestamptz not null default now()
+);
+alter table public.pozo_ganadores enable row level security;
+grant select on public.pozo_ganadores to anon, authenticated;
+drop policy if exists "todos ven los ganadores del pozo" on public.pozo_ganadores;
+create policy "todos ven los ganadores del pozo" on public.pozo_ganadores for select to anon, authenticated using (true);
+
 create or replace function public.timba_jugar(juego text, apuesta integer, premio integer) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare cfg jsonb; saldo integer; tope integer; maxap integer;
+declare cfg jsonb; saldo integer; tope integer; maxap integer; pct numeric; cada numeric; base bigint; aporte bigint; elpozo bigint; gana bigint := 0; nom text;
 begin
   if auth.uid() is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;
   select valor into cfg from public.config where clave = 'timba';
   if cfg is not null and not coalesce((cfg ->> 'activo')::boolean, true) then return jsonb_build_object('ok', false, 'motivo', 'cerrado'); end if;
-  maxap := least(greatest(coalesce((cfg ->> 'maxApuesta')::integer, 500), 10), 5000);
-  if timba_jugar.juego not in ('ruleta', 'tragamonedas', 'bingo', 'blackjack') or apuesta < 0 or premio < 0 or apuesta > 5000
+  maxap := least(greatest(coalesce((cfg ->> 'maxApuesta')::integer, 2000), 10), 50000);
+  if timba_jugar.juego not in ('ruleta', 'tragamonedas', 'bingo', 'blackjack') or apuesta < 0 or premio < 0 or apuesta > 50000
      or (timba_jugar.juego <> 'bingo' and (apuesta < 1 or apuesta > maxap)) then
     return jsonb_build_object('ok', false, 'motivo', 'datos');
   end if;
   tope := case timba_jugar.juego when 'ruleta' then apuesta * 36 when 'tragamonedas' then apuesta * 1000 when 'blackjack' then apuesta * 3 else 50000 end;
   if premio > tope then return jsonb_build_object('ok', false, 'motivo', 'premio'); end if;
-  select p.monedas into saldo from public.perfiles p where p.id = auth.uid() for update;
+  select p.monedas, p.nombre into saldo, nom from public.perfiles p where p.id = auth.uid() for update;
   if saldo is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;
   if saldo < apuesta then return jsonb_build_object('ok', false, 'motivo', 'saldo', 'monedas', saldo); end if;
+  -- El pozo: suma su parte de la apuesta y se sortea
+  pct := least(greatest(coalesce((cfg ->> 'pozoPct')::numeric, 2), 0), 50);
+  cada := greatest(coalesce((cfg ->> 'pozoCada')::numeric, 300000), 1000);
+  base := least(greatest(coalesce((cfg ->> 'pozoBase')::bigint, 2000), 0), 1000000);
+  select monto into elpozo from public.pozo where id = 1 for update;
+  if elpozo is null then insert into public.pozo (id, monto) values (1, base) on conflict do nothing; elpozo := base; end if;
+  if apuesta > 0 then
+    aporte := ceil(apuesta * pct / 100);
+    elpozo := elpozo + aporte;
+    if timba_jugar.juego = 'tragamonedas' and random() < apuesta / cada then
+      gana := elpozo; elpozo := base;
+      update public.pozo set ganador = nom, ganado = gana, juego = timba_jugar.juego, cuando = now() where id = 1;
+      insert into public.pozo_ganadores (usuario, nombre, monto, juego) values (auth.uid(), nom, gana, timba_jugar.juego);
+    end if;
+    update public.pozo set monto = elpozo where id = 1;
+  end if;
   perform set_config('impostor.ajuste', '1', true);
-  update public.perfiles p set monedas = p.monedas - apuesta + premio where p.id = auth.uid() returning p.monedas into saldo;
+  update public.perfiles p set monedas = least(2000000000, p.monedas::bigint - apuesta + premio + gana)::integer where p.id = auth.uid() returning p.monedas into saldo;
   perform set_config('impostor.ajuste', '0', true);
-  insert into public.actividad (usuario, tipo, juego, monedas) values (auth.uid(), 'timba', timba_jugar.juego, premio - apuesta);
-  return jsonb_build_object('ok', true, 'monedas', saldo);
+  insert into public.actividad (usuario, tipo, juego, monedas) values (auth.uid(), 'timba', timba_jugar.juego, (premio + gana - apuesta)::integer);
+  return jsonb_build_object('ok', true, 'monedas', saldo, 'pozo', elpozo, 'ganoPozo', gana);
 end $$;
 
 -- Panel: cómo le va a la gente en el casino
@@ -489,7 +534,9 @@ begin
     'jugadores', (select count(distinct usuario) from public.actividad where tipo = 'timba' and creado >= desde),
     'neto', (select coalesce(sum(monedas), 0) from public.actividad where tipo = 'timba' and creado >= desde),
     'porJuego', (select coalesce(jsonb_object_agg(juego, jsonb_build_object('jugadas', n, 'neto', neto)), '{}'::jsonb) from (
-      select juego, count(*) as n, sum(monedas) as neto from public.actividad where tipo = 'timba' and creado >= desde group by juego) x));
+      select juego, count(*) as n, sum(monedas) as neto from public.actividad where tipo = 'timba' and creado >= desde group by juego) x),
+    'pozo', (select monto from public.pozo where id = 1),
+    'ganadores', (select coalesce(jsonb_agg(t), '[]'::jsonb) from (select nombre, monto, juego, creado from public.pozo_ganadores order by creado desc limit 10) t));
 end $$;
 
 -- ============ Código de amigo, perfil público y cambio de nombre ============

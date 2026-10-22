@@ -184,7 +184,8 @@ const BD = {
     if (u.contadas.includes(clave)) return null;
     const calc = Puntos.calcular(res);
     const st = u.stats[res.juego];
-    st.j++; st.p += calc.puntos; if (calc.gano) st.g++;
+    // Jugando solo no se gana ni se pierde: suma puntos, pero no cuenta en ganadas/jugadas ni corta la racha
+    if (!calc.solo) st.j++; st.p += calc.puntos; if (calc.gano) st.g++;
     if (res.juego === "impostor") {
       if (res.rol === "impostor") st.imp++;
       if (calc.gano && res.rol === "impostor") st.impG++;
@@ -231,9 +232,9 @@ const BD = {
     // Monedas: una cada 4 puntos (mínimo 2 por partida)
     const monedas = res.juego === "arena" ? Math.max(0, Math.min(120, res.monedas | 0)) : Math.max(2, Math.round(calc.puntos / 4));
     if (typeof Eco !== "undefined") { Eco.completar(u); u.monedas += monedas; Eco.sumarPartida(u); }
-    u.racha = calc.gano ? u.racha + 1 : 0;
+    if (!calc.solo) u.racha = calc.gano ? u.racha + 1 : 0;
     u.mejorRacha = Math.max(u.mejorRacha, u.racha);
-    u.historial.unshift({ f: Date.now(), juego: res.juego, gano: calc.gano, puntos: calc.puntos, txt: calc.resumen });
+    u.historial.unshift({ f: Date.now(), juego: res.juego, gano: calc.gano, solo: calc.solo || undefined, puntos: calc.puntos, txt: calc.resumen });
     u.historial = u.historial.slice(0, 40);
     u.contadas = [clave, ...u.contadas].slice(0, 100);
     const nuevos = LOGROS.filter(l => !u.logros[l.id] && l.ok(u));
@@ -297,7 +298,7 @@ const Puntos = {
     ["Arco: 80% del máximo o más", "+8"],
     ["Circo: cada etapa superada / función completa", "+4 / +10"],
     ["Circo: cada 500 de puntaje en la función (desde 1000)", "+1 (hasta +20)"],
-    ["Circo solo, sin rivales: terminar la función cuenta como ganada", "+8"],
+    ["Bowling, Arco, Circo o Preguntas jugando solo: no se gana ni se pierde, solo suma lo que hiciste", ""],
     ["Preguntas Locas: cada respuesta correcta / cada personaje", "+1 / +2"],
     ["Impostor: ganar como inocente", "+10"],
     ["Impostor: ganar como impostor", "+25"],
@@ -406,7 +407,7 @@ const Puntos = {
       if (r.etapas) d.push([`${r.etapas} etapa${r.etapas > 1 ? "s" : ""} superada${r.etapas > 1 ? "s" : ""}`, 4 * r.etapas]);
       if (r.total >= 1000) d.push([`Puntaje de la función (${r.total})`, Math.min(20, Math.floor(r.total / 500))]);
       if (r.completo) d.push(["¡Función completa!", 10]);
-      if (r.gano) { gano = true; d.push(r.n === 1 ? ["Terminaste la función sin rivales", 8] : [r.vsCompu ? "Le ganaste a los bots" : "La estrella del circo", r.vsCompu ? 12 : 25]); }
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "La estrella del circo", r.vsCompu ? 12 : 25]); }
     } else if (r.juego === "casos") {
       if (r.soplon) { if (!r.resuelto) { gano = true; d.push(["Ganaste como soplón", 35]); } }
       else {
@@ -414,7 +415,7 @@ const Puntos = {
         if (r.votoCorrecto) d.push(["Votaste al culpable", 10]);
       }
     }
-    const puntos = d.reduce((s, x) => s + x[1], 0);
-    return { puntos, gano, detalle: d, resumen: `${JUEGOS[r.juego]} · ${gano ? "ganó" : "perdió"}` };
+    const puntos = d.reduce((s, x) => s + x[1], 0), solo = r.n === 1 && ["bowling", "arco", "circo", "preguntas"].includes(r.juego);
+    return { puntos, gano: gano && !solo, solo, detalle: d, resumen: `${JUEGOS[r.juego]} · ${solo ? "jugó solo" : gano ? "ganó" : "perdió"}` };
   }
 };

@@ -311,7 +311,7 @@ PANTALLAS.perfil = () => {
     <div class="panel"><span class="label">Logros</span>
       <div class="logros">${LOGROS.map(l => `<div class="logro ${u.logros[l.id] ? "on" : ""}" title="${esc(l.desc)}"><span class="l-ic">${u.logros[l.id] ? l.ic : "🔒"}</span><b>${esc(l.nombre)}</b><small>${esc(l.desc)}</small></div>`).join("")}</div></div>
     <div class="panel"><span class="label">Últimas partidas</span>
-      ${u.historial.length ? `<ul class="historial">${u.historial.slice(0, 10).map(h => `<li class="${h.gano ? "g" : "p"}"><span>${fecha(h.f)}</span><b>${esc(JUEGOS[h.juego])}</b><em>${h.gano ? "Ganó" : "Perdió"}</em><strong>+${h.puntos}</strong></li>`).join("")}</ul>` : `<p class="empty">Todavía no jugaste ninguna partida con este perfil.</p>`}</div>
+      ${u.historial.length ? `<ul class="historial">${u.historial.slice(0, 10).map(h => `<li class="${h.solo ? "s" : h.gano ? "g" : "p"}"><span>${fecha(h.f)}</span><b>${esc(JUEGOS[h.juego])}</b><em>${h.solo ? "Solo" : h.gano ? "Ganó" : "Perdió"}</em><strong>+${h.puntos}</strong></li>`).join("")}</ul>` : `<p class="empty">Todavía no jugaste ninguna partida con este perfil.</p>`}</div>
     <div class="panel"><span class="label">Perfiles locales de este teléfono</span>
       <p class="summary">${u.nube ? "Tu cuenta ya se guarda en la nube. Esto es para los perfiles con PIN: se guardan en este navegador." : "Los perfiles se guardan en este navegador."} Exporta el archivo para tener un respaldo o pasarlo a otro teléfono, e impórtalo allá.</p>
       <div class="row"><button class="btn ghost" id="exp">Exportar archivo</button><label class="btn ghost" for="imp">Importar archivo</label></div>

@@ -198,13 +198,12 @@ const Circo = {
     if (!yo || typeof Puntos === "undefined" || !BD.sesion()) return "";
     const r = Circo.resultado({ fase: "fin", id: v.id, jug: v.jug.map(j => ({ ...j, cpu: j.cpu })) }, yo.id); if (!r) return "";
     const c = Puntos.calcular(r);
-    return `El puntaje de la función queda en tu récord. A tu cuenta se suman <b>+${c.puntos} puntos</b>${c.gano ? " y la partida cuenta como ganada" : ""}.`;
+    return `El puntaje de la función queda en tu récord. A tu cuenta se suman <b>+${c.puntos} puntos</b>${c.solo ? " (jugando solo no se gana ni se pierde)" : ""}.`;
   },
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;
     const J = s.jug.find(j => j.id === pid); if (!J) return null;
-    // Solo (sin rivales) se gana completando la función
-    return { juego: "circo", id: s.id, gano: s.jug.length > 1 ? J.puesto === 1 : !!J.completo, puesto: J.puesto, n: s.jug.length, vsCompu: s.jug.every(j => j === J || j.cpu), total: J.pts, etapas: J.etapas, completo: J.completo };
+    return { juego: "circo", id: s.id, gano: s.jug.length > 1 && J.puesto === 1, puesto: J.puesto, n: s.jug.length, vsCompu: s.jug.every(j => j === J || j.cpu), total: J.pts, etapas: J.etapas, completo: J.completo };
   },
   view(s, pid) {
     return { game: "circo", id: s.id, me: pid, semilla: s.semilla, fase: s.fase, t: s.t,
@@ -505,7 +504,7 @@ const Circo = {
       if (v.fase === "fin" && !fin.dataset.listo) {
         fin.dataset.listo = 1;
         const orden = v.jug.slice().sort((a, b) => a.puesto - b.puesto), yo = v.jug.find(j => j.id === v.me);
-        fin.innerHTML = Turnero.tablaFin(v, orden.map(j => ({ puesto: j.puesto, name: j.name, yo: j.id === v.me, txt: `${j.pts} de puntaje · ${j.completo ? "función completa" : `llegó a la etapa ${j.et + 1}`}` })), yo && (v.jug.length > 1 ? yo.puesto === 1 : yo.completo) ? "¡La estrella del circo!" : "Fin de la función", Circo.textoCuenta(v, yo), Circo.send, Circo.opts);
+        fin.innerHTML = Turnero.tablaFin(v, orden.map(j => ({ puesto: j.puesto, name: j.name, yo: j.id === v.me, txt: `${j.pts} de puntaje · ${j.completo ? "función completa" : `llegó a la etapa ${j.et + 1}`}` })), yo && v.jug.length > 1 && yo.puesto === 1 ? "¡La estrella del circo!" : yo && yo.completo ? "¡Función completa!" : "Fin de la función", Circo.textoCuenta(v, yo), Circo.send, Circo.opts);
         Turnero.conectarFin(Circo.send, Circo.opts);
       }
     }

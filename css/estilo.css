@@ -439,6 +439,7 @@ details.panel > summary::-webkit-details-marker { display: none; }
 .historial li span { color: var(--muted); font-size: 12px; }
 .historial em { font-style: normal; font-size: 12px; font-weight: 800; }
 .historial li.g em { color: var(--teal); } .historial li.p em { color: var(--muted); }
+.historial li.s em { color: var(--spot); opacity: .8; }
 .historial strong { color: var(--spot); font-variant-numeric: tabular-nums; }
 label.btn { cursor: pointer; }
 

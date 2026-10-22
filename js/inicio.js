@@ -6,6 +6,10 @@ if (S.screen === "home" && UI.mailEnviado && !BD.sesion()) S.screen = "cuenta";
 render();
 Nube.iniciar();
 
+/* Sin zoom en ningún juego: ni pellizcando ni con doble toque (iOS ignora user-scalable=no, por eso también se frena acá) */
+["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener("touchmove", e => { if (e.scale !== undefined && e.scale !== 1) e.preventDefault(); }, { passive: false });
+
 /* Instalable como app (pantalla completa, ícono en el inicio del teléfono). Solo en la página publicada (https). */
 if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude|artifact/.test(location.hostname)) navigator.serviceWorker.register("sw.js").catch(() => {});
 

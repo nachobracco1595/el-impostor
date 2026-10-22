@@ -28,6 +28,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { min-height: 100%; }
+/* Sin zoom con doble toque (y los toques responden al instante) */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   background: radial-gradient(120% 60% at 50% -10%, #2b2347 0%, var(--ink) 60%) fixed, var(--ink);

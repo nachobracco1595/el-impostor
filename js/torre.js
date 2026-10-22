@@ -93,7 +93,7 @@ const Torre = {
     let prev = Date.now();
     Arena.reloj = setInterval(() => {
       const a = S.arena; if (!a || S.screen !== "arena" || a !== s) { clearInterval(Arena.reloj); Arena.reloj = null; return; }
-      const ahora = Date.now(); Arena.tick(a, (ahora - prev) / 1000); prev = ahora;
+      const ahora = Date.now(); Arena.tickSeguro(a, (ahora - prev) / 1000); prev = ahora;
       Arena.render(Arena.view(a, "yo"), Arena.enviarLocal, { local: true });
     }, 50);
     go("arena");

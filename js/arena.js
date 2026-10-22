@@ -222,6 +222,12 @@ const Arena = {
     else if (a.t === "esp") this.especial(s, j, +a.dx || 0, +a.dy || 0, !!a.m);
   },
 
+  /* Lo que usan los relojes: si la app estuvo en segundo plano (iOS congela los timers) no se simulan minutos de golpe
+     (como mucho 1 s, en pasos de 0,1 s para que nadie atraviese paredes), y un error en un cuadro no deja la pelea trabada */
+  tickSeguro(s, dt) {
+    try { let resto = Math.max(0, Math.min(1, dt || 0)); while (resto > 1e-4) { const d = Math.min(0.1, resto); this.tick(s, d); resto -= d; } }
+    catch (e) { if (!this.errTick) { this.errTick = true; console.error("Arena.tick", e); } }
+  },
   tick(s, dt) {
     const ms = dt * 1000; s.t += ms;
     if (s.fase === "cuenta") { if (s.t >= s.inicio) { s.fase = "pelea"; s.t0 = s.t; } return; }
@@ -450,9 +456,13 @@ const Arena = {
       if (e.cancelable) e.preventDefault();
     };
     const fin = e => { if (e && e.changedTouches && ![...e.changedTouches].some(x => x.identifier === id)) return; id = null; mov.x = 0; mov.y = 0; pin.style.transform = ""; joy.classList.remove("on"); };
+    const mm = e => { if (id === "m") mover(e); }, mu = () => { if (id === "m") fin(); };
+    // Se sacan los de la pelea anterior (el lienzo de PixiJS se reusa y window es siempre el mismo)
+    Arena.soltarJoy();
     zona.addEventListener("touchstart", empezar, { passive: true }); zona.addEventListener("touchmove", mover, { passive: false });
     zona.addEventListener("touchend", fin); zona.addEventListener("touchcancel", fin);
-    zona.addEventListener("mousedown", empezar); window.addEventListener("mousemove", e => { if (id === "m") mover(e); }); window.addEventListener("mouseup", () => { if (id === "m") fin(); });
+    zona.addEventListener("mousedown", empezar); window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu);
+    Arena.joyOff = () => { zona.removeEventListener("touchstart", empezar); zona.removeEventListener("touchmove", mover); zona.removeEventListener("touchend", fin); zona.removeEventListener("touchcancel", fin); zona.removeEventListener("mousedown", empezar); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); };
     if (!Arena.teclasListas) {
       Arena.teclasListas = true;
       const map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
@@ -465,7 +475,8 @@ const Arena = {
       window.addEventListener("keyup", e => { if (!UI.arena) return; if (e.key === " ") UI.arena.atk = false; delete UI.arena.teclas[e.key]; });
     }
   },
-  parar() { if (ArenaPixi.activo) ArenaPixi.desmontar(); cancelAnimationFrame(Arena.raf); Arena.raf = null; document.body.classList.remove("en-nave"); clearInterval(Arena.reloj); Arena.reloj = null; UI.arena = null; const r = byId("arRoot"); if (r) r.remove(); },
+  soltarJoy() { if (Arena.joyOff) { try { Arena.joyOff(); } catch {} Arena.joyOff = null; } },
+  parar() { if (ArenaPixi.activo) ArenaPixi.desmontar(); Arena.soltarJoy(); cancelAnimationFrame(Arena.raf); Arena.raf = null; document.body.classList.remove("en-nave"); clearInterval(Arena.reloj); Arena.reloj = null; UI.arena = null; const r = byId("arRoot"); if (r) r.remove(); },
   pulsarAtaque() { const n = UI.arena, v = Arena.v; if (!n || !v || v.fase !== "pelea") return; const yo = v.jug[v.yo]; if (!yo || !yo.vivo || v.t < yo.cdA || v.t < yo.giro) return; const a = n.apunta; Arena.send(a ? { t: "atk", dx: a.x, dy: a.y, m: 1 } : { t: "atk", dx: n.dir.x, dy: n.dir.y }); },
   usarEspecial() {
     const n = UI.arena, v = Arena.v; if (!n || !v || v.fase !== "pelea") return;
@@ -486,12 +497,24 @@ const Arena = {
     const paso = now => {
       Arena.raf = requestAnimationFrame(paso);
       const cv = byId("arCanvas"); if (!cv || !UI.arena || !Arena.v) { if (!cv) Arena.parar(); return; }
-      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
-      Arena.moverYo(dt, now);
-      if (ArenaPixi.activo) { try { ArenaPixi.dibujar(now); } catch (e) { if (!Arena.errPixi) { Arena.errPixi = true; console.error(e); } } }
+      const dt = Math.max(0, Math.min(0.05, (now - prev) / 1000)); prev = now;
+      try { Arena.moverYo(dt, now); } catch (e) { if (!Arena.errMover) { Arena.errMover = true; console.error(e); } }
+      // iOS se llevó el contexto WebGL y no lo devolvió: lienzo nuevo (si no se puede, el dibujo de siempre)
+      if (ArenaPixi.activo && ArenaPixi.caido()) return Arena.lienzoNuevo(false);
+      if (ArenaPixi.activo) {
+        try { ArenaPixi.dibujar(now); ArenaPixi.errores = 0; }
+        catch (e) { if (!Arena.errPixi) { Arena.errPixi = true; console.error(e); } if (++ArenaPixi.errores > 30) Arena.lienzoNuevo(true); }   // falla siempre: sin PixiJS
+      }
       else dibujarSeguro(cv, () => Arena.dibujar(cv, now));
     };
     Arena.raf = requestAnimationFrame(paso);
+  },
+  lienzoNuevo(sinPixi) {
+    const cv = byId("arCanvas"); if (!cv) return;
+    ArenaPixi.desmontar(true); if (sinPixi) ArenaPixi.fallo = true;
+    const nuevo = document.createElement("canvas"); nuevo.id = "arCanvas"; cv.replaceWith(nuevo);
+    if (!sinPixi && ArenaPixi.listo) ArenaPixi.montar(nuevo);
+    if (UI.arena) Arena.joystick();
   },
   moverYo(dt, now) {
     const v = Arena.v, n = UI.arena, yo = v.jug[v.yo]; if (!yo) return;
@@ -903,9 +926,11 @@ const Arena = {
   hud() {
     const v = Arena.v, yo = v.jug[v.yo];
     const top = byId("arTop"); if (!top) return;
-    top.innerHTML = v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`).join("");
-    byId("arFeed").innerHTML = v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : "");
-    if (yo) byId("arEspIc").textContent = AR.CLASES[yo.clase].esp.ic;
+    // Se pinta solo si cambió (se llama 20 veces por segundo)
+    const poner = (el, h) => { if (el && el._h !== h) { el._h = h; el.innerHTML = h; } };
+    poner(top, v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.round(Math.max(0, j.hp / j.max) * 1000) / 10}%"></i></span>`).join(""));
+    poner(byId("arFeed"), v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : ""));
+    if (yo) { const e = byId("arEspIc"), ic = AR.CLASES[yo.clase].esp.ic; if (e.textContent !== ic) e.textContent = ic; }
     const c = byId("arCentro");
     if (v.fase === "pelea" && c && !c.hidden && c.textContent !== "¡YA!") { c.textContent = "¡YA!"; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); setTimeout(() => { if (Arena.v && Arena.v.fase === "pelea") c.hidden = true; }, 700); }
     const fin = byId("arFin");
@@ -946,7 +971,7 @@ const Arena = {
     let prev = Date.now();
     Arena.reloj = setInterval(() => {
       const s = S.arena; if (!s || S.screen !== "arena") { clearInterval(Arena.reloj); Arena.reloj = null; return; }
-      const ahora = Date.now(); Arena.tick(s, (ahora - prev) / 1000); prev = ahora;
+      const ahora = Date.now(); Arena.tickSeguro(s, (ahora - prev) / 1000); prev = ahora;
       Arena.render(Arena.view(s, "yo"), Arena.enviarLocal, { local: true });
       if (s.fase === "fin" && !s.contada) { s.contada = true; Cuenta.revisar(); }
     }, 50);
@@ -968,7 +993,7 @@ const Arena = {
     let prev = Date.now(), n = 0;
     Arena.relojOn = setInterval(() => {
       if (!Net.R || Net.R.game !== "arena" || !Net.R.arena) { clearInterval(Arena.relojOn); Arena.relojOn = null; return; }
-      const ahora = Date.now(); Arena.tick(Net.R.arena, (ahora - prev) / 1000); prev = ahora;
+      const ahora = Date.now(); Arena.tickSeguro(Net.R.arena, (ahora - prev) / 1000); prev = ahora;
       if (++n % 2 === 0 || Net.R.arena.fase !== "pelea") Net.broadcast();
     }, 50);
   },

@@ -72,12 +72,25 @@ const ArenaPixi = {
   soporta() { try { return !!(window.PIXI && PIXI.utils.isWebGLSupported()) && store.get("arenaPixi", true) !== false; } catch { return false; } },
 
   /* ---------- Armar la escena ---------- */
+  /* Una sola Application (un solo contexto WebGL) para todas las peleas: en iPhone crear uno por pelea
+     va llenando la memoria de video hasta que la app se tilda. Entre peleas solo se vacía la escena. */
   montar(cv) {
     if (!this.listo) return false;
     try {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const app = new PIXI.Application({ view: cv, width: cv.clientWidth || 390, height: cv.clientHeight || 700, resolution: dpr, autoDensity: false, antialias: true, backgroundColor: 0x08070d, powerPreference: "high-performance", eventFeatures: { move: false, globalMove: false, click: false, wheel: false } });
-      app.ticker.stop();
+      let app = this.app;
+      if (app && (!app.renderer || app.renderer.gl.isContextLost())) { this.desmontar(true); app = null; }
+      if (app) { const vw = app.view; vw.id = cv.id; vw.className = cv.className; cv.replaceWith(vw); cv = vw; }
+      else {
+        app = new PIXI.Application({ view: cv, width: cv.clientWidth || 390, height: cv.clientHeight || 700, resolution: dpr, autoDensity: false, antialias: true, backgroundColor: 0x08070d, powerPreference: "high-performance", eventFeatures: { move: false, globalMove: false, click: false, wheel: false } });
+        app.ticker.stop();
+        // Los toques los maneja la arena: sin esto PixiJS deja un requestAnimationFrame andando para siempre
+        try { app.renderer.events.setTargetElement(null); } catch {}
+        // Si iOS se lleva el contexto (segundo plano, poca memoria) PixiJS intenta recuperarlo; si no vuelve, Arena.loop arma otro lienzo
+        cv.addEventListener("webglcontextlost", () => { this.perdido = this.perdido || performance.now(); });
+        cv.addEventListener("webglcontextrestored", () => { this.perdido = 0; });
+        this.perdido = 0;
+      }
       cv.style.width = "100%"; cv.style.height = "100%";
       const C = n => app.stage.addChild(new PIXI.Container());
       this.app = app; this.dpr = dpr;
@@ -100,17 +113,28 @@ const ArenaPixi = {
       this.flechas = this.pantalla.addChild(new PIXI.Graphics());
       this.flechasTx = this.pantalla.addChild(new PIXI.Container());
       this.pool = { part: [], luz: [], tx: {} };
-      this.entidad = {}; this.esc = null; this.luzMap = {}; this.potis = {}; this.destellos = []; this.activo = true;
+      this.entidad = {}; this.esc = null; this.luzMap = {}; this.potis = {}; this.destellos = []; this.errores = 0; this.activo = true;
       return true;
-    } catch (e) { console.warn("PixiJS no arrancó, uso el dibujo de siempre", e); this.desmontar(); return false; }
+    } catch (e) { console.warn("PixiJS no arrancó, uso el dibujo de siempre", e); this.desmontar(true); return false; }
   },
-  desmontar() {
+  /* Vacía la escena de la pelea. Con todo = true también suelta el contexto WebGL (se perdió o PixiJS falló) */
+  desmontar(todo) {
     this.activo = false;
-    try { if (this.app) this.app.destroy(false, { children: true, texture: false, baseTexture: false }); } catch {}
+    // Lienzos de los personajes: se achican a 0 para que iOS libere su memoria enseguida
+    Object.values(this.entidad || {}).forEach(e => this.soltarEnt(e));
+    this.entidad = {}; this.esc = null; this.potis = {}; this.luzMap = {}; this.destellos = []; this.pool = { part: [], luz: [], tx: {} }; this.gente = []; this.llamas = []; this.lava = [];
+    // Los textos (daño, pociones, íconos) tienen su propio lienzo y se destruyen con la escena; las texturas compartidas quedan
+    try { if (this.app && this.app.stage) this.app.stage.removeChildren().forEach(c => c.destroy({ children: true })); } catch {}
     try { if (this.rt) this.rt.destroy(true); } catch {}
-    Object.values(this.entidad || {}).forEach(e => { try { e.tex.destroy(true); } catch {} });
-    this.app = null; this.entidad = {}; this.esc = null;
+    this.rt = null;
+    if (todo) {
+      try { if (this.app) this.app.destroy(false, { children: true, texture: false, baseTexture: false }); } catch {}
+      this.app = null; this.perdido = 0;
+    }
   },
+  soltarEnt(e) { try { if (e.s && e.s.parent) e.s.parent.removeChild(e.s); e.tex.destroy(true); e.c.width = e.c.height = 0; } catch {} },
+  /* El contexto WebGL se perdió y no volvió (pasa en iPhone al volver del segundo plano) */
+  caido() { const a = this.app; if (!this.activo || !a || !a.renderer) return false; if (!a.renderer.gl.isContextLost()) { this.perdido = 0; return false; } this.perdido = this.perdido || performance.now(); return !document.hidden && performance.now() - this.perdido > 1500; },
 
   /* ---------- Texturas hechas a mano (una sola vez) ---------- */
   lienzo(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; },
@@ -122,9 +146,10 @@ const ArenaPixi = {
     return (this.cacheT[nombre] = PIXI.Texture.from(c));
   },
   texVineta() {
+    if (this.tVin) return this.tVin;
     const c = this.lienzo(256, 256), x = c.getContext("2d"), g = x.createRadialGradient(128, 128, 70, 128, 128, 182);
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.55)"); x.fillStyle = g; x.fillRect(0, 0, 256, 256);
-    return PIXI.Texture.from(c);
+    return (this.tVin = PIXI.Texture.from(c));
   },
   texFx(k) { this.cacheF = this.cacheF || {}; return this.cacheF[k] || (this.cacheF[k] = PIXI.Texture.from(`img/arena/fx/${k}.png`)); },
   color(c) {
@@ -272,7 +297,7 @@ const ArenaPixi = {
   ent(id, k) {
     let e = this.entidad[id];
     const kk = Math.round(Math.max(0.8, Math.min(2.2, k)) * 4) / 4;
-    if (e && e.k !== kk) { this.ents.removeChild(e.s); e.tex.destroy(true); e = null; }
+    if (e && e.k !== kk) { this.soltarEnt(e); e = null; }
     if (!e) {
       const c = this.lienzo(Math.round(this.ANCHO * kk), Math.round(this.ALTO * kk)), tex = PIXI.Texture.from(c);
       const s = new PIXI.Sprite(tex); s.anchor.set(this.OX / this.ANCHO, this.OY / this.ALTO); s.scale.set(1 / kk);
@@ -284,6 +309,7 @@ const ArenaPixi = {
   /* ---------- Cada cuadro ---------- */
   dibujar(now) {
     const v = Arena.v, n = UI.arena, app = this.app; if (!app || !v || !n) return;
+    if (app.renderer.gl.isContextLost()) return;          // sin contexto no se dibuja (vuelve solo o se arma otro lienzo)
     const cv = app.view, W = cv.clientWidth, H = cv.clientHeight, t = now / 1000;
     if (app.renderer.width !== Math.round(W * this.dpr) || app.renderer.height !== Math.round(H * this.dpr)) app.renderer.resize(W, H);
     n.part = n.part || []; n.vistos = n.vistos || new Set();
@@ -336,7 +362,7 @@ const ArenaPixi = {
       // Luz propia: el jugador se ve un poco aunque esté en lo oscuro; los jefes brillan rojo
       this.luzDe("p" + j.id, o.x, o.y - 20, j.equipo === "m" ? (j.tam > 1 ? 0xff4d63 : 0x000000) : esYo ? 0xbfe3ff : 0x7a7a90, j.equipo === "m" ? (j.tam > 1 ? 260 : 0) : esYo ? 260 : 180, j.vivo);
     }
-    Object.keys(this.entidad).forEach(id => { if (!vivos.has(id)) { const e = this.entidad[id]; this.ents.removeChild(e.s); e.tex.destroy(true); delete this.entidad[id]; this.luzDe("p" + id, 0, 0, 0, 0, false); } });
+    Object.keys(this.entidad).forEach(id => { if (!vivos.has(id)) { this.soltarEnt(this.entidad[id]); delete this.entidad[id]; this.luzDe("p" + id, 0, 0, 0, 0, false); this.luzDe("a" + id, 0, 0, 0, 0, false); } });
     // Línea de puntería
     if (yo && yo.vivo && n.apunta) {
       const A = AR.CLASES[yo.clase].atk, largo = Math.min(520, (A.alcance || 80) * (yo.alc || 1)), ax = n.x + n.apunta.x * 30, ay = n.y - 10 + n.apunta.y * 30;

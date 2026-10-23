@@ -248,9 +248,10 @@ const Nave = {
     Nave.v = v; Nave.send = send; Nave.opts = opts;
     if (!v.yo) { app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="stage">${personaje("#748ffc", "duda", 110)}<h2>Partida en curso</h2><p class="sub">Entras en la próxima.</p></section>`; return; }
     const capa = v.fase === "fin" ? "fin" : "mapa";
-    if (UI.naveCapa !== capa || !byId("naveCanvas") && capa === "mapa") {
-      UI.naveCapa = capa;
+    if (UI.naveCapa !== capa || !byId(capa === "mapa" ? "naveCanvas" : "nvFin")) {
+      // pantallaFin llama a parar(), que borra UI.naveCapa: se anota después (si no, el final se rearmaba 10 veces por segundo y el toque en "Otra partida" se perdía)
       if (capa === "mapa") Nave.montar(); else Nave.pantallaFin(v);
+      UI.naveCapa = capa;
     }
     if (capa === "mapa") Nave.hud(v);
   },
@@ -286,6 +287,7 @@ const Nave = {
     const joy = byId("nvJoy"), pin = joy.querySelector("i"), mov = UI.nave.mov;
     let id = null, cx = 0, cy = 0;
     const zona = byId("naveCanvas");
+    Nave.soltarJoy();
     const empezar = e => { const t = e.changedTouches ? e.changedTouches[0] : e; id = t.identifier ?? "m"; cx = t.clientX; cy = t.clientY; joy.style.left = cx - 60 + "px"; joy.style.top = cy - 60 + "px"; joy.classList.add("on"); mover(e); };
     const mover = e => {
       if (id === null) return;
@@ -297,10 +299,10 @@ const Nave = {
       if (e.cancelable) e.preventDefault();
     };
     const fin = () => { id = null; mov.x = 0; mov.y = 0; pin.style.transform = ""; joy.classList.remove("on"); };
-    zona.addEventListener("touchstart", empezar, { passive: true });
-    zona.addEventListener("touchmove", mover, { passive: false });
-    zona.addEventListener("touchend", fin); zona.addEventListener("touchcancel", fin);
-    zona.addEventListener("mousedown", empezar); window.addEventListener("mousemove", e => { if (id === "m") mover(e); }); window.addEventListener("mouseup", () => { if (id === "m") fin(); });
+    const ev = [["touchstart", empezar, { passive: true }], ["touchmove", mover, { passive: false }], ["touchend", fin], ["touchcancel", fin], ["mousedown", empezar]];
+    const wm = e => { if (id === "m") mover(e); }, wu = () => { if (id === "m") fin(); };
+    ev.forEach(([n, f, o]) => zona.addEventListener(n, f, o)); window.addEventListener("mousemove", wm); window.addEventListener("mouseup", wu);
+    Nave.joyOff = () => { ev.forEach(([n, f, o]) => zona.removeEventListener(n, f, o)); window.removeEventListener("mousemove", wm); window.removeEventListener("mouseup", wu); };
     if (!Nave.teclasListas) {
       Nave.teclasListas = true;
       const map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
@@ -309,7 +311,8 @@ const Nave = {
     }
   },
 
-  parar() { if (NavePixi.activo) NavePixi.desmontar(); cancelAnimationFrame(Nave.raf); Nave.raf = null; document.body.classList.remove("en-nave"); UI.naveCapa = null; clearInterval(Nave.hostTimer); Nave.hostTimer = null; },
+  soltarJoy() { if (Nave.joyOff) Nave.joyOff(); Nave.joyOff = null; },
+  parar() { if (NavePixi.activo) NavePixi.desmontar(); Nave.soltarJoy(); cancelAnimationFrame(Nave.raf); Nave.raf = null; document.body.classList.remove("en-nave"); UI.naveCapa = null; clearInterval(Nave.hostTimer); Nave.hostTimer = null; },
 
   loop() {
     let prev = performance.now();
@@ -319,10 +322,22 @@ const Nave = {
       if (!cv || !UI.nave || !Nave.v || !Nave.v.yo) { if (!cv) Nave.parar(); return; }
       const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       Nave.moverYo(dt);
-      if (NavePixi.activo) { try { NavePixi.dibujar(now); } catch (e) { if (!Nave.errPixi) { Nave.errPixi = true; console.error(e); } } }
+      // iOS se llevó el contexto WebGL y no lo devolvió: lienzo nuevo (si PixiJS falla siempre, el dibujo de siempre)
+      if (NavePixi.activo && NavePixi.caido()) return Nave.lienzoNuevo(false);
+      if (NavePixi.activo) {
+        try { NavePixi.dibujar(now); Nave.errores = 0; }
+        catch (e) { if (!Nave.errPixi) { Nave.errPixi = true; console.error(e); } if (++Nave.errores > 30) Nave.lienzoNuevo(true); }
+      }
       else dibujarSeguro(cv, () => Nave.dibujar(cv));
     };
     Nave.raf = requestAnimationFrame(paso);
+  },
+  lienzoNuevo(sinPixi) {
+    const cv = byId("naveCanvas"); if (!cv) return;
+    NavePixi.desmontar(true); Nave.errores = 0;
+    const nuevo = document.createElement("canvas"); nuevo.id = "naveCanvas"; cv.replaceWith(nuevo);
+    if (!sinPixi) NavePixi.montar(nuevo);
+    if (UI.nave) Nave.joystick();
   },
 
   moverYo(dt) {
@@ -500,7 +515,7 @@ const Nave = {
   pantallaFin(v) {
     Nave.parar();
     const gana = (v.ganador === "imp") === v.yo.imp;
-    app.innerHTML = `${Nave.opts.local ? head(0) : Net.cabecera()}<section class="screen">
+    app.innerHTML = `${Nave.opts.local ? head(0) : Net.cabecera()}<section class="screen" id="nvFin">
       <div class="verdict ${gana ? "good" : "bad"}"><div class="big">${v.ganador === "imp" ? "Ganan los impostores" : "Gana la tripulación"}</div><div class="note">${esc(v.motivo || "")}</div></div>
       <div class="panel"><span class="label">Tripulación</span><ul class="reveal-list">${v.jug.map(j => `<li>${Nave.mini(j, 30, j.imp ? "imp" : j.vivo ? "civ" : "muerto")}<span class="nm">${esc(j.name)}${j.vivo ? "" : " 💀"}</span>${j.imp ? `<span class="r-imp">Impostor</span>` : `<span class="r-civ">Tripulante</span>`}</li>`).join("")}</ul></div>
       ${Nave.opts.local || Nave.opts.isHost ? `<div class="row"><button class="btn" id="nvOtra">Otra partida</button><button class="btn ghost" id="nvFuera">${Nave.opts.local ? "Inicio" : "Volver a la sala"}</button></div>` : `<p class="sub center">El anfitrión puede empezar otra partida.</p>`}

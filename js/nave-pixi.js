@@ -4,12 +4,26 @@
 const NavePixi = {
   activo: false,
   lienzo(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; },
+  /* Una sola Application (un solo contexto WebGL) para todas las partidas, como en la Arena: en iPhone crear una
+     por partida llena la memoria de video y "otra partida" se tilda. Entre partidas solo se vacía la escena. */
   montar(cv) {
     if (!ArenaPixi.listo || !ArenaPixi.soporta()) return false;
     try {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const app = new PIXI.Application({ view: cv, width: cv.clientWidth || 390, height: cv.clientHeight || 700, resolution: dpr, antialias: true, backgroundColor: 0x05040a, eventFeatures: { move: false, globalMove: false, click: false, wheel: false } });
-      app.ticker.stop(); cv.style.width = "100%"; cv.style.height = "100%";
+      let app = this.app;
+      if (app && (!app.renderer || app.renderer.gl.isContextLost())) { this.desmontar(true); app = null; }
+      if (app) { const vw = app.view; vw.id = cv.id; vw.className = cv.className; cv.replaceWith(vw); cv = vw; }
+      else {
+        app = new PIXI.Application({ view: cv, width: cv.clientWidth || 390, height: cv.clientHeight || 700, resolution: dpr, antialias: true, backgroundColor: 0x05040a, eventFeatures: { move: false, globalMove: false, click: false, wheel: false } });
+        app.ticker.stop();
+        // Los toques los maneja la nave: sin esto PixiJS deja un requestAnimationFrame andando para siempre
+        try { app.renderer.events.setTargetElement(null); } catch {}
+        // Si iOS se lleva el contexto (segundo plano, poca memoria) y no vuelve, Nave.loop arma otro lienzo
+        cv.addEventListener("webglcontextlost", () => { this.perdido = this.perdido || performance.now(); });
+        cv.addEventListener("webglcontextrestored", () => { this.perdido = 0; });
+        this.perdido = 0;
+      }
+      cv.style.width = "100%"; cv.style.height = "100%";
       this.app = app; this.dpr = dpr;
       this.cielo = app.stage.addChild(new PIXI.Container());
       this.mundo = app.stage.addChild(new PIXI.Container());
@@ -23,22 +37,37 @@ const NavePixi = {
       this.rt = PIXI.RenderTexture.create({ width: 64, height: 64, resolution: 0.5 });
       this.luz = app.stage.addChild(new PIXI.Sprite(this.rt)); this.luz.blendMode = PIXI.BLEND_MODES.MULTIPLY;
       this.vision = app.stage.addChild(new PIXI.Sprite(this.texVision()));
-      this.pj = {}; this.pool = []; this.fxp = []; this.armada = false; this.activo = true;
+      this.tapa = null; this.pj = {}; this.pool = []; this.fxp = []; this.armada = false; this.activo = true;
       this.armar();
       return true;
-    } catch (e) { console.warn("PixiJS no arrancó en La Nave", e); this.desmontar(); return false; }
+    } catch (e) { console.warn("PixiJS no arrancó en La Nave", e); this.desmontar(true); return false; }
   },
-  desmontar() { this.activo = false; try { if (this.app) this.app.destroy(false, { children: true, texture: false, baseTexture: false }); } catch {} try { if (this.rt) this.rt.destroy(true); } catch {} this.app = null; this.pj = {}; },
+  /* Vacía la escena (las texturas compartidas quedan). Con todo = true también suelta el contexto WebGL */
+  desmontar(todo) {
+    this.activo = false;
+    try { if (this.app && this.app.stage) this.app.stage.removeChildren().forEach(c => c.destroy({ children: true })); } catch {}
+    try { if (this.luzCapa) this.luzCapa.destroy({ children: true }); } catch {}
+    try { if (this.rt) this.rt.destroy(true); } catch {}
+    this.rt = null; this.luzCapa = null; this.tapa = null; this.pj = {}; this.pool = []; this.fxp = [];
+    if (todo) {
+      try { if (this.app) this.app.destroy(false, { children: true, texture: false, baseTexture: false }); } catch {}
+      this.app = null; this.perdido = 0;
+    }
+  },
+  /* El contexto WebGL se perdió y no volvió (pasa en iPhone al volver del segundo plano) */
+  caido() { const a = this.app; if (!this.activo || !a || !a.renderer) return false; if (!a.renderer.gl.isContextLost()) { this.perdido = 0; return false; } this.perdido = this.perdido || performance.now(); return !document.hidden && performance.now() - this.perdido > 1500; },
 
   texVision() {
+    if (this.tVision) return this.tVision;
     const c = this.lienzo(512, 512), x = c.getContext("2d"), g = x.createRadialGradient(256, 256, 256 * 0.55, 256, 256, 256);
     g.addColorStop(0, "rgba(3,2,8,0)"); g.addColorStop(1, "rgba(3,2,8,.93)"); x.fillStyle = g; x.fillRect(0, 0, 512, 512);
-    return PIXI.Texture.from(c);
+    return (this.tVision = PIXI.Texture.from(c));
   },
   texEstrellas(semilla, n, tam) {
+    const T = this.tEst = this.tEst || {}; if (T[semilla]) return T[semilla];
     const c = this.lienzo(512, 512), x = c.getContext("2d"), r = azarDe(semilla);
     for (let i = 0; i < n; i++) { x.globalAlpha = 0.3 + r() * 0.7; x.fillStyle = r() < 0.15 ? "#a5d8ff" : r() < 0.1 ? "#ffd8a8" : "#ffffff"; const s = tam * (0.4 + r()); x.fillRect(r() * 512, r() * 512, s, s); }
-    return PIXI.Texture.from(c);
+    return (T[semilla] = PIXI.Texture.from(c));
   },
   /* El casco de la nave se pinta una vez (pisos, paredes y muebles de cada sala) */
   ESCALA: 1.25,

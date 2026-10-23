@@ -11,8 +11,11 @@ const BI = {
   QUINIELA: { 1: "el agua", 2: "el niño", 3: "San Cono", 4: "la cama", 5: "el gato", 6: "el perro", 7: "el revólver", 8: "el incendio", 9: "el arroyo", 12: "el soldado", 13: "la yeta", 14: "el borracho", 15: "la niña bonita", 17: "la desgracia", 18: "la sangre", 19: "el pescado", 20: "la fiesta", 21: "la mujer", 22: "el loco", 24: "el caballo", 25: "la gallina", 27: "el peine", 32: "el dinero", 34: "la cabeza", 35: "el pajarito", 47: "el muerto", 48: "el muerto que habla", 50: "el pan", 53: "el barco", 54: "la vaca", 75: "el payaso", 79: "el ladrón", 90: "el miedo" }
 };
 
-/* iOS solo deja hablar después de un toque: se "despierta" la voz con el primero */
+/* iOS solo deja hablar después de un toque: se "despierta" la voz con el primer toque dentro del bingo
+   (no antes: hablar corta la música que la persona esté escuchando en otra app) */
 document.addEventListener("pointerdown", function despertar() {
+  const enBingo = typeof S !== "undefined" && (/^bingo/.test(S.screen) || (S.screen === "online" && typeof UI !== "undefined" && UI.v && (UI.v.game === "bingo" || UI.v.sel === "bingo")));
+  if (!enBingo) return;
   try { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
   document.removeEventListener("pointerdown", despertar, true);
 }, true);

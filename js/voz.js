@@ -25,7 +25,7 @@ const Voz = {
     try {
       this.stream = await this.pedirMic();
     } catch (e) {
-      this.entrando = false; this.sesion("playback"); this.pintar();
+      this.entrando = false; this.sesion(typeof Sonido !== "undefined" ? Sonido.tipoSesion() : "playback"); this.pintar();
       return this.explicar(e);
     }
     this.entrando = false; this.activo = true; this.mute = false; this.abierto = true;
@@ -80,7 +80,7 @@ const Voz = {
     if (Net.activo()) try { Net.send({ t: "voz", on: false }); } catch {}
     Object.keys(this.llamadas).forEach(p => this.cortar(p));
     if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-    this.sesion("playback");
+    this.sesion(typeof Sonido !== "undefined" ? Sonido.tipoSesion() : "playback");
     this.stream = null; this.niveles = {}; this.hablando.clear();
     clearInterval(this.timer); this.timer = null;
     this.ducking();

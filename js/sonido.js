@@ -5,11 +5,17 @@ const Sonido = {
   musicaOn: store.get("musicaOn", true), efectosOn: store.get("efectosOn", true),
   pista: null, quiere: null, paso: 0, proximo: 0, timer: null, previo: new Set(),
 
+  /* Con la música del juego prendida, el juego toma el audio ("playback").
+     Con la música apagada, los efectos se mezclan con lo que estés escuchando (Spotify, etc.) sin cortarlo ("ambient"). */
+  tipoSesion() { return this.musicaOn ? "playback" : "ambient"; },
+  aplicarSesion() { try { if (navigator.audioSession && !(typeof Voz !== "undefined" && Voz.activo)) navigator.audioSession.type = this.tipoSesion(); } catch {} },
+  callado() { return !this.musicaOn && !this.efectosOn; },
   iniciar() {
+    this.aplicarSesion();
+    if (this.callado()) { if (this.ctx && this.ctx.state === "running") this.ctx.suspend(); return; }   // todo apagado: ni se toca el audio
     if (this.ctx) { if (this.ctx.state === "suspended") this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    try { if (navigator.audioSession && !(typeof Voz !== "undefined" && Voz.activo)) navigator.audioSession.type = "playback"; } catch {}
     const ctx = this.ctx = new AC();
     this.master = ctx.createGain(); this.master.gain.value = 0.9;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
@@ -306,12 +312,16 @@ const Sonido = {
 
   alternarMusica() {
     this.musicaOn = !this.musicaOn; store.set("musicaOn", this.musicaOn);
+    this.aplicarSesion();
     if (this.ctx) this.musicBus.gain.setTargetAtTime(this.volMusica(this.pista), this.ctx.currentTime, 0.2);
+    if (!this.musicaOn && typeof Toast !== "undefined") Toast.mostrar(`<div class="t-ic">🎧</div><div class="t-txt"><b>Música del juego apagada</b><span>Ya podés jugar escuchando tu propia música: el juego no la corta.</span></div>`, "info");
+    this.iniciar();
     pintarControles();
   },
   alternarEfectos() {
     this.efectosOn = !this.efectosOn; store.set("efectosOn", this.efectosOn);
     if (this.ctx) this.sfxBus.gain.setTargetAtTime(this.efectosOn ? 0.9 : 0, this.ctx.currentTime, 0.05);
+    this.iniciar();
     pintarControles();
   }
 };
@@ -360,8 +370,8 @@ function pintarControles() {
       <svg viewBox="0 0 24 24" width="20" height="20"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="3" fill="currentColor"/><circle cx="17.5" cy="16" r="3" fill="currentColor"/>${Sonido.musicaOn ? "" : `<path d="M3 3l18 18" stroke="currentColor" stroke-width="2.4"/>`}</svg></button>
     <button id="tgSfx" aria-pressed="${Sonido.efectosOn}" aria-label="${Sonido.efectosOn ? "Apagar efectos" : "Prender efectos"}" title="Efectos">
       <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${Sonido.efectosOn ? `<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>` : `<path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`}</svg></button>`;
-  byId("tgMus").onclick = e => { e.stopPropagation(); Sonido.iniciar(); Sonido.alternarMusica(); };
-  byId("tgSfx").onclick = e => { e.stopPropagation(); Sonido.iniciar(); Sonido.alternarEfectos(); };
+  byId("tgMus").onclick = e => { e.stopPropagation(); Sonido.alternarMusica(); };
+  byId("tgSfx").onclick = e => { e.stopPropagation(); Sonido.alternarEfectos(); };
 }
 pintarControles();
 

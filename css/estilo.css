@@ -997,8 +997,8 @@ body.en-ruleta .audio-ctl { display: none; }
 .calib i { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--spot); translate: -2px 0; }
 .calib-ok { font-size: 22px; letter-spacing: 6px; color: var(--teal); }
 .codigo-tarea { font-family: var(--display); font-size: 26px; letter-spacing: .2em; color: var(--spot); }
-body.en-nave .audio-ctl { bottom: auto; top: calc(140px + var(--sat)); right: 10px; transform: scale(.85); transform-origin: top right; }
-body.en-nave .chat-flot { bottom: auto; top: calc(192px + var(--sat)); left: auto; right: 14px; width: 46px; height: 46px; }
+body.en-nave .audio-ctl { bottom: auto; top: calc(140px + var(--sat)); right: 10px; flex-direction: column; transform: scale(.85); transform-origin: top right; }
+body.en-nave .chat-flot { bottom: auto; top: calc(232px + var(--sat)); left: auto; right: 14px; width: 46px; height: 46px; }
 body.en-nave .chat-panel { bottom: auto; top: calc(60px + var(--sat)); z-index: 30; }
 body.en-nave .toasts { z-index: 40; }
 
@@ -1167,8 +1167,8 @@ body.con-turno #app { padding-top: calc(56px + var(--sat)); }
 .voz-lista li.habla { background: rgba(105, 219, 124, .18); box-shadow: inset 0 0 0 2px rgba(105, 219, 124, .7); }
 .voz-hablan { position: fixed; left: 132px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 21; max-width: calc(100vw - 250px); padding: 6px 12px; border-radius: 999px; background: rgba(43, 138, 62, .92); color: #fff; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: aparece .2s ease; }
 .voz-audio { display: none; }
-body.en-nave .voz-flot { bottom: auto; top: calc(246px + var(--sat)); left: auto; right: 14px; width: 46px; height: 46px; }
-body.en-nave .voz-panel { bottom: auto; top: calc(300px + var(--sat)); left: auto; right: 12px; }
+body.en-nave .voz-flot { bottom: auto; top: calc(286px + var(--sat)); left: auto; right: 14px; width: 46px; height: 46px; }
+body.en-nave .voz-panel { bottom: auto; top: calc(340px + var(--sat)); left: auto; right: 12px; }
 body.en-nave .voz-hablan { left: 50%; translate: -50% 0; bottom: auto; top: calc(80px + var(--sat)); max-width: 80vw; }
 
 /* ---------- Pantallas quietas al cambiar de turno ---------- */
@@ -1579,7 +1579,7 @@ html.tj-abierta, html.tj-abierta body { overflow: hidden; }
 /* ---------- Bowling, Arco y flecha y Circo ---------- */
 .bowling canvas, .arco canvas, .circo canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 .bowling .nv-salir, .arco .nv-salir, .circo .nv-salir { top: calc(10px + var(--sat)); right: 10px; z-index: 3; }
-.bw-top { position: absolute; left: 8px; right: 54px; top: calc(8px + var(--sat)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.bw-top { position: absolute; left: 8px; right: 62px; top: calc(8px + var(--sat)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .bw-tabla { display: flex; flex-direction: column; gap: 3px; }
 .bw-fila { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 10px; background: rgba(15, 13, 24, .78); border: 1px solid transparent; font-size: 11px; }
 .bw-fila.on { border-color: var(--spot); box-shadow: 0 0 12px rgba(255, 197, 61, .35); }

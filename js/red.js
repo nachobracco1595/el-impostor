@@ -167,7 +167,7 @@ const Net = {
     if (R.game === "arena") return { ...Arena.view(R.arena, pid), isHost: pid === "H" };
     if (EXTRA[R.game] && R.ex) return { ...EXTRA[R.game].view(R.ex, pid), isHost: pid === "H" };
     return {
-      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, exCfg: Object.fromEntries(Object.entries(EXTRA).map(([k, m]) => [k, { ...m.cfg(), personas: undefined }])), biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
+      game: "lobby", code: R.code, lieMesa: S.lieCfg.mesa, lieEsp: S.lieCfg.esp !== false, chCpus: S.chCfg.cpus, trCfg: { ...S.trCfg }, bkCfg: { ...S.bkCfg }, pkCfg: { ...S.pkCfg }, carCfg: { ...S.carCfg }, exCfg: Object.fromEntries(Object.entries(EXTRA).map(([k, m]) => [k, { ...m.cfg(), personas: undefined }])), biCfg: { valor: S.biCfg.valor, vel: S.biCfg.vel }, bjCfg: { ...S.bjCfg }, arEsc: S.arenaEsc || "ring", chCom: S.chCfg.comodines, ch89: S.chCfg.con89, caso: Casos.caso(S.casoId).titulo, casoCfg: { ...S.casoCfg }, isHost: pid === "H", me: pid, sel: R.sel, err: pid === "H" ? R.err : "",
       players: R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, host: p.id === "H", torre: p.id === "H" ? Torre.info() : p.torre || null })),
       resumen: `${S.themes.length} tema${S.themes.length === 1 ? "" : "s"} · ${S.cfg.impostors} impostor${S.cfg.impostors > 1 ? "es" : ""}${S.cfg.hint ? " · con pista" : " · sin pista"}${S.cfg.minutes ? ` · ${S.cfg.minutes} min` : ""}${extras(S.cfg) ? ` · ${extras(S.cfg)} rol${extras(S.cfg) > 1 ? "es" : ""} extra` : ""}${S.cfg.allImp || S.cfg.noImp ? " · rondas sorpresa" : ""}`
     };
@@ -432,7 +432,8 @@ function renderLobby(v) {
         : v.sel === "nave" ? `<p class="summary">Muévanse por la nave, hagan tareas y descubran al impostor. 1 impostor (2 desde 7 jugadores). Usen el chat 💬 en las reuniones.</p>`
         : v.sel === "ajedrez" || v.sel === "naval" ? `<p class="summary">Juegan los dos primeros de la sala${v.sel === "ajedrez" ? " (los colores se sortean)" : ""}. Los demás miran la partida.</p>`
         : v.sel === "liars" ? `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.${Math.max(2, v.lieMesa) > v.players.length ? ` Se suman ${Math.min(8, Math.max(2, v.lieMesa)) - v.players.length} bot${Math.min(8, Math.max(2, v.lieMesa)) - v.players.length > 1 ? "s" : ""} para completar la mesa.` : ""}</p>
-          ${H ? `<span class="label">Completar con bots hasta</span><div class="seg">${[[0, "Sin bots"], [3, "3"], [4, "4"], [6, "6"]].map(([k, t]) => `<button aria-pressed="${v.lieMesa === k}" data-liem="${k}">${t}</button>`).join("")}</div>` : ""}`
+          ${H ? `<span class="label">Completar con bots hasta</span><div class="seg">${[[0, "Sin bots"], [3, "3"], [4, "4"], [6, "6"]].map(([k, t]) => `<button aria-pressed="${v.lieMesa === k}" data-liem="${k}">${t}</button>`).join("")}</div>` : ""}
+          <div class="opt"><div class="txt"><b>Cartas especiales</b><small>${v.lieEsp !== false ? "Una 😈 Diablo (si la descubren, gatillan todos los demás) y un 😇 Ángel (salva y recarga) por ronda." : "Solo reinas, reyes, ases y comodines."} Cualquiera puede gritar ¡Mentiroso!</small></div><button class="switch" role="switch" aria-checked="${v.lieEsp !== false}" ${H ? `id="lieEsp"` : "disabled"} aria-label="Cartas especiales"></button></div>`
         : `<p class="summary">5 cartas por ronda, 1 bala en 6 recámaras por jugador.</p>`}
     </div>
     ${v.err ? `<p class="warn">${esc(v.err)}</p>` : ""}
@@ -454,6 +455,7 @@ function renderLobby(v) {
   app.querySelectorAll("[data-trn]").forEach(b => b.onclick = () => { S.trCfg.n = +b.dataset.trn; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-bkn]").forEach(b => b.onclick = () => { S.bkCfg.n = +b.dataset.bkn; store.set("bkCfg", S.bkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-liem]").forEach(b => b.onclick = () => { S.lieCfg.mesa = +b.dataset.liem; store.set("lieCfg", S.lieCfg); Net.cfgCambiada(); });
+  if (byId("lieEsp")) byId("lieEsp").onclick = () => { S.lieCfg.esp = S.lieCfg.esp === false; store.set("lieCfg", S.lieCfg); Net.cfgCambiada(); };
   app.querySelectorAll("[data-chc]").forEach(b => b.onclick = () => { S.chCfg.cpus = +b.dataset.chc; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-crm]").forEach(b => b.onclick = () => { S.carCfg.mesa = +b.dataset.crm; store.set("carCfg", S.carCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-pkm]").forEach(b => b.onclick = () => { S.pkCfg.mesa = +b.dataset.pkm; store.set("pkCfg", S.pkCfg); Net.cfgCambiada(); });
@@ -495,7 +497,7 @@ const Turno = {
     if (EXTRA[v.game] && EXTRA[v.game].turnoInfo) return EXTRA[v.game].turnoInfo(v);
     if (v.game === "liars") {
       if (v.phase === "turn") return { mio: v.turnId === v.me, quien: v.turnName, que: "jugar tus cartas" };
-      if (v.phase === "reveal" && v.rev) return { mio: v.rev.shooterId === v.me, quien: v.rev.shooter, que: "gatillar" };
+      if (v.phase === "reveal" && v.rev) return { mio: (v.rev.tiradores || []).some(x => !x.hecho && x.id === v.me) || v.rev.shooterId === v.me && !v.rev.tiradores, quien: v.rev.shooter, que: "gatillar" };
     }
     return null;
   },

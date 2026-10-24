@@ -66,7 +66,7 @@ function total(u, k) { return Object.keys(JUEGOS).reduce((s, j) => s + (u.stats[
 function statsVacias() {
   return {
     impostor: { j: 0, g: 0, p: 0, imp: 0, impG: 0, inoG: 0, adivino: 0, bufonG: 0, sorpresa: 0 },
-    liars: { j: 0, g: 0, p: 0, clics: 0, aciertos: 0 },
+    liars: { j: 0, g: 0, p: 0, clics: 0, aciertos: 0, diablos: 0, angeles: 0 },
     casos: { j: 0, g: 0, p: 0, resueltos: [], soplonG: 0 },
     chinchon: { j: 0, g: 0, p: 0, chinchones: 0, menos10: 0, cortes: 0 },
     truco: { j: 0, g: 0, p: 0, envidos: 0, vale4: 0, e33: 0 },
@@ -194,7 +194,7 @@ const BD = {
       if (res.winner === "bufon" && res.rol === "bufon") st.bufonG++;
       if (/-hit$/.test(res.winner)) st.sorpresa++;
     } else if (res.juego === "liars") {
-      st.clics += res.clics; st.aciertos += res.aciertos;
+      st.clics += res.clics | 0; st.aciertos += res.aciertos | 0; st.diablos = (st.diablos | 0) + (res.diablos | 0); st.angeles = (st.angeles | 0) + (res.angeles | 0);
     } else if (res.juego === "chinchon") {
       st.chinchones += res.chinchon ? 1 : 0; st.menos10 += res.menos10; st.cortes += res.cortes;
     } else if (res.juego === "carrera") {
@@ -353,6 +353,8 @@ const Puntos = {
     } else if (r.juego === "liars") {
       if (r.aciertos) d.push([`Atrapaste ${r.aciertos} mentiroso${r.aciertos > 1 ? "s" : ""}`, 5 * r.aciertos]);
       if (r.clics) d.push([`Sobreviviste ${r.clics} gatillazo${r.clics > 1 ? "s" : ""}`, 3 * r.clics]);
+      if (r.diablos) d.push([`Tu carta del Diablo hizo gatillar a todos${r.diablos > 1 ? ` (${r.diablos})` : ""}`, 8 * r.diablos]);
+      if (r.angeles) d.push([`Te salvó el Ángel${r.angeles > 1 ? ` (${r.angeles})` : ""}`, 4 * r.angeles]);
       if (r.gano) { gano = true; d.push(["Último en pie", 30]); }
     } else if (r.juego === "chinchon") {
       if (r.chinchon) { gano = true; d.push(["¡Chinchón!", 40]); }

@@ -207,6 +207,9 @@ const Chin = {
   },
 
   render(v, send, opts) {
+    // Mientras se arrastra una carta no se redibuja (lo que jugaron otros se muestra al soltar)
+    if (Chin.arrastrando()) { UI.chArr.pendiente = true; return; }
+    Chin.soltar();
     Chin.usar(v.cfg);
     const yo = v.yo, jefe = opts.local || opts.isHost;
     const miTurno = yo === v.turno && (v.fase === "robar" || v.fase === "tirar") && !v.jug[yo]?.cpu;
@@ -225,6 +228,13 @@ const Chin = {
           : jefe ? `<div class="row"><button class="btn" id="chOtra">Otra partida</button><button class="btn ghost" id="chSalir">${opts.local ? "Inicio" : "Volver a la sala"}</button></div>` : ""}`;
     } else {
       const an = Chin.analizar(v.mano);
+      // Orden de la mano: por juegos (automático), por palo, por número o a mano (arrastrando).
+      // El orden a mano es solo de este teléfono y se guarda por carta: lo nuevo va al final
+      const U = UI.chOrd = UI.chOrd || { modo: store.get("chOrden", "juegos"), man: {} }, clave = `${v.me ?? "L"}:${yo}`;
+      const previo = (U.man[clave] || []).filter(c => v.mano.includes(c));
+      U.man[clave] = [...previo, ...Chin.ordenar(v.mano).filter(c => !previo.includes(c))];
+      const ligadas = new Set(an.juegos.flat());
+      const enOrden = U.modo === "juegos" ? [...an.juegos.flat(), ...an.libres] : U.modo === "mano" ? U.man[clave] : Chin.ordenarPor(v.mano, U.modo);
       const sel = UI.chSel && v.mano.includes(UI.chSel) ? UI.chSel : null;
       const nueva = miTurno && v.nueva && v.mano.includes(v.nueva.c) ? v.nueva.c : null, esNueva = c => c === nueva ? "nueva" : "";
       let corte = null;
@@ -232,15 +242,19 @@ const Chin = {
         const resto = v.mano.filter(c => c !== sel), a2 = Chin.analizar(resto);
         corte = Chin.esChinchon(resto) ? { txt: "¡Chinchón!", ok: true } : a2.resto <= 5 ? { txt: a2.resto === 0 ? "Cortar con −10" : `Cortar (sumas ${a2.resto})`, ok: true } : { txt: `Para cortar te quedarían ${a2.resto}`, ok: false };
       }
-      const turnoJ = v.jug[v.turno];
+      const turnoJ = v.jug[v.turno], toca = miTurno && v.fase === "tirar";
+      const carta = (c, cls = "") => Chin.carta(c, { cls: `${cls} ${toca ? "toca" : ""} ${sel === c ? "sel" : ""} ${esNueva(c)}`, attrs: `data-mc="${c}" ${toca ? `data-ch="${c}" role="button" tabindex="0"` : ""}` });
       body = `${marcador}
         <div class="ch-mesa" data-k="${v.mazo}-${v.top}">
           <div class="ch-pila"><span class="label">Mazo · ${v.mazo}</span>${miTurno && v.fase === "robar" ? `<button class="ch-btn" id="chMazo">${Chin.carta(null)}</button>` : Chin.carta(null)}</div>
           <div class="ch-pila"><span class="label">Descarte</span>${miTurno && v.fase === "robar" && v.top ? `<button class="ch-btn" id="chDesc">${Chin.carta(v.top)}</button>` : Chin.carta(v.top)}</div>
         </div>
         <p class="aj-estado">${miTurno ? (v.fase === "robar" ? "🎴 <b>Tu turno:</b> roba del mazo o toma la carta del descarte." : `${nueva ? `${v.nueva.de === "mazo" ? "Robaste" : "Tomaste"} ${Chin.carta(nueva, { cls: "mini" })} (brilla en tu mano). ` : ""}Elige una carta para <b>tirar</b> (o para cortar).`) : turnoJ.cpu ? `🤖 ${esc(turnoJ.name)} está jugando…` : `Turno de <b>${esc(turnoJ.name)}</b>.`}${v.log ? ` <small>${esc(v.log)}.</small>` : ""}</p>
-        ${yo >= 0 ? `<div class="panel ch-panel"><div class="headrow"><span class="label">Tu mano</span><span class="label">Sueltas: ${an.resto} pts</span></div>
-          <div class="ch-mano">${an.juegos.map(g => `<span class="ch-juego">${g.map(c => Chin.carta(c, { cls: `${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""} ${esNueva(c)}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</span>`).join("")}${an.libres.map(c => Chin.carta(c, { cls: `suelta ${miTurno && v.fase === "tirar" ? "toca" : ""} ${sel === c ? "sel" : ""} ${esNueva(c)}`, attrs: miTurno && v.fase === "tirar" ? `data-ch="${c}" role="button" tabindex="0"` : "" })).join("")}</div>
+        ${yo >= 0 ? `<div class="panel ch-panel"><div class="headrow"><span class="label">Tu mano · sueltas: ${an.resto} pts</span>
+            <div class="seg ch-orden" role="radiogroup" aria-label="Ordenar la mano">${[["juegos", "Juegos"], ["palo", "Palo"], ["num", "Nº"], ["mano", "✋"]].map(([k, t]) => `<button aria-pressed="${U.modo === k}" data-chorden="${k}">${t}</button>`).join("")}</div></div>
+          <div class="ch-mano ${U.modo === "juegos" ? "" : "plana"}" id="chMano">${U.modo === "juegos" ? `${an.juegos.map(g => `<span class="ch-juego">${g.map(c => carta(c)).join("")}</span>`).join("")}${an.libres.map(c => carta(c, "suelta")).join("")}`
+            : enOrden.map(c => carta(c, ligadas.has(c) ? "ligada" : "suelta")).join("")}</div>
+          <p class="ch-ayuda">Mantené apretada una carta y arrastrala para acomodarla donde quieras.</p>
           ${miTurno && v.fase === "tirar" ? `<div class="row"><button class="btn" id="chTirar" ${sel ? "" : "disabled"}>Tirar</button><button class="btn ${corte && corte.ok ? "danger" : "ghost"}" id="chCortar" ${corte && corte.ok ? "" : "disabled"}>${corte ? corte.txt : "Cortar"}</button></div>` : ""}
         </div>` : ""}
         <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Escaleras: 3 o más del mismo palo seguidas (${v.cfg && v.cfg.con89 ? "baraja de 48: 7, 8, 9 y la sota" : "baraja de 40: no hay 8 ni 9, el 7 sigue con la sota"}). Grupos: 3 o 4 del mismo número. Un comodín por juego. Puedes cortar si lo suelto suma 5 o menos; con todo ligado restas 10. Una escalera de 7 del mismo palo es <b>chinchón</b> y gana la partida. Quien pasa de 100 queda afuera.</p></details>`;
@@ -248,15 +262,89 @@ const Chin = {
     app.innerHTML = `${opts.local ? head(0) : Net.cabecera()}<section class="screen chinchon">${body}</section>`;
     on("chMazo", () => send({ t: "robar", de: "mazo" }));
     on("chDesc", () => send({ t: "robar", de: "descarte" }));
+    app.querySelectorAll("[data-chorden]").forEach(b => b.onclick = () => {
+      const U = UI.chOrd, m = b.dataset.chorden;
+      if (m === "mano" && U.modo !== "mano") U.man[`${v.me ?? "L"}:${v.yo}`] = [...app.querySelectorAll("#chMano [data-mc]")].map(x => x.dataset.mc);   // arranca desde lo que se ve
+      U.modo = m; store.set("chOrden", m); render();
+    });
+    const elegir = c => { UI.chSel = UI.chSel === c ? null : c; render(); };
+    Chin.arrastrar(`${v.me ?? "L"}:${v.yo}`, elegir);
     app.querySelectorAll("[data-ch]").forEach(el => {
-      const f = () => { UI.chSel = UI.chSel === el.dataset.ch ? null : el.dataset.ch; render(); };
-      el.onclick = f; el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); f(); } };
+      // El toque se resuelve en pointerup (ver arrastrar); el click queda para lo que no pase por ahí
+      el.onclick = () => { if (Date.now() >= (UI.chSinClick || 0)) elegir(el.dataset.ch); };
+      el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegir(el.dataset.ch); } };
     });
     on("chTirar", () => { const c = UI.chSel; UI.chSel = null; send({ t: "tirar", c }); });
     on("chCortar", () => { const c = UI.chSel; UI.chSel = null; send({ t: "tirar", c, cortar: true }); });
     on("chSig", () => send({ t: "siguiente" }));
     on("chOtra", () => send({ t: "again" }));
     on("chSalir", () => opts.local ? go("home") : send({ t: "lobby" }));
+  },
+
+  ordenarPor: (cs, modo) => cs.slice().sort((a, b) => Chin.esJ(a) - Chin.esJ(b) || (modo === "palo" ? "OCEB".indexOf(a[0]) - "OCEB".indexOf(b[0]) || Chin.pos(a) - Chin.pos(b) : Chin.pos(a) - Chin.pos(b) || "OCEB".indexOf(a[0]) - "OCEB".indexOf(b[0])) || a.localeCompare(b)),
+
+  /* Acomodar la mano arrastrando (como en el burako): mantener apretada una carta (o moverla un poco) y soltarla donde va */
+  arrastrando: () => { const d = UI.chArr; return !!(d && d.fantasma && d.caja.isConnected && Date.now() - d.t < 8000); },
+  soltar() {
+    const d = UI.chArr; if (!d) return;
+    UI.chArr = null; clearTimeout(d.espera);
+    if (d.fantasma) d.fantasma.remove();
+    d.caja.querySelectorAll(".antes, .despues, .arrastrando").forEach(x => x.classList.remove("antes", "despues", "arrastrando"));
+    document.querySelectorAll(".ce.fantasma").forEach(x => x.remove());
+  },
+  arrastrar(clave, elegir) {
+    const caja = byId("chMano"); if (!caja) return;
+    const empezar = () => {
+      const d = UI.chArr; if (!d || d.fantasma) return;
+      if (!d.el.isConnected) return Chin.soltar();               // la mano se redibujó mientras esperaba
+      const r = d.el.getBoundingClientRect();
+      d.fantasma = d.el.cloneNode(true); d.fantasma.className += " fantasma"; d.fantasma.removeAttribute("data-ch"); d.fantasma.removeAttribute("data-mc");
+      Object.assign(d.fantasma.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+      document.body.appendChild(d.fantasma); d.el.classList.add("arrastrando"); d.t = Date.now();
+      try { navigator.vibrate && navigator.vibrate(15); } catch {}
+    };
+    caja.querySelectorAll("[data-mc]").forEach(el => {
+      el.addEventListener("pointerdown", e => {
+        if (e.button > 0) return;
+        Chin.soltar(); UI.chSinClick = 0;                            // un toque nuevo sí cuenta
+        const d = UI.chArr = { el, caja, id: el.dataset.mc, x0: e.clientX, y0: e.clientY, pid: e.pointerId, t: Date.now() };
+        d.espera = setTimeout(empezar, 260);
+        try { el.setPointerCapture(e.pointerId); } catch {}
+      });
+      el.addEventListener("pointermove", e => {
+        const d = UI.chArr; if (!d || d.el !== el || d.pid !== e.pointerId) return;
+        if (!d.fantasma && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) empezar();
+        if (!d.fantasma) return;
+        e.preventDefault(); d.t = Date.now();
+        d.fantasma.style.transform = `translate(${e.clientX - d.x0}px, ${e.clientY - d.y0}px) scale(1.12)`;
+        const bajo = document.elementFromPoint(e.clientX, e.clientY), obj = bajo && bajo.closest("#chMano [data-mc]");
+        caja.querySelectorAll(".antes, .despues").forEach(x => x.classList.remove("antes", "despues"));
+        d.destino = null;
+        if (obj && obj !== d.el) { const ro = obj.getBoundingClientRect(), antes = e.clientX < ro.left + ro.width / 2; obj.classList.add(antes ? "antes" : "despues"); d.destino = { id: obj.dataset.mc, antes }; }
+        else if (!obj) {                                           // más allá de la última carta: va al final
+          const cs = [...caja.querySelectorAll("[data-mc]")], u = cs[cs.length - 1], ru = u.getBoundingClientRect(), rc = caja.getBoundingClientRect();
+          if (u !== d.el && e.clientX >= rc.left && e.clientX <= rc.right && (e.clientY > ru.bottom || e.clientY >= ru.top && e.clientX > ru.right)) { u.classList.add("despues"); d.destino = { id: u.dataset.mc, antes: false }; }
+        }
+      });
+      const fin = e => {
+        const d = UI.chArr; if (!d || d.el !== el || d.pid !== e.pointerId) return;
+        const hubo = !!d.fantasma, destino = d.destino, id = d.id, pend = d.pendiente;
+        Chin.soltar();
+        // Toque corto: se elige acá y no en el click. Tras un arrastre largo que redibujó la mano, Chromium
+        // (Android) se traga el click del toque siguiente si llega dentro de ~½ s; pointerup sí llega siempre
+        if (!hubo) { if (e.type === "pointerup" && el.dataset.ch && elegir) { UI.chSinClick = Date.now() + 600; elegir(el.dataset.ch); } return; }
+        UI.chSinClick = Date.now() + 350;                         // que soltar no cuente como tocar la carta
+        if (destino) {
+          const U = UI.chOrd, lista = [...caja.querySelectorAll("[data-mc]")].map(x => x.dataset.mc).filter(c => c !== id), k = lista.indexOf(destino.id);
+          lista.splice(destino.antes ? k : k + 1, 0, id);
+          U.man[clave] = lista; U.modo = "mano"; store.set("chOrden", "mano");
+          if (typeof Sonido !== "undefined") Sonido.sfx("pieza");
+        }
+        if (destino || pend) render();
+      };
+      el.addEventListener("pointerup", fin); el.addEventListener("pointercancel", fin);
+      el.addEventListener("contextmenu", e => e.preventDefault());
+    });
   },
 
   /* ---------- Un teléfono ---------- */
@@ -292,6 +380,8 @@ const Chin = {
 };
 
 PANTALLAS.chinchon = () => {
+  if (Chin.arrastrando()) { UI.chArr.pendiente = true; return; }
+  Chin.soltar();
   const s = S.chi;
   const humanos = s.jug.map((j, i) => j.cpu ? -1 : i).filter(i => i >= 0);
   const enJuego = s.fase === "robar" || s.fase === "tirar";

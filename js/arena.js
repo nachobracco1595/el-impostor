@@ -3,7 +3,9 @@
    - 4 clases (Guerrero, Arquero, Mago y Asesino) y 4 piezas de equipo (casco, armadura, botas y arma)
      con los mismos 9 niveles de las herramientas. Todo se compra con monedas.
    - Contra la compu o online: el anfitrión calcula los golpes; cada uno mueve su personaje.
-   - Cada pelea cambia tu ELO (ranking de la Arena) y da monedas. */
+   - Cada pelea cambia tu ELO (ranking de la Arena) y da monedas.
+   - Con la evolución final aparece un poder en un segundo botón (inmortalidad, súper velocidad, absorber vida, curar bichos,
+     ferales o sombra, ver HE.PODERES). Va por el mismo camino que el especial: online lo calcula el anfitrión. */
 
 const AR = {
   W: 1400, H: 1000, R: 20,
@@ -20,7 +22,7 @@ const AR = {
       atk: { tipo: "bola", vel: 440, dano: 17, cd: 850, area: 50, alcance: 520 }, esp: { nombre: "Invocar", ic: "👹", cd: 10000, desc: "Invoca 2 bichos que pelean por vos durante 12 s (los rivales también les pueden pegar)." }, arma: ["Grimorio", "m"] }
   },
   /* Bichos del invocador: [nombre, ícono, color, sprite, clase con la que pelean, tamaño] */
-  BICHOS: { lobo: ["Lobo", "🐺", "#868e96", "lobo", "asesino", 0.8], esqueleto: ["Esqueleto", "💀", "#dee2e6", "esqueleto", "guerrero", 0.8], golem: ["Gólem", "🗿", "#adb5bd", "golem", "guerrero", 1.25] },
+  BICHOS: { lobo: ["Lobo", "🐺", "#868e96", "lobo", "asesino", 0.8], esqueleto: ["Esqueleto", "💀", "#dee2e6", "esqueleto", "guerrero", 0.8], golem: ["Gólem", "🗿", "#adb5bd", "golem", "guerrero", 1.25], feral: ["Feral", "🐾", "#e8590c", "lobo", "asesino", 0.75] },
   PIEZAS: { casco: ["Casco", "m", "⛑️"], armadura: ["Armadura", "f", "🦺"], botas: ["Botas", "fp", "🥾"], arma: ["Arma", "f", "⚔️"] },
   COSTO: [0, 120, 250, 450, 750, 1200, 1800, 2600, 3600],
   ESCENARIOS: {
@@ -73,9 +75,11 @@ const Arena = {
   luchador(j, pos) {
     const p = this.validar(j.arena), st = Heroes.stats(p);
     if (j.fuerza) { st.hp = Math.round(st.hp * j.fuerza.hp); st.mult *= j.fuerza.dano; }
+    if (j.equipo === "m") st.poder = null;                 // los monstruos de la torre no usan poderes
     return { id: j.id, name: j.name, look: j.look || null, cpu: !!j.cpu, nivel: j.nivel || null, ia: j.ia ?? null, clase: p.clase, eq: st.ver, estilo: st.estilo, evoIc: st.evoIc, evoId: st.evoId, lv: p.lv, pre: p.pre, equipo: j.equipo || null, tam: j.tam || 1, sprite: j.sprite || null, skin: p.skin || null,
       elo: j.cpu ? AR.CPU_ELO[j.nivel || "normal"] : p.elo, quema: null,
       x: pos.x, y: pos.y, dx: 1, dy: 0, cara: pos.x < 700 ? 1 : -1, hp: st.hp, max: st.hp, st, vivo: true, cdA: 0, cdE: 0, lento: 0, invul: 0, invis: 0, giro: 0, golpe: -9999, esp: -9999,
+      poder: st.poder, cdP: 0, pod: -9999, inmortal: 0, veloz: 0, drena: 0, sombra: 0, critSig: false, col: st.col || {},
       kills: 0, dano: 0, lugar: 0, dElo: 0, monedas: 0, tp: 0, revivio: false };
   },
   /* En la torre los monstruos son un equipo: no se pegan entre ellos. Los bichos invocados son del lado de su dueño */
@@ -87,20 +91,23 @@ const Arena = {
     const E = this.esc(s), st = a.st, fuerza = 1 + (st.invFuerza || 0), dura = 12000 * (1 + (st.invDura || 0));
     for (const b of s.jug) if (b.inv === a.id && b.vivo) { b.vivo = false; b.murio = s.t; s.fx.push({ k: ++s.nP, tipo: "humo", x: b.x, y: b.y, t: s.t }); }
     const tipos = st.invGolem ? ["golem", "lobo", "lobo"] : Array(st.invN || 2).fill(st.invN >= 3 ? "esqueleto" : null).map((x, i) => x || (i % 2 ? "esqueleto" : "lobo"));
-    tipos.forEach((tipo, i) => {
-      const B = AR.BICHOS[tipo], ang = (i / tipos.length) * Math.PI * 2 + Math.random();
-      let x = a.x + Math.cos(ang) * 60, y = a.y + Math.sin(ang) * 60;
-      for (let k = 0; k < 12 && !this.libre(E, x, y); k++) { x += (a.x - x) * 0.3; y += (a.y - y) * 0.3; }
-      const j = this.luchador({ id: `${a.id}~${++s.nP}`, name: "", cpu: true, ia: Math.min(0.95, 0.55 + 0.4 * (a.ia ?? 0.6)), equipo: a.equipo, sprite: B[3], tam: B[5], look: { color: B[2], acc: [] },
-        arena: { clase: B[4], lv: a.lv || 1, pre: 0, pts: {}, ppts: {}, evo: [], eq: {} } }, { x, y });
-      j.inv = a.id; j.hasta = s.t + dura; j.evoIc = B[1]; j.elo = 0; j.cdA = s.t + 400;
-      j.hp = j.max = Math.round(a.max * (tipo === "golem" ? 0.9 : 0.35) * fuerza);
-      j.st.mult = a.st.mult * (tipo === "golem" ? 0.75 : 0.5) * fuerza; j.st.def = 1; j.st.vel = j.st.vel * (tipo === "lobo" ? 1.15 : tipo === "golem" ? 0.75 : 0.95);
-      s.jug.push(j);
-      s.fx.push({ k: ++s.nP, tipo: "onda", x, y, r: 46, color: "#b197fc", t: s.t });
-    });
+    tipos.forEach((tipo, i) => this.bicho(s, a, tipo, (i / tipos.length) * Math.PI * 2 + Math.random(), dura, fuerza));
     s.fx.push({ k: ++s.nP, tipo: "num", x: a.x, y: a.y - 50, txt: "👹 ¡Invocación!", color: "#d0bfff", t: s.t });
     for (const b of s.jug) if (b.inv === a.id && b.vivo) b.boom = !!st.invBoom;
+  },
+  /* Un bicho del invocador al lado suyo (hp y daño salen de los de su dueño) */
+  bicho(s, a, tipo, ang, dura, fuerza) {
+    const E = this.esc(s), B = AR.BICHOS[tipo], vida = { golem: 0.9, feral: 0.25 }[tipo] || 0.35, dano = { golem: 0.75, feral: 0.45 }[tipo] || 0.5, vel = { lobo: 1.15, golem: 0.75, feral: 1.6 }[tipo] || 0.95;
+    let x = a.x + Math.cos(ang) * 60, y = a.y + Math.sin(ang) * 60;
+    for (let k = 0; k < 12 && !this.libre(E, x, y); k++) { x += (a.x - x) * 0.3; y += (a.y - y) * 0.3; }
+    const j = this.luchador({ id: `${a.id}~${++s.nP}`, name: "", cpu: true, ia: Math.min(0.95, 0.55 + 0.4 * (a.ia ?? 0.6)), equipo: a.equipo, sprite: B[3], tam: B[5], look: { color: B[2], acc: [] },
+      arena: { clase: B[4], lv: a.lv || 1, pre: 0, pts: {}, ppts: {}, evo: [], eq: {} } }, { x, y });
+    j.inv = a.id; j.hasta = s.t + dura; j.evoIc = B[1]; j.elo = 0; j.cdA = s.t + 400; j.feral = tipo === "feral";
+    j.hp = j.max = Math.round(a.max * vida * fuerza);
+    j.st.mult = a.st.mult * dano * fuerza; j.st.def = 1; j.st.vel = j.st.vel * vel;
+    s.jug.push(j);
+    s.fx.push({ k: ++s.nP, tipo: "onda", x, y, r: 46, color: tipo === "feral" ? "#ff922b" : "#b197fc", t: s.t });
+    return j;
   },
   /* Señor de los muertos: sus esqueletos explotan al irse */
   explotar(s, b) {
@@ -111,7 +118,7 @@ const Arena = {
   },
   objetivo(s, a, alcance) {
     let mejor = null, d0 = Infinity;
-    for (const b of s.jug) if (b !== a && b.vivo && !(s.t < b.invis) && !this.aliado(a, b)) { const d = Math.hypot(b.x - a.x, b.y - a.y); if (d < d0 && d < alcance) { d0 = d; mejor = b; } }
+    for (const b of s.jug) if (b !== a && b.vivo && !(s.t < b.invis) && !(s.t < b.sombra) && !this.aliado(a, b)) { const d = Math.hypot(b.x - a.x, b.y - a.y); if (d < d0 && d < alcance) { d0 = d; mejor = b; } }
     return mejor;
   },
   /* Apunta al rival más cercano; con proyectiles, adonde va a estar (según cómo se mueve) */
@@ -130,6 +137,7 @@ const Arena = {
     if (!b.vivo || s.t < b.invul || this.aliado(a, b)) return;
     // Chance de crítico: la de la clase + Inteligencia + equipo y evoluciones (todo viene sumado en st.crit)
     const chance = Math.min(0.75, a.st.crit || 0);
+    if (a.critSig) { crit = true; a.critSig = false; }          // Sombra: el primer golpe después es crítico seguro
     if (crit || Math.random() < chance) { dano *= a.st.critX || 2; crit = true; }
     // Golpe desde la invisibilidad: doble de daño y se vuelve a ver
     let sorpresa = false;
@@ -140,8 +148,22 @@ const Arena = {
     if (efecto && a.st.lento) b.lento = Math.max(b.lento, s.t + a.st.lento);
     if (efecto && a.st.quema) b.quema = { hasta: s.t + 3000, dps: dano * a.st.quema, de: a.id };
     b.hp -= dano; a.dano += dano; b.hit = s.t;
+    if (s.t < b.inmortal && b.hp < 1) b.hp = 1;                 // Inmortalidad: no baja de 1
     if (a.st.robo && a.vivo) a.hp = Math.min(a.max, a.hp + dano * a.st.robo);
     s.fx.push({ k: ++s.nP, tipo: "num", x: b.x, y: b.y - 40, txt: (sorpresa ? "👻" : "") + (crit ? "💥" : "") + "-" + dano, color: crit || sorpresa ? "#ffd43b" : "#ff6b7d", t: s.t });
+    // Absorber vida: se cura el 60% de lo que pega y se ve el rayo que le chupa la vida
+    if (s.t < a.drena && a.vivo) {
+      const c = dano * 0.6; a.hp = Math.min(a.max, a.hp + c);
+      s.fx.push({ k: ++s.nP, tipo: "rayo", x: b.x, y: b.y - 14, x2: a.x, y2: a.y - 14, color: "#ff4d63", t: s.t });
+      if (c >= 1) s.fx.push({ k: ++s.nP, tipo: "num", x: a.x + 14, y: a.y - 56, txt: "+" + Math.round(c), color: "#3ddcb1", t: s.t });
+    }
+    // Espinas (botín): le devuelve parte del golpe al que pegó
+    if (b.st.espinas && a.vivo && a !== b && !a.inv) {
+      const r = Math.max(1, Math.round(dano * b.st.espinas)); a.hp -= r; a.hit = s.t;
+      if (s.t < a.inmortal && a.hp < 1) a.hp = 1;
+      s.fx.push({ k: ++s.nP, tipo: "num", x: a.x, y: a.y - 40, txt: "🌵-" + r, color: "#a9e34b", t: s.t });
+      if (a.hp <= 0) this.morir(s, a, b);
+    }
     if (b.hp <= 0) this.morir(s, b, a);
   },
   morir(s, b, a) {
@@ -204,6 +226,35 @@ const Arena = {
       s.fx.push({ k: ++s.nP, tipo: "humo", x: a.x, y: a.y, t: s.t });
     } else if (a.clase === "invocador") this.invocar(s, a);
   },
+  /* Poder de la evolución final (segundo botón). Lo que dura queda en el luchador y lo usan pegar, tick y el dibujo */
+  poder(s, a) {
+    const P = a.poder && HE.PODERES[a.poder];
+    if (!P || s.fase !== "pelea" || !a.vivo || s.t < a.cdP) return;
+    a.cdP = s.t + P.cd; a.pod = s.t;
+    const fx = (txt, color, r = 110) => s.fx.push({ k: ++s.nP, tipo: "onda", x: a.x, y: a.y, r, color, t: s.t }, { k: ++s.nP, tipo: "num", x: a.x, y: a.y - 58, txt, color, t: s.t });
+    if (a.poder === "inmortal") { a.inmortal = s.t + P.dura; fx("😇 ¡Inmortal!", "#ffd43b"); }
+    else if (a.poder === "veloz") { a.veloz = s.t + P.dura; fx("💨 ¡Súper velocidad!", "#66d9e8", 80); }
+    else if (a.poder === "drena") {
+      a.drena = s.t + P.dura; fx("🩸 ¡Absorber vida!", "#ff4d63", 230);
+      // Al prenderlo le chupa la vida a todos los que tiene cerca
+      for (const b of s.jug) if (b !== a && b.vivo && !this.aliado(a, b) && Math.hypot(b.x - a.x, b.y - a.y) < 230) this.pegar(s, a, b, AR.CLASES[a.clase].atk.dano * 1.2, false, false);
+    } else if (a.poder === "curar") {
+      let mios = s.jug.filter(b => b.inv === a.id && b.vivo);
+      if (!mios.length) { this.invocar(s, a); mios = s.jug.filter(b => b.inv === a.id && b.vivo); }
+      for (const b of mios) {
+        const c = Math.round(b.max - b.hp); b.hp = b.max; b.hasta = Math.min(s.t + 30000, b.hasta + 6000);
+        s.fx.push({ k: ++s.nP, tipo: "onda", x: b.x, y: b.y, r: 50, color: "#3ddcb1", t: s.t }); if (c > 0) s.fx.push({ k: ++s.nP, tipo: "num", x: b.x, y: b.y - 40, txt: "+" + c, color: "#3ddcb1", t: s.t });
+      }
+      fx("💚 ¡A curarse!", "#3ddcb1", 140);
+    } else if (a.poder === "ferales") {
+      const fuerza = 1 + (a.st.invFuerza || 0);
+      for (let i = 0; i < 3; i++) { const b = this.bicho(s, a, "feral", i * 2.09 + Math.random(), P.dura, fuerza); b.boom = false; }
+      fx("🐾 ¡Ferales!", "#ff922b", 120);
+    } else if (a.poder === "sombra") {
+      a.sombra = s.t + P.dura; a.invul = Math.max(a.invul, s.t + P.dura); a.critSig = true;
+      s.fx.push({ k: ++s.nP, tipo: "humo", x: a.x, y: a.y, t: s.t }); fx("🌑 ¡Sombra!", "#9775fa", 70);
+    }
+  },
   saltar(s, a, dir) {
     const E = this.esc(s);
     for (let k = 0; k < 22; k++) { const nx = a.x + dir.x * 10, ny = a.y + dir.y * 10; if (!this.libre(E, nx, ny)) break; a.x = nx; a.y = ny; }
@@ -220,6 +271,7 @@ const Arena = {
       if (isFinite(+a.dx)) { j.dx = +a.dx; j.dy = +a.dy; }
     } else if (a.t === "atk") this.atacar(s, j, +a.dx || 0, +a.dy || 0, !!a.m);
     else if (a.t === "esp") this.especial(s, j, +a.dx || 0, +a.dy || 0, !!a.m);
+    else if (a.t === "pod") this.poder(s, j);
   },
 
   /* Lo que usan los relojes: si la app estuvo en segundo plano (iOS congela los timers) no se simulan minutos de golpe
@@ -265,7 +317,7 @@ const Arena = {
       if (j.st.regen && j.hp < j.max) j.hp = Math.min(j.max, j.hp + j.max * j.st.regen * dt);
       let quien = null;
       if (j.quema && s.t < j.quema.hasta) { d += j.quema.dps * dt; quien = s.jug.find(x => x.id === j.quema.de) || null; if (quien) quien.dano += j.quema.dps * dt; }
-      if (d) { j.hp -= d; if (j.hp <= 0) this.morir(s, j, quien); }
+      if (d) { j.hp -= d; if (s.t < j.inmortal && j.hp < 1) j.hp = 1; if (j.hp <= 0) this.morir(s, j, quien); }
     }
     // Pociones de vida
     if (s.t > s.prox && s.pociones.length < 2) {
@@ -302,7 +354,7 @@ const Arena = {
      los bots aprendieron de la persona (Mente): con más nivel apuntan mejor, esquivan más y juegan en contra de tu estilo. */
   cpu(s, j, dt) {
     const E = this.esc(s), C = AR.CLASES[j.clase], h = j.ia ?? ({ facil: 0.25, normal: 0.5, dificil: 0.8 }[j.nivel || "normal"]);
-    const ritmo = 0.5 + 0.5 * h, rivales = s.jug.filter(b => b !== j && b.vivo && !this.aliado(j, b) && !(s.t < b.invis));
+    const ritmo = 0.5 + 0.5 * h, rivales = s.jug.filter(b => b !== j && b.vivo && !this.aliado(j, b) && !(s.t < b.invis) && !(s.t < b.sombra));
     if (!rivales.length) return;
     // A quién: los flojos van al más cercano; los buenos prefieren al que tiene poca vida o a la persona
     const puntaje = b => { const d = Math.hypot(b.x - j.x, b.y - j.y); return d * (1 - 0.5 * h * (1 - b.hp / b.max)) * (h > 0.6 && !b.cpu ? 0.85 : 1); };
@@ -331,7 +383,7 @@ const Arena = {
     // Con poca vida, los buenos van a buscar una poción
     if (!j.inv && j.hp < j.max * 0.45 && s.pociones.length && h > 0.35) { const P = s.pociones.reduce((a, q) => Math.hypot(q.x - j.x, q.y - j.y) < Math.hypot(a.x - j.x, a.y - j.y) ? q : a); const pd = Math.hypot(P.x - j.x, P.y - j.y) || 1; if (pd < 600) { mx += (P.x - j.x) / pd * 1.4 * h; my += (P.y - j.y) / pd * 1.4 * h; } }
     const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
-    const vel = j.st.vel * ritmo * (s.t < j.lento ? 1 - AR.FRENO : 1) * (s.t < j.giro ? 1.1 : 1);
+    const vel = j.st.vel * ritmo * (s.t < j.lento ? 1 - AR.FRENO : 1) * (s.t < j.giro ? 1.1 : 1) * (s.t < j.veloz ? 3 : 1);
     let nx = j.x + mx * vel * dt, ny = j.y + my * vel * dt;
     const enLava = (x, y) => E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 10 + 20 * h) || (s.rayosOn && E.rayos && E.rayos.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
     if (enLava(nx, ny) && !enLava(j.x, j.y)) { nx = j.x - my * vel * dt * j.lado; ny = j.y + mx * vel * dt * j.lado; }
@@ -352,6 +404,18 @@ const Arena = {
         : j.clase === "invocador" ? d < 560 && !s.jug.some(x => x.inv === j.id && x.vivo)
         : d < 420 && d > 160;                                   // asesino: invisible para acercarse por sorpresa
       if (sirve || Math.random() < 0.15 * (1 - h)) this.especial(s, j, dx, dy);
+    }
+    // Poder de la evolución final: cuando conviene
+    if (j.poder && s.t > j.cdP && Math.random() < 0.02 + 0.06 * h) {
+      const cerca = rivales.filter(x => Math.hypot(x.x - j.x, x.y - j.y) < 230).length, poca = j.hp < j.max * 0.35;
+      const mios = s.jug.filter(x => x.inv === j.id && x.vivo);
+      const sirve = j.poder === "inmortal" ? poca && cerca > 0
+        : j.poder === "veloz" ? (d > 380 && !poca) || (poca && cerca > 0) || (cerca > 0 && Math.random() < 0.15)
+        : j.poder === "drena" ? d < 520 && (cerca >= 1 || j.hp < j.max * 0.75)
+        : j.poder === "curar" ? (mios.length && mios.some(x => x.hp < x.max * 0.5)) || (!mios.length && d < 560)
+        : j.poder === "ferales" ? d < 480
+        : d < 260 || (poca && cerca > 0);                       // sombra: para entrar con un crítico o para escaparse
+      if (sirve) this.poder(s, j);
     }
   },
 
@@ -390,7 +454,7 @@ const Arena = {
     return {
       game: "arena", id: s.id, me: pid, yo, esc: s.esc, fase: s.fase, t: s.t, inicio: s.inicio, sub: s.sub, rayosOn: !!s.rayosOn, online: s.online,
       jug: s.jug.map(j => ({ id: j.id, inv: j.inv || null, skin: j.skin || null, name: j.name, look: j.look, cpu: j.cpu, clase: j.clase, eq: j.eq, estilo: j.estilo, evoIc: j.evoIc, evoId: j.evoId, lv: j.lv, pre: j.pre, tam: j.tam, equipo: j.equipo, sprite: j.sprite, giro: j.giro, xp: j.xp, quema: j.quema && s.t < j.quema.hasta, x: Math.round(j.x), y: Math.round(j.y), cara: j.cara, dx: j.dx, dy: j.dy, hp: Math.ceil(j.hp), max: j.max, vivo: j.vivo,
-        golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
+        golpe: j.golpe, hit: j.hit, esp: j.esp, cdA: j.cdA, cdE: j.cdE, lento: j.lento, poder: j.poder || null, cdP: j.cdP, pod: j.pod, inmortal: j.inmortal, veloz: j.veloz, drena: j.drena, sombra: j.sombra, col: j.col, invul: j.invul, invis: j.invis, kills: j.kills, lugar: j.lugar, dElo: j.dElo, monedas: j.monedas, elo: j.elo, tp: j.tp, vel: j.st.vel, alc: j.st.alc })),
       proy: s.proy.map(p => ({ k: p.k, tipo: p.tipo, x: Math.round(p.x), y: Math.round(p.y), vx: p.vx, vy: p.vy, color: p.color })),
       fx: s.fx, pociones: s.pociones, feed: s.feed, horda: s.horda ? Torre.vista(s) : null
     };
@@ -416,6 +480,7 @@ const Arena = {
       <div class="ar-centro" id="arCentro" hidden></div>
       <div class="nv-joy" id="arJoy"><i></i></div>
       <button class="ar-esp" id="arEsp" aria-label="Habilidad especial"><span id="arEspIc"></span><i id="arEspCd"></i></button>
+      <button class="ar-esp ar-pod" id="arPod" aria-label="Poder" hidden><span id="arPodIc"></span><i id="arPodCd"></i></button>
       <button class="md-accion ar-atk" id="arAtk" aria-label="Atacar">⚔️</button>
       <button class="nv-salir" id="arSalir" aria-label="Salir">✕</button>
       <div class="ar-fin" id="arFin" hidden></div>
@@ -442,6 +507,7 @@ const Arena = {
     const soltar = () => { ini = null; if (UI.arena) { UI.arena.atk = false; UI.arena.apunta = null; } };
     atk.onpointerup = soltar; atk.onpointercancel = soltar; atk.onlostpointercapture = soltar; atk.oncontextmenu = e => e.preventDefault();
     boton("arEsp", on => { if (on) Arena.usarEspecial(); });
+    boton("arPod", on => { if (on) Arena.usarPoder(); });
     byId("arSalir").onclick = () => { if (Arena.opts.local) { if (Arena.v.fase === "fin" || confirm("¿Abandonar la pelea?")) { Arena.parar(); go("arenaIntro"); } } else { UI.confirmSalir = true; render(); } };
     if (!Arena.raf) Arena.loop();
   },
@@ -472,6 +538,7 @@ const Arena = {
         if (!UI.arena || !byId("arCanvas") || document.activeElement.tagName === "INPUT") return;
         if (e.key === " ") { UI.arena.atk = true; Arena.pulsarAtaque(); e.preventDefault(); return; }
         if (e.key === "e" || e.key === "Shift") { Arena.usarEspecial(); e.preventDefault(); return; }
+        if (e.key === "q" || e.key === "r") { Arena.usarPoder(); e.preventDefault(); return; }
         if (map[e.key]) { UI.arena.teclas[e.key] = map[e.key]; e.preventDefault(); }
       });
       window.addEventListener("keyup", e => { if (!UI.arena) return; if (e.key === " ") UI.arena.atk = false; delete UI.arena.teclas[e.key]; });
@@ -492,6 +559,13 @@ const Arena = {
     // Si recién apuntó a mano, el especial sale para ese lado (lluvia de flechas, por ejemplo)
     const a = n.apunta || (n.ultApunta && performance.now() - n.ultApunta.t < 1500 ? n.ultApunta : null);
     Arena.send(a ? { t: "esp", dx: a.x, dy: a.y, m: 1 } : { t: "esp", dx: n.dir.x, dy: n.dir.y });
+  },
+
+  /* Poder de la evolución final: se manda igual que el especial (online lo calcula el anfitrión) */
+  usarPoder() {
+    const n = UI.arena, v = Arena.v; if (!n || !v || v.fase !== "pelea") return;
+    const yo = v.jug[v.yo]; if (!yo || !yo.vivo || !yo.poder || v.t < yo.cdP) return;
+    Arena.send({ t: "pod" });
   },
 
   loop() {
@@ -526,7 +600,7 @@ const Arena = {
     for (const [dx, dy] of Object.values(n.teclas)) { mx += dx; my += dy; }
     const d = Math.hypot(mx, my); if (d > 1) { mx /= d; my /= d; }
     if (d > 0.05) {
-      const E = AR.ESCENARIOS[v.esc], vel = yo.vel * (v.t < yo.lento ? 1 - AR.FRENO : 1) * (v.t < yo.giro ? 1.1 : 1);
+      const E = AR.ESCENARIOS[v.esc], vel = yo.vel * (v.t < yo.lento ? 1 - AR.FRENO : 1) * (v.t < yo.giro ? 1.1 : 1) * (v.t < yo.veloz ? 3 : 1);
       const nx = n.x + mx * vel * dt, ny = n.y + my * vel * dt;
       if (Arena.libre(E, nx, n.y)) n.x = nx; if (Arena.libre(E, n.x, ny)) n.y = ny;
       n.dir = { x: mx / Math.max(d, 0.001), y: my / Math.max(d, 0.001) };
@@ -539,7 +613,7 @@ const Arena = {
 
   /* Silueta blanca del personaje (para el destello cuando recibe un golpe) */
   /* Color del arma y de los ataques: el de la skin si tiene, si no el del material */
-  colorArma(j) { const S = j.skin && HE.SKIN[j.skin]; return S && S.arma ? S.arma : TR.NIVELES[j.eq.arma].color; },
+  colorArma(j) { const S = j.skin && HE.SKIN[j.skin]; return S && S.arma ? S.arma : (j.col && j.col.arma) || TR.NIVELES[j.eq.arma].color; },
   /* El personaje teñido con el color de la skin (se guarda para no recalcular) */
   tenido(look, S) {
     const img = Mundo.muneco(look), k = "t" + S.id + (look.color || "") + (look.acc || []).join();
@@ -564,10 +638,10 @@ const Arena = {
   /* Personaje con equipo dibujado encima: casco, pechera, botas y arma según el nivel */
   dibujarLuchador(ctx, j, x, y, t, anda, vt) {
     const look = j.look || { color: colorDe(j.name), acc: [] }, img = Mundo.muneco(look);
-    const N = k => TR.NIVELES[j.eq[k]];
+    const N = k => ({ color: (j.col && j.col[k]) || TR.NIVELES[j.eq[k]].color });       // el botín se ve del color de su rareza
     const golpeado = j.hit !== undefined && vt - j.hit < 160;
-    // Invisible: los demás apenas ven un brillito (sin sombra, nombre ni vida); uno mismo se ve transparente
-    const invis = vt < j.invis;
+    // Invisible (o hecho sombra): los demás apenas ven un brillito (sin sombra, nombre ni vida); uno mismo se ve transparente
+    const invis = vt < j.invis || vt < j.sombra;
     if (j.sprite) { const h = ArenaFX.monstruo(ctx, j, x, y, t, anda, vt); if (h !== false) { if (j.name) this.nombreVida(ctx, j, x, y + 10 - h); return; } }
     if (invis && !j.esYo) { ctx.save(); ctx.globalAlpha = 0.07 + Math.sin(t * 7) * 0.03; ctx.translate(x, y); if (j.cara < 0) ctx.scale(-1, 1); if (img.complete) ctx.drawImage(img, -30, -46, 60, 67); ctx.restore(); ctx.globalAlpha = 1; return; }
     // Sombra y anillo de la clase
@@ -578,8 +652,10 @@ const Arena = {
     const fest = j.festeja, salto = fest ? Math.abs(Math.sin(t * 7)) * 22 : anda ? Math.abs(Math.sin(t * 11)) * 4 : Math.sin(t * 3) * 1;
     const temblor = golpeado ? Math.sin(vt / 12) * 4 : 0;
     // Giro del guerrero: la espada da vueltas alrededor
+    // Poderes: aura dorada de la inmortalidad, estela de la súper velocidad y aura roja de absorber vida
+    this.dibujarPoder(ctx, j, x, y, t, vt);
     if (vt < j.giro) {
-      const ang = vt / 70, col = TR.NIVELES[j.eq.arma].color;
+      const ang = vt / 70, col = N("arma").color;
       ctx.save(); ctx.translate(x, y - 8); ctx.globalAlpha = 0.35; ctx.strokeStyle = col; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(0, 0, 70, ang, ang + 4.2); ctx.stroke();
       ctx.globalAlpha = 1; ctx.rotate(ang); const g = ctx.createLinearGradient(0, 0, 72, 0); g.addColorStop(0, oscurecer(col, 0.7)); g.addColorStop(0.6, "#fff"); g.addColorStop(1, col);
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(18, -4); ctx.lineTo(70, -2); ctx.lineTo(76, 0); ctx.lineTo(70, 2); ctx.lineTo(18, 4); ctx.fill(); ctx.restore();
@@ -672,13 +748,36 @@ const Arena = {
     if (SK && SK.som) { ctx.font = "20px " + FE; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(SK.som, x + (SK.som === "🦜" ? 20 : 0), y - salto - (SK.som === "🦜" ? 20 : 52) - ((j.tam || 1) - 1) * 50); ctx.textBaseline = "alphabetic"; }
     if (SK && SK.part) { ctx.fillStyle = SK.part; for (let k = 0; k < 4; k++) { const a = t * 2.2 + k * 1.57, r = 26 + Math.sin(t * 3 + k) * 4; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 5 + k * 2); ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y - 14 + Math.sin(a) * r * 0.55 - salto, 2.6, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
     if (j.pre >= 10) { ctx.strokeStyle = "#ffd43b"; ctx.globalAlpha = 0.45 + Math.sin(t * 4) * 0.2; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 14, 42, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-    if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = TR.NIVELES[Math.max(j.eq.arma, j.eq.armadura)].color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = N(j.eq.arma >= j.eq.armadura ? "arma" : "armadura").color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
     if (j.quema) { ctx.font = "15px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("🔥", x - 22, y - 44); }
     if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("❄️", x + 22, y - 44); }
     if (!j.name) return;
     this.nombreVida(ctx, j, x, y - 68 - ((j.tam || 1) - 1) * 60);
   },
 
+  /* Efectos de los poderes (se ven igual en el dibujo de siempre y en PixiJS, que usa este mismo dibujo) */
+  dibujarPoder(ctx, j, x, y, t, vt) {
+    if (vt < j.inmortal) {
+      const k = Math.min(1, (j.inmortal - vt) / 400), g = ctx.createRadialGradient(x, y - 14, 6, x, y - 14, 58);
+      g.addColorStop(0, "rgba(255,244,190,.75)"); g.addColorStop(0.5, "rgba(255,212,59,.35)"); g.addColorStop(1, "rgba(255,212,59,0)");
+      ctx.save(); ctx.globalAlpha = k * (0.8 + Math.sin(t * 12) * 0.2); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 14, 58, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#ffd43b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y - 58, 16, 5, 0, 0, 7); ctx.stroke();     // aureola
+      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y - 14, 44 + Math.sin(t * 9) * 3, 0, 7); ctx.stroke(); ctx.restore();
+    }
+    if (vt < j.veloz) {
+      ctx.save(); ctx.globalAlpha = 0.75; ctx.strokeStyle = "#99e9f2"; ctx.lineCap = "round";
+      const dir = j.cara < 0 ? 1 : -1;
+      for (let k = 0; k < 5; k++) { const yy = y - 40 + k * 12, fase = (t * 6 + k * 0.37) % 1, lx = x + dir * (22 + fase * 34); ctx.lineWidth = 3 - k * 0.3; ctx.globalAlpha = 0.8 * (1 - fase); ctx.beginPath(); ctx.moveTo(lx, yy); ctx.lineTo(lx + dir * (26 + k * 4), yy); ctx.stroke(); }
+      ctx.globalAlpha = 0.3; ctx.fillStyle = "#66d9e8"; ctx.beginPath(); ctx.ellipse(x, y + 16, 30, 11, 0, 0, 7); ctx.fill(); ctx.restore();
+    }
+    if (vt < j.drena) {
+      ctx.save(); ctx.globalAlpha = 0.55 + Math.sin(t * 8) * 0.15; ctx.strokeStyle = "#ff4d63"; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t * 40;
+      ctx.beginPath(); ctx.arc(x, y - 14, 46, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "#ff8787"; for (let k = 0; k < 5; k++) { const a = -t * 3 + k * 1.26, r = 46 - ((t * 40 + k * 9) % 30); ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y - 14 + Math.sin(a) * r * 0.7, 3, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+    if (vt < j.sombra && j.esYo) { ctx.save(); ctx.globalAlpha = 0.35 + Math.sin(t * 6) * 0.1; ctx.fillStyle = "#5f3dc4"; ctx.beginPath(); ctx.ellipse(x, y + 14, 36, 13, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  },
   /* Nombre y barra de vida arriba del luchador (yN = altura del nombre) */
   nombreVida(ctx, j, x, yN) {
     ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
@@ -718,6 +817,8 @@ const Arena = {
     if (yo) {
       const C = AR.CLASES[yo.clase], falta = Math.max(0, yo.cdE - vt), p = falta / C.esp.cd;
       const cdEl = byId("arEspCd"); if (cdEl) { cdEl.style.height = p * 100 + "%"; byId("arEsp").classList.toggle("listo", falta <= 0 && v.fase === "pelea"); }
+      const P = yo.poder && HE.PODERES[yo.poder], pod = byId("arPod");
+      if (pod && P) { const f2 = Math.max(0, yo.cdP - vt); byId("arPodCd").style.height = Math.min(1, f2 / P.cd) * 100 + "%"; pod.classList.toggle("listo", f2 <= 0 && v.fase === "pelea"); }
     }
     if (v.fase === "cuenta") { const c = byId("arCentro"); if (c) { const num = Math.max(1, Math.ceil((v.inicio - vt) / 1000)); c.hidden = false; if (c.textContent !== String(num)) { c.textContent = num; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } } }
   },
@@ -755,6 +856,12 @@ const Arena = {
     return (this.deco[esc] = d);
   },
 
+  /* Chispas de los poderes activos (dibujo de siempre; PixiJS usa las suyas) */
+  chispasPoder(n, j, o, vt) {
+    if (vt < j.inmortal && Math.random() < 0.5) Arena.particula(n, o.x + (Math.random() - 0.5) * 50, o.y - Math.random() * 50, (Math.random() - 0.5) * 30, -60 - Math.random() * 40, 700, "#ffe066", 4);
+    if (vt < j.veloz && Math.random() < 0.6) Arena.particula(n, o.x + (Math.random() - 0.5) * 20, o.y + 10 - Math.random() * 40, -(j.cara || 1) * (80 + Math.random() * 60), 0, 350, "#99e9f2", 4);
+    if (vt < j.drena && Math.random() < 0.4) Arena.particula(n, o.x + (Math.random() - 0.5) * 70, o.y - 14 + (Math.random() - 0.5) * 50, 0, -30, 500, "#ff6b6b", 4);
+  },
   /* Partículas solo visuales (polvo, chispas, brasas) */
   particula(n, x, y, vx, vy, vida, color, tam = 4, grav = 0) { n.part.push({ x, y, vx, vy, t0: performance.now(), vida, color, tam, grav }); if (n.part.length > 260) n.part.shift(); },
 
@@ -847,6 +954,7 @@ const Arena = {
       if (esYo) { o.x = n.x; o.y = n.y; } else { o.x += (j.x - o.x) * 0.3; o.y += (j.y - o.y) * 0.3; }
       const anda = esYo ? n.anda : Math.hypot(o.x - ox, o.y - oy) > 0.6;
       if (anda && j.vivo && (esYo || !(vt < j.invis)) && Math.random() < 0.18) Arena.particula(n, o.x + (Math.random() - 0.5) * 16, o.y + 16, (Math.random() - 0.5) * 30, -20, 450, v.esc === "coliseo" ? "rgba(160,120,70,.6)" : "rgba(200,200,220,.35)", 5);
+      if (j.vivo) Arena.chispasPoder(n, j, o, vt);
       return { j, o, esYo, anda };
     }).sort((a, b) => a.o.y - b.o.y);
     lista.forEach(({ j, o, esYo, anda }) => {
@@ -893,6 +1001,13 @@ const Arena = {
         for (let i = 0; i < 3; i++) { ctx.strokeStyle = i ? "rgba(255,255,255,.5)" : f.color; ctx.lineWidth = 10 - i * 3; ctx.beginPath(); ctx.arc(f.x, f.y - 10, f.r * (0.7 + i * 0.12), a - f.arco / 2 * (0.6 + k * 0.4), a + f.arco / 2 * (0.6 + k * 0.4)); ctx.stroke(); }
       } else if (f.tipo === "onda") { ctx.strokeStyle = f.color; ctx.globalAlpha = 1 - k; ctx.lineWidth = 12 * (1 - k) + 2; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.3 + 0.7 * k), 0, 7); ctx.stroke(); ctx.fillStyle = f.color; ctx.globalAlpha = 0.15 * (1 - k); ctx.fill(); }
       else if (f.tipo === "boom") { const g = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r * (0.6 + k)); g.addColorStop(0, `rgba(255,255,220,${1 - k})`); g.addColorStop(0.5, `rgba(255,140,0,${0.7 * (1 - k)})`); g.addColorStop(1, "rgba(255,60,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.6 + k), 0, 7); ctx.fill(); }
+      else if (f.tipo === "rayo") {
+        // Rayo que chupa la vida: del que recibe el golpe al que la absorbe
+        const kk = Math.min(1, (vt - f.t) / 350); if (kk >= 1) return;
+        ctx.save(); ctx.globalAlpha = 1 - kk; ctx.strokeStyle = f.color; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(f.x, f.y);
+        for (let i = 1; i <= 8; i++) { const q = i / 8; ctx.lineTo(f.x + (f.x2 - f.x) * q + (i < 8 ? Math.sin(q * 9 + t * 30) * 7 : 0), f.y + (f.y2 - f.y) * q + (i < 8 ? Math.cos(q * 7 + t * 25) * 7 : 0)); }
+        ctx.stroke(); ctx.strokeStyle = "#ffe3e3"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+      }
       else if (f.tipo === "humo") { ctx.fillStyle = `rgba(80,70,110,${0.6 * (1 - k)})`; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(f.x + Math.cos(i * 1.3) * 20 * (1 + k), f.y + Math.sin(i * 1.3) * 14 * (1 + k), 18 + k * 16, 0, 7); ctx.fill(); } }
       else if (f.tipo === "num") { const kk = (vt - f.t) / 1000; if (kk > 1) return; const esc2 = kk < 0.15 ? 0.6 + kk / 0.15 * 0.6 : 1.2 - kk * 0.2; ctx.globalAlpha = 1 - Math.max(0, kk - 0.5) * 2; ctx.save(); ctx.translate(f.x, f.y - kk * 50); ctx.scale(esc2, esc2); ctx.font = "900 24px Figtree, " + FE; ctx.lineWidth = 5; ctx.strokeStyle = "#000c"; ctx.strokeText(f.txt, 0, 0); ctx.fillStyle = f.color; ctx.fillText(f.txt, 0, 0); ctx.restore(); }
       ctx.globalAlpha = 1;
@@ -933,6 +1048,8 @@ const Arena = {
     poner(top, v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.round(Math.max(0, j.hp / j.max) * 1000) / 10}%"></i></span>`).join(""));
     poner(byId("arFeed"), v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : ""));
     if (yo) { const e = byId("arEspIc"), ic = AR.CLASES[yo.clase].esp.ic; if (e.textContent !== ic) e.textContent = ic; }
+    const pod = byId("arPod"), P = yo && yo.poder && HE.PODERES[yo.poder];
+    if (pod) { if (pod.hidden === !!P) pod.hidden = !P; if (P && byId("arPodIc").textContent !== P.ic) { byId("arPodIc").textContent = P.ic; pod.setAttribute("aria-label", "Poder: " + P.nombre); } }
     const c = byId("arCentro");
     if (v.fase === "pelea" && c && !c.hidden && c.textContent !== "¡YA!") { c.textContent = "¡YA!"; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); setTimeout(() => { if (Arena.v && Arena.v.fase === "pelea") c.hidden = true; }, 700); }
     const fin = byId("arFin");
@@ -945,6 +1062,7 @@ const Arena = {
       fin.innerHTML = `<div class="ar-fin-caja">
         <h2>${mio ? (mio.lugar === 1 ? "🏆 ¡Ganaste!" : `Quedaste ${mio.lugar}°`) : "Fin de la pelea"}</h2>
         ${mio ? `<div class="tr-premio">${v.online ? `<div><b>${mio.dElo >= 0 ? "+" : ""}${mio.dElo}</b><small>ELO</small></div>` : ""}<div><b>+${mio.monedas}</b><small>monedas</small></div><div><b>+${mio.xp || 0}</b><small>XP de ${esc(AR.CLASES[mio.clase].nombre)}</small></div><div><b>${mio.kills}</b><small>eliminaciones</small></div></div>` : ""}
+        ${Arena.opts.local && S.arena && S.arena.botin ? Heroes.tarjetaBotin(S.arena.botin) : ""}
         <ol class="ar-tabla">${orden.map(j => `<li class="${j.id === v.me ? "yo" : ""}"><span>${j.lugar}°</span><b>${j.evoIc || AR.CLASES[j.clase].ic} ${esc(j.name)}${j.lv ? ` <small>Nv ${j.lv}</small>` : ""}</b><small>${j.kills} ⚔️${v.online ? ` · ${j.dElo >= 0 ? "+" : ""}${j.dElo} ELO` : ""}</small></li>`).join("")}</ol>
         ${!Arena.opts.local ? Heroes.selector() : ""}
         <div class="row">${Arena.opts.local || v.isHost ? `<button class="btn" id="arOtra">Otra pelea</button>` : `<p class="sub">El anfitrión elige si juegan otra.</p>`}<button class="btn ghost" id="arVolver">${Arena.opts.local ? "Armería" : v.isHost ? "Volver a la sala" : "Salir"}</button></div></div>`;
@@ -974,10 +1092,18 @@ const Arena = {
     Arena.reloj = setInterval(() => {
       const s = S.arena; if (!s || S.screen !== "arena") { clearInterval(Arena.reloj); Arena.reloj = null; return; }
       const ahora = Date.now(); Arena.tickSeguro(s, (ahora - prev) / 1000); prev = ahora;
+      if (s.fase === "fin" && s.botin === undefined) Arena.botinLocal(s);
       Arena.render(Arena.view(s, "yo"), Arena.enviarLocal, { local: true });
       if (s.fase === "fin" && !s.contada) { s.contada = true; Cuenta.revisar(); }
     }, 50);
     go("arena");
+  },
+
+  /* Botín de una pelea contra la compu (una sola vez por pelea): menos que la torre, más en difícil y con más bots */
+  botinLocal(s) {
+    s.botin = null;
+    const u = BD.sesion(), yo = s.jug.find(j => j.id === "yo"); if (!u || !yo || s.online || s.horda) return;
+    try { s.botin = Heroes.botinArena(u, yo.clase, yo.lv, s.nivelCpu, s.jug.filter(j => j.cpu && !j.inv).length, yo.lugar === 1); if (s.botin) Eco.guardar(u); } catch (e) { console.error(e); }
   },
 
   /* ---------- Online (el anfitrión calcula todo a 20 por segundo) ---------- */

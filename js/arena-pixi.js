@@ -354,7 +354,7 @@ const ArenaPixi = {
       if (!j.vivo) Arena.dibujarCaido(x, { ...j }, 0, 0, t, Arena.caida(n, j, now));
       else {
         if (esYo) { x.strokeStyle = "#3ddcb1"; x.lineWidth = 3; x.beginPath(); x.ellipse(0, 16, 28, 11, 0, 0, 7); x.stroke(); }
-        this.aura(n, j, o, t, x);
+        this.aura(n, j, o, t, x, vt);
         Arena.dibujarLuchador(x, { ...j, cara: esYo ? n.cara : j.cara, esYo, festeja: Arena.festeja(v, j) }, 0, 0, t, anda, vt);
         if (Arena.festeja(v, j) && Math.random() < 0.25) ArenaFX.emitir(n, { x: o.x + (Math.random() - 0.5) * 60, y: o.y - 70, vx: (Math.random() - 0.5) * 140, vy: -120 - Math.random() * 80, grav: 260, tex: "star_04", color: ["#ffd43b", "#ff6b6b", "#4dabf7", "#3ddcb1", "#cc5de8"][Math.floor(Math.random() * 5)], vida: 1200, tam: 16, crece: 0.8, vrot: 6 });
       }
@@ -398,11 +398,22 @@ const ArenaPixi = {
     piromante: ["#ff922b"], "senor-fuego": ["#ff6b00", "flame_03"], criomante: ["#74c0fc"], glacial: ["#a5d8ff", "star_04"],
     ninja: ["#b197fc"], "maestro-ninja": ["#845ef7", "twirl_02"], sicario: ["#adb5bd"], parca: ["#495057", "smoke_07"]
   },
-  aura(n, j, o, t, x) {
-    const A = j.evoId && this.AURAS[j.evoId]; if (!A || j.equipo === "m") return;
+  /* Poderes activos: luz y partículas propias (el aura se dibuja con Arena.dibujarPoder, igual que en el dibujo de siempre) */
+  PODER_LUZ: { inmortal: [0xffd43b, "star_04", "#ffe066"], veloz: [0x66d9e8, "trace_04", "#99e9f2"], drena: [0xff4d63, "magic_04", "#ff6b6b"], sombra: [0x7048e8, "smoke_07", "#5f3dc4"] },
+  aura(n, j, o, t, x, vt) {
+    const activo = ["inmortal", "veloz", "drena", "sombra"].find(k => vt < j[k] && (k !== "sombra" || j.id === Arena.v.me));
+    if (activo) {
+      const [c, tex, col] = this.PODER_LUZ[activo];
+      this.luzDe("a" + j.id, o.x, o.y - 14, c, activo === "inmortal" ? 260 : 190, true);
+      if (Math.random() < 0.45) ArenaFX.emitir(n, activo === "veloz" ? { x: o.x + (Math.random() - 0.5) * 20, y: o.y - Math.random() * 40, vx: -(j.cara || 1) * (120 + Math.random() * 80), tex: "spark_01", color: col, vida: 380, tam: 16, crece: 0.6 }
+        : { x: o.x + (Math.random() - 0.5) * 50, y: o.y - Math.random() * 50, vy: -60 - Math.random() * 40, tex, color: col, vida: 800, tam: activo === "sombra" ? 40 : 18, crece: activo === "sombra" ? 1.6 : 0.7, alfa: 0.8, add: activo !== "sombra" });
+      return;
+    }
+    const A = j.evoId && this.AURAS[j.evoId];
+    if (!A || j.equipo === "m") { if (this.luzMap && this.luzMap["a" + j.id]) this.luzDe("a" + j.id, 0, 0, 0, 0, false); return; }
     x.save(); x.globalAlpha = 0.5 + Math.sin(t * 3) * 0.15; x.strokeStyle = A[0]; x.lineWidth = A[1] ? 4 : 2.5; x.beginPath(); x.ellipse(0, 16, 34, 13, 0, 0, 7); x.stroke(); x.restore();
     if (A[1] && Math.random() < 0.22) ArenaFX.emitir(n, { x: o.x + (Math.random() - 0.5) * 40, y: o.y + 10, vy: -50 - Math.random() * 40, vx: (Math.random() - 0.5) * 20, tex: A[1], color: A[0], vida: 900, tam: 18, crece: A[1].startsWith("smoke") ? 1.8 : 0.6, alfa: 0.75, add: !A[1].startsWith("smoke") });
-    if (A[1]) this.luzDe("a" + j.id, o.x, o.y - 10, this.color(A[0]).c, 150, true);
+    this.luzDe("a" + j.id, o.x, o.y - 10, this.color(A[0]).c, 150, !!A[1]);
   },
   pociones(v, t) {
     this.potis = this.potis || {}; const vistas = new Set();
@@ -449,6 +460,14 @@ const ArenaPixi = {
         for (let i = 0; i < 3; i++) { g.lineStyle(10 - i * 3, i ? 0xffffff : col, (1 - k) * (i ? 0.5 : 1)); const r = f.r * (0.7 + i * 0.12), a0 = a - f.arco / 2 * (0.6 + k * 0.4), a1 = a + f.arco / 2 * (0.6 + k * 0.4); g.moveTo(f.x + Math.cos(a0) * r, f.y - 10 + Math.sin(a0) * r); g.arc(f.x, f.y - 10, r, a0, a1); }
         g.lineStyle(0);
       } else if (f.tipo === "onda") { const c = this.color(f.color).c; g.lineStyle(12 * (1 - k) + 2, c, 1 - k); g.beginFill(c, 0.15 * (1 - k)); g.drawCircle(f.x, f.y, f.r * (0.3 + 0.7 * k)); g.endFill(); g.lineStyle(0); }
+      else if (f.tipo === "rayo") {
+        // Rayo que chupa la vida (del golpeado al que la absorbe)
+        const kk = Math.min(1, (vt - f.t) / 350); if (kk >= 1) return;
+        const c = this.color(f.color).c, pts = [];
+        for (let i = 0; i <= 8; i++) { const q = i / 8, w = i && i < 8 ? 7 : 0; pts.push(f.x + (f.x2 - f.x) * q + Math.sin(q * 9 + t * 30) * w, f.y + (f.y2 - f.y) * q + Math.cos(q * 7 + t * 25) * w); }
+        for (const [ancho, col, al] of [[7, c, 0.9], [2.5, 0xffe3e3, 1]]) { g.lineStyle(ancho, col, al * (1 - kk)); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); }
+        g.lineStyle(0);
+      }
       else if (f.tipo === "num") this.numero(f, vt);
     });
     if (n.vistos.size > 400) n.vistos = new Set([...n.vistos].slice(-200));

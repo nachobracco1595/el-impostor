@@ -49,9 +49,10 @@ const Torre = {
 
   /* ---------- Cómo es cada piso ---------- */
   piso(f, n = 1) {
-    const olas = Math.min(4, 1 + Math.floor((f - 1) / 4)), porOla = Math.min(8, Math.min(5, 1 + Math.ceil(f / 3)) + (n - 1)), jefe = f % 5 === 0;
-    const lv = Math.min(40, 1 + Math.floor(f * 0.9)), pre = Math.min(10, Math.floor(f / 10));
-    const fuerza = { hp: (0.7 + f * 0.045) * (1 + 0.35 * (n - 1)), dano: 0.65 + f * 0.028 };
+    // Más suave al principio: menos monstruos por ola y más débiles; la dificultad sube de a poco
+    const olas = Math.min(4, 1 + Math.floor((f - 1) / 5)), porOla = Math.min(8, Math.min(5, 1 + Math.ceil(f / 4)) + (n - 1)), jefe = f % 5 === 0;
+    const lv = Math.min(40, 1 + Math.floor(f * 0.7)), pre = Math.min(10, Math.floor(f / 12));
+    const fuerza = { hp: (0.6 + f * 0.035) * (1 + 0.35 * (n - 1)), dano: 0.55 + f * 0.022 };
     let k = 0;
     const mon = (extra = {}) => {
       const M = TO.MONSTRUOS[(f + k) % TO.MONSTRUOS.length];
@@ -107,13 +108,15 @@ const Torre = {
     // Próxima ola: aparecen lejos tuyo
     const ola = H.resto.shift(), E = Arena.esc(s);
     H.ola++;
+    // Respiro entre olas: los héroes vivos recuperan un poco de vida
+    for (const h of humanos) if (h.vivo) h.hp = Math.min(h.max, h.hp + h.max * 0.15);
     for (const m of ola) {
       let pos = null;
       for (let k = 0; k < 60 && !pos; k++) { const x = 150 + Math.random() * 1100, y = 140 + Math.random() * 720; if (Arena.libre(E, x, y, 30) && Math.hypot(x - yo.x, y - yo.y) > 380 && !E.lava.some(l => Math.hypot(x - l.x, y - l.y) < l.r + 30)) pos = { x, y }; }
       const j = Arena.luchador(m, pos || Arena.salidas(E, 2)[1]); j.evoIc = m.ic; j.cdA = s.t + 600; s.jug.push(j);
       s.fx.push({ k: ++s.nP, tipo: "humo", x: j.x, y: j.y, t: s.t });
     }
-    s.feed.unshift({ t: s.t, txt: `🌊 ¡Ola ${H.ola} de ${H.olas}!${!H.resto.length && H.jefe ? " Llegó el jefe" : ""}` }); s.feed = s.feed.slice(0, 4);
+    s.feed.unshift({ t: s.t, txt: `🌊 ¡Ola ${H.ola} de ${H.olas}! (+15% de vida)${!H.resto.length && H.jefe ? " Llegó el jefe" : ""}` }); s.feed = s.feed.slice(0, 4);
   },
   cerrar(s, gano) {
     if (s.fase === "fin") return;
@@ -124,7 +127,8 @@ const Torre = {
       if (typeof Mente !== "undefined") Mente.resultado("torre", gano);
       const R = S.torre, yo = s.jug.find(j => j.equipo === "h" && !j.inv);
       this.cobrar(this.vista(s), yo.clase, yo.st);
-      if (gano && R) R.hp = Math.min(1, yo.hp / yo.max + 0.35); else S.torre = null;
+      // Entre piso y piso se recupera la mitad de la vida (y toda después de un jefe)
+      if (gano && R) R.hp = s.horda.jefe ? 1 : Math.min(1, yo.hp / yo.max + 0.5); else S.torre = null;
     }
   },
   /* Cada teléfono cobra el piso que ganó (una sola vez) y guarda su progreso */

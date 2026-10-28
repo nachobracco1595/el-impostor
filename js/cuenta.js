@@ -382,7 +382,7 @@ PANTALLAS.ranking = () => {
       : `<div class="panel center"><p class="empty">Todavía no hay nadie en este ranking. Crea tu perfil y jueguen para aparecer acá.</p><button class="btn" id="crear">Crear perfil</button></div>`}
     <details class="panel"><summary class="label">¿Cómo se ganan puntos?</summary>
       <ul class="reglas-pts">${Puntos.REGLAS.map(([t, p]) => `<li><span>${esc(t)}</span><b>${esc(p)}</b></li>`).join("")}</ul>
-      <p class="summary">Niveles: ${NIVELES.map(([p, t], i) => `${i + 1}. ${t} (${p})`).join(" · ")}</p></details>
+      <p class="summary">Niveles: ${NIVELES.map(([p, t], i) => `${i + 1}. ${t} (${p})`).join(" · ")} · y siguen sin fin: ${[10, 14, 15, 20, 25, 30].map(n => `${n}. ${tituloNivel(n)} (${puntosNivel(n)})`).join(" · ")}…</p></details>
     <button class="btn ghost" id="volver">Volver</button>
   </section>`;
   app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { UI.tabRank = b.dataset.tab; render(); });

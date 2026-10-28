@@ -369,9 +369,11 @@ const Arena = {
       // El ELO solo se mueve en peleas online entre personas (contra la compu no cuenta)
       a.dElo = s.online ? Math.round(K * d / Math.max(1, n - 1)) : 0;
       const mult = s.online ? 1.3 : { facil: 0.6, normal: 1, dificil: 1.4 }[s.nivelCpu] || 1;
-      a.monedas = Math.min(150, Math.round((8 + a.kills * 4 + (a.lugar === 1 ? 25 : a.lugar === 2 && n > 2 ? 10 : 0)) * mult * Evento.multiplicador() * (1 + (a.st.monedas || 0))));
+      // Cuantos más rivales, más premio: ganarle a 4 vale bastante más que ganarle a 1
+      const rivales = Math.max(1, n - 1);
+      a.monedas = Math.min(250, Math.round((8 + 3 * rivales + a.kills * 4 + (a.lugar === 1 ? 20 + 12 * rivales : a.lugar === 2 && n > 2 ? 8 + 4 * rivales : 0)) * mult * Evento.multiplicador() * (1 + (a.st.monedas || 0))));
       const multXp = s.online ? 1.2 : { facil: 0.6, normal: 1, dificil: 1.3 }[s.nivelCpu] || 1;
-      a.xp = Math.min(250, Math.round((20 + a.kills * 12 + (a.lugar === 1 ? 30 : a.lugar === 2 && n > 2 ? 12 : 0)) * multXp));
+      a.xp = Math.min(500, Math.round((20 + 8 * rivales + a.kills * 12 + (a.lugar === 1 ? 30 * rivales : a.lugar === 2 && n > 2 ? 12 * rivales : 0)) * multXp));
     }
     const yo = s.jug.find(j => !j.cpu);
     if (!s.online && !s.horda && yo && typeof Mente !== "undefined") Mente.resultado("arena", yo.lugar === 1);

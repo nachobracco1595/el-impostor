@@ -43,6 +43,8 @@ async function cargar() {
   const [r, u, ev, rf, rc] = await Promise.all([P.sb.rpc("panel_resumen", { dias: P.dias }), P.sb.rpc("panel_usuarios", { buscar: P.q }), P.sb.from("config").select("valor").eq("clave", "evento").maybeSingle(), P.sb.rpc("panel_referidos"), P.sb.from("config").select("valor").eq("clave", "referidos").maybeSingle()]);
   const [tb, tc, to, pc, cc] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle(), P.sb.from("config").select("valor").eq("clave", "torre").maybeSingle(),
     P.sb.rpc("panel_compras", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "catalogo").maybeSingle()]);
+  const rd = await P.sb.from("config").select("valor").eq("clave", "red").maybeSingle();
+  P.red = Object.assign({ ice: [] }, (rd.data && rd.data.valor) || {});
   P.compras = pc.error ? null : pc.data;
   const cv = (cc.data && cc.data.valor) || {};
   P.catCfg = { precio: { ...(cv.precio || {}) }, oculto: { ...(cv.oculto || {}) } };
@@ -155,6 +157,17 @@ function pintar() {
       </form>
     </article>
     <article class="tarjeta">
+      <h2>🌐 Conexión de las salas</h2>
+      <p class="sub">Con datos móviles muchas compañías no dejan que dos teléfonos se conecten directo, y la sala no anda. Un servidor de relevo (TURN) lo soluciona.
+        El juego ya trae relevos gratuitos, pero si fallan podés cargar uno propio: por ejemplo creá una cuenta gratis en <b>metered.ca</b> (TURN Server) o <b>expressturn.com</b> y copiá acá lo que te dan.</p>
+      <form id="fRed" class="ads-form">
+        <label class="campo-l">Direcciones (una por línea, ej. turn:global.relay.metered.ca:443?transport=tcp)<textarea class="campo" id="rdUrls" rows="4" style="height:auto;padding:10px">${esc(((P.red.ice[0] || {}).urls || []).join("\n"))}</textarea></label>
+        <div class="row"><label class="campo-l">Usuario<input class="campo" id="rdUser" value="${esc((P.red.ice[0] || {}).username || "")}" autocomplete="off"></label>
+          <label class="campo-l">Contraseña<input class="campo" id="rdPass" value="${esc((P.red.ice[0] || {}).credential || "")}" autocomplete="off"></label></div>
+        <button class="btn" type="submit">Guardar</button><p class="summary" id="rdMsg"></p>
+      </form>
+    </article>
+    <article class="tarjeta">
       <h2>Anuncios con recompensa</h2>
       <p class="sub">Los jugadores con cuenta ven "Mirar un anuncio" en la tienda. El servidor controla el máximo por día.</p>
       <form id="fAds" class="ads-form">
@@ -177,7 +190,7 @@ function pintar() {
     <div class="tabla-scroll"><table class="tabla">
       <thead><tr><th>Jugador</th><th class="n">Nivel</th><th class="n">Puntos</th><th class="n">Monedas</th><th class="n">Partidas</th><th class="n">Bots 🧠</th><th>Última actividad</th><th>Alta</th><th></th></tr></thead>
       <tbody>${P.usuarios.map(u => `<tr><td><span class="u">${mini(u.look)}${esc(u.nombre)}</span></td><td class="n" title="${esc(nivelDe(u.puntos).titulo)}">${nivelDe(u.puntos).n}</td><td class="n">${num(u.puntos)}</td><td class="n">${num(u.monedas)}</td><td class="n">${num(u.partidas)}</td><td class="n">${botsCelda(u)}</td><td>${u.ultima ? fecha(u.ultima) : "—"}</td><td>${fecha(u.creado)}</td>
-        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="0" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">🏅 Llevar a nivel<select class="campo" name="nv" data-pts="${u.puntos}"><option value="">—</option>${NIVELES.map(([p, t], k) => `<option value="${p}" ${k + 1 === nivelDe(u.puntos).n ? "disabled" : ""}>${k + 1}. ${esc(t)}</option>`).join("")}</select></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100). El nivel sale de los puntos: al elegir un nivel se calculan los puntos que hay que sumar o quitar.</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>${P.bots === u.id ? `<tr class="bots-fila"><td colspan="9">${botsDetalle(u)}</td></tr>` : ""}`).join("") || `<tr><td colspan="9" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
+        <td>${P.regalo === u.id ? `<form class="regalo" data-id="${u.id}"><label class="campo-l">🪙 Monedas<input class="campo" type="number" step="1" value="0" name="m"></label><label class="campo-l">⭐ Puntos<input class="campo" type="number" step="1" value="0" name="p"></label><label class="campo-l">🏅 Llevar a nivel<select class="campo" name="nv" data-pts="${u.puntos}"><option value="">—</option>${Array.from({ length: Math.max(40, nivelDe(u.puntos).n + 10) }, (_, k) => `<option value="${puntosNivel(k + 1)}" ${k + 1 === nivelDe(u.puntos).n ? "disabled" : ""}>${k + 1}. ${esc(tituloNivel(k + 1))}</option>`).join("")}</select></label><label class="campo-l">Motivo<input class="campo" maxlength="80" placeholder="Opcional" name="t"></label><button class="btn chico" type="submit">Enviar</button><button class="btn ghost chico" type="button" data-cancelar>✕</button></form><small class="sub">Negativo para quitar (ej. −100). El nivel sale de los puntos: al elegir un nivel se calculan los puntos que hay que sumar o quitar.</small>` : `<button class="btn ghost chico" data-regalo="${u.id}">✏️ Ajustar</button>`}</td></tr>${P.bots === u.id ? `<tr class="bots-fila"><td colspan="9">${botsDetalle(u)}</td></tr>` : ""}`).join("") || `<tr><td colspan="9" class="empty">No hay jugadores${P.q ? " con ese nombre" : ""}.</td></tr>`}</tbody>
     </table></div>
   </section>
   <p class="summary center">La actividad se cuenta desde que se creó la tabla <code>actividad</code>; los días anteriores aparecen en cero.</p>`;
@@ -241,6 +254,16 @@ function pintar() {
       document.getElementById("toMsg").textContent = error ? "No se pudo reiniciar: " + error.message : "¡Listo! La torre arrancó de nuevo.";
     };
   }
+  const frd = document.getElementById("fRed");
+  if (frd) frd.onsubmit = async e => {
+    e.preventDefault();
+    const urls = document.getElementById("rdUrls").value.split(/\s+/).map(x => x.trim()).filter(x => /^(turns?|stun):/.test(x)).slice(0, 8);
+    const valor = { ice: urls.length ? [{ urls, username: document.getElementById("rdUser").value.trim(), credential: document.getElementById("rdPass").value.trim() }] : [] };
+    let { data, error } = await P.sb.from("config").update({ valor }).eq("clave", "red").select("clave");
+    if (!error && (!data || !data.length)) { const r = await P.sb.from("config").insert({ clave: "red", valor }); error = r.error && r.error.code !== "23505" ? r.error : null; }
+    document.getElementById("rdMsg").textContent = error ? "No se pudo guardar: " + error.message : urls.length ? `Guardado (${urls.length} dirección${urls.length > 1 ? "es" : ""}). Los jugadores lo usan la próxima vez que abran el juego.` : "Guardado: se usan solo los relevos gratuitos.";
+    if (!error) P.red = valor;
+  };
   const ft = document.getElementById("fTimba");
   if (ft) ft.onsubmit = async e => {
     e.preventDefault();

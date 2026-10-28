@@ -17,10 +17,22 @@ const Net = {
   cantidad() { return this.R ? this.R.players.filter(p => p.on).length : 0; },
   conectado(id) { if (!this.R) return true; const p = this.R.players.find(x => x.id === id); return !!(p && p.on); },
 
+  /* Servidores para que los teléfonos se encuentren aunque estén en redes distintas.
+     Con datos móviles muchas compañías no dejan la conexión directa: ahí hace falta un relevo (TURN).
+     El admin puede cargar uno propio (config "red"); si no, se usan los gratuitos de abajo. */
+  ice() {
+    const red = (typeof Nube !== "undefined" && Nube.cfg && Nube.cfg.red) || store.get("redCfg", null);
+    if (red && typeof Nube !== "undefined" && Nube.cfg && Nube.cfg.red) store.set("redCfg", Nube.cfg.red);
+    const propios = red && Array.isArray(red.ice) ? red.ice.filter(x => x && x.urls) : [];
+    return [...propios,
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] },
+      { urls: ["turn:eu-0.turn.peerjs.com:3478", "turn:us-0.turn.peerjs.com:3478"], username: "peerjs", credential: "peerjsp" },
+      { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turns:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" }];
+  },
   opciones() {
     // ?peer=localhost:9000 permite probar con un servidor PeerJS propio
     const m = /[?&]peer=([^&:]+):(\d+)/.exec(location.search);
-    const base = { debug: 0 };
+    const base = { debug: 0, config: { iceServers: this.ice() } };
     return m ? { ...base, host: m[1], port: +m[2], path: "/", secure: false } : base;
   },
 
@@ -211,7 +223,11 @@ const Net = {
 
   conectar() {
     const c = this.conn = this.peer.connect(PREFIJO + this.code, { reliable: true });
-    c.on("open", () => { this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil(), torre: Torre.info() }); keepAwake(); if (Voz.activo) setTimeout(() => Voz.anunciar(), 300); });
+    // Si en 20 segundos no se abrió, casi seguro la red no deja la conexión directa: se avisa en vez de quedar esperando
+    clearTimeout(this.tConectar);
+    this.tConectar = setTimeout(() => { if (this.conn === c && !c.open && this.rol === "guest" && this.estado === "conectando") {
+      this.estado = "error"; this.error = "No se pudo conectar con el anfitrión. Suele pasar con datos móviles: probá que uno de los dos se pase a wifi o comparta internet, y volvé a intentar. (El administrador puede cargar un servidor de relevo para que funcione con cualquier red.)"; render(); } }, 20000);
+    c.on("open", () => { clearTimeout(this.tConectar); this.estado = "ok"; c.send({ t: "join", name: this.name, cid: miCid(), look: Cuenta.look(), arena: Arena.miPerfil(), torre: Torre.info() }); keepAwake(); if (Voz.activo) setTimeout(() => Voz.anunciar(), 300); });
     c.on("data", m => {
       if (m.t === "view") { this.view = m.v; if (S.screen === "online") render(); }
       if (m.t === "chat") Chat.recibir(m.lista || []);

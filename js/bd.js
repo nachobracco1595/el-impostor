@@ -230,7 +230,7 @@ const BD = {
     }
     u.puntos += calc.puntos;
     // Monedas: una cada 4 puntos (mínimo 2 por partida)
-    const monedas = res.juego === "arena" ? Math.max(0, Math.min(120, res.monedas | 0)) : Math.max(2, Math.round(calc.puntos / 4));
+    const monedas = res.juego === "arena" ? Math.max(0, Math.min(250, res.monedas | 0)) : Math.max(2, Math.round(calc.puntos / 4));
     if (typeof Eco !== "undefined") { Eco.completar(u); u.monedas += monedas; Eco.sumarPartida(u); }
     if (!calc.solo) u.racha = calc.gano ? u.racha + 1 : 0;
     u.mejorRacha = Math.max(u.mejorRacha, u.racha);
@@ -280,11 +280,25 @@ const BD = {
   }
 };
 
+/* Niveles sin fin: después de los 9 de la lista, cada nivel pide un poco más y el título sube de rango
+   (Leyenda II…V, Mito I…V, Titán, Inmortal y después Dios de la Mesa 1, 2, 3…) */
+const RANGOS = ["Leyenda", "Mito", "Titán", "Inmortal"], ROMANOS = ["I", "II", "III", "IV", "V"];
+function puntosNivel(n) {
+  if (n <= NIVELES.length) return NIVELES[Math.max(1, n) - 1][0];
+  let p = NIVELES[NIVELES.length - 1][0];
+  for (let k = 1; k <= n - NIVELES.length; k++) p += 900 + 150 * k;
+  return p;
+}
+function tituloNivel(n) {
+  if (n <= NIVELES.length) return NIVELES[Math.max(1, n) - 1][1];
+  const k = n - NIVELES.length, r = Math.floor(k / 5);
+  return r < RANGOS.length ? `${RANGOS[r]} ${ROMANOS[k % 5]}` : `Dios de la Mesa ${k - RANGOS.length * 5 + 1}`;
+}
 function nivelDe(puntos) {
-  let i = 0;
-  while (i + 1 < NIVELES.length && puntos >= NIVELES[i + 1][0]) i++;
-  const [desde, titulo] = NIVELES[i], hasta = NIVELES[i + 1] ? NIVELES[i + 1][0] : null;
-  return { n: i + 1, titulo, desde, hasta, pct: hasta ? Math.round(((puntos - desde) / (hasta - desde)) * 100) : 100 };
+  let n = 1;
+  while (n < 100000 && puntos >= puntosNivel(n + 1)) n++;
+  const desde = puntosNivel(n), hasta = puntosNivel(n + 1);
+  return { n, titulo: tituloNivel(n), desde, hasta, pct: Math.max(0, Math.min(100, Math.round(((puntos - desde) / (hasta - desde)) * 100))) };
 }
 
 /* ---------- Puntos ---------- */

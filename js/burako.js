@@ -128,6 +128,8 @@ const Burako = {
       if (J.mano.length === 1 && !Burako.puedeQuedar(s, i, 0)) return;
       J.mano = J.mano.filter(t => t !== a.id); s.descarte.push(a.id); s.mov++;
       if (Burako.revisarVacia(s, i, true)) return;
+      // Regla: cuando se acaba el mazo, al tirar se termina la mano y se cuentan los puntos
+      if (!s.mazo.length) return Burako.cerrarMano(s, null);
       // Por si nadie puede cerrar nunca (se llevan el descarte una y otra vez): la mano termina a las 400 jugadas
       if (++s.turnos > 400) return Burako.cerrarMano(s, null);
       s.turno = (i + 1) % s.n; s.fase = "robar";
@@ -299,7 +301,7 @@ const Burako = {
     const mesa = `<div class="bk-mesa" data-k="${v.mov}">
       <div class="bk-lado"><span class="label">${eqNom(1 - miEq)}</span><div class="bk-juegos">${juegos(1 - miEq)}</div></div>
       <div class="bk-centro">
-        <button class="bk-pila mazo ${U.sug && U.sug.mov === v.mov && U.sug.de === "mazo" ? "sugerida" : ""}" id="bkMazo" ${miTurno && v.fase === "robar" && v.mazo ? "" : "disabled"}><span class="bk-f dorso"></span><small>Mazo · ${v.mazo}</small></button>
+        <button class="bk-pila mazo ${U.sug && U.sug.mov === v.mov && U.sug.de === "mazo" ? "sugerida" : ""}" id="bkMazo" ${miTurno && v.fase === "robar" ? "" : "disabled"}><span class="bk-f dorso"></span><small>${v.mazo ? `Mazo · ${v.mazo}` : "Sin fichas · terminar mano"}</small></button>
         <button class="bk-pila desc ${miTurno && v.fase === "robar" && v.descarte ? "puede" : ""} ${U.sug && U.sug.mov === v.mov && U.sug.de === "descarte" ? "sugerida" : ""}" id="bkDesc" ${v.descarte ? "" : "disabled"}>${v.top ? Burako.ficha(v.top) : `<span class="bk-f vacio"></span>`}<small>${v.descarte ? `Pozo · ${v.descarte} · 👀 ver` : "Pozo vacío"}</small></button>
       </div>
       <div class="bk-lado nuestro"><span class="label">${eqNom(miEq)}${jugando && U.sel.length && v.mesa[miEq].length ? " · tocá uno para agregar" : ""}</span><div class="bk-juegos">${juegos(miEq)}</div></div>
@@ -315,7 +317,7 @@ const Burako = {
       const sel = U.sel, jg = sel.length >= 3 ? Burako.analizar(sel) : null;
       const sug = U.sug && U.sug.mov === v.mov ? U.sug : null;
       estado = sug && miTurno ? `💡 ${sug.txt}` : !miTurno ? (v.jug[v.turno].cpu ? `🤖 ${nom(v.jug[v.turno])} está jugando…` : `Turno de <b>${nom(v.jug[v.turno])}</b>.`)
-        : v.fase === "robar" ? "🀄 <b>Tu turno:</b> robá del mazo o levantá todo el pozo."
+        : v.fase === "robar" ? (v.mazo ? "🀄 <b>Tu turno:</b> robá del mazo o levantá todo el pozo." : "🀄 <b>Se acabó el mazo:</b> levantá el pozo y jugá (al tirar se termina la mano), o tocá el mazo para terminar la mano ya.")
         : sel.length === 0 && v.nuevas.length ? `${v.nuevasDe === "mazo" ? `Robaste ${Burako.ficha(v.nuevas[0], "mini")} del mazo` : v.nuevasDe === "muerto" ? "Tomaste el muerto: sus fichas brillan en tu mano" : v.nuevas.length === 1 ? `Levantaste ${Burako.ficha(v.nuevas[0], "mini")} del pozo` : `Levantaste ${v.nuevas.length} fichas del pozo (brillan en tu mano)`}. Elegí fichas para bajar o una para tirar.`
         : sel.length === 0 ? "Elegí fichas para bajar un juego, tocá un juego tuyo para agregar, o elegí una para tirar."
         : jg ? `✅ ${jg.tipo === "esc" ? "Escalera" : "Pierna"} de ${jg.orden.length}${jg.orden.length >= 7 ? " · ¡canasta!" : ""}` : sel.length === 1 ? "Tirala o agregala a un juego tuyo." : sel.length < 3 ? "Un juego necesita 3 fichas o más." : "Esas fichas no forman un juego.";
@@ -350,7 +352,7 @@ const Burako = {
     // La ventana del pozo va directo en la página (dentro de la pantalla se descoloca con la animación de entrada)
     document.querySelectorAll(".bk-pozo-fondo").forEach(x => x.remove());
     if (verPozo) document.body.insertAdjacentHTML("beforeend", verPozo);
-    on("bkMazo", () => send({ t: "robar", de: "mazo" }));
+    on("bkMazo", () => { if (!v.mazo && !confirm("Se acabó el mazo. ¿Terminar la mano y contar los puntos?")) return; send({ t: "robar", de: "mazo" }); });
     on("bkDesc", () => { U.verPozo = true; render(); });
     on("bkLevantar", () => { U.verPozo = false; send({ t: "robar", de: "descarte" }); });
     on("bkPozoNo", () => { U.verPozo = false; if (puedeLevantar && byId("bkLevantar")) send({ t: "robar", de: "mazo" }); else render(); });

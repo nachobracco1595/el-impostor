@@ -307,8 +307,10 @@ PANTALLAS.onUnirme = () => {
       <p class="warn" id="msg" hidden></p>
       <button class="btn" type="submit">Entrar</button>
     </form>
+    ${typeof EnLinea !== "undefined" && EnLinea.listo ? `<div class="panel"><span class="label">🚪 O entrá a una sala abierta</span><div data-pr-salas>${EnLinea.htmlSalas()}</div></div>` : ""}
     <button class="btn ghost" id="back">Atrás</button>
   </section>`;
+  if (typeof EnLinea !== "undefined") EnLinea.conectarSalas();
   byId("f").onsubmit = e => {
     e.preventDefault();
     const c = byId("cd").value.trim().toUpperCase(), n = byId("nm").value.trim(), msg = byId("msg");
@@ -400,6 +402,7 @@ function renderLobby(v) {
     ajedrez: ["Ajedrez", `<span class="aj-mini">${AJ.pieza("K")}${AJ.pieza("n")}</span>`, "2 jugadores"],
     ...Object.fromEntries(Object.entries(EXTRA).map(([k, m]) => [k, [m.lobbyInfo[0], `<span class="nave-mini">${m.lobbyInfo[1]}</span>`, m.lobbyInfo[2]]]))
   };
+  if (Net.publica === undefined) Net.publica = store.get("salaPublica", false);
   app.innerHTML = `${Net.cabecera()}
   <section class="screen">
     <div class="panel center codigo-box">
@@ -409,6 +412,7 @@ function renderLobby(v) {
       ${Social.disponible() ? `<button class="btn" id="invitar">📨 Invitar amigos</button>` : ""}
       <div class="row"><button class="btn ghost" id="copiar">Copiar enlace</button>${navigator.share ? `<button class="btn ghost" id="compartir">Compartir</button>` : ""}</div>
       <input class="campo enlace" id="lnk" readonly value="${esc(Net.enlace())}" aria-label="Enlace de la sala">
+      ${H && typeof EnLinea !== "undefined" ? `<div class="opt pr-pub"><div class="txt"><b>${Net.publica ? "🌍 Sala pública" : "🔒 Sala privada"}</b><small>${Net.publica ? "Aparece en «Salas abiertas»: cualquiera puede entrar." : "Solo entran los que tienen el código o el enlace."}</small></div><button class="switch" role="switch" aria-checked="${!!Net.publica}" id="salaPub" aria-label="Sala pública"></button></div>` : ""}
     </div>
     <div class="panel">
       <span class="label">${v.players.length} en la sala</span>
@@ -471,6 +475,7 @@ function renderLobby(v) {
   app.querySelectorAll("[data-trn]").forEach(b => b.onclick = () => { S.trCfg.n = +b.dataset.trn; store.set("trCfg", S.trCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-bkn]").forEach(b => b.onclick = () => { S.bkCfg.n = +b.dataset.bkn; store.set("bkCfg", S.bkCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-liem]").forEach(b => b.onclick = () => { S.lieCfg.mesa = +b.dataset.liem; store.set("lieCfg", S.lieCfg); Net.cfgCambiada(); });
+  if (byId("salaPub")) byId("salaPub").onclick = () => { Net.publica = !Net.publica; store.set("salaPublica", Net.publica); render(); };
   if (byId("lieEsp")) byId("lieEsp").onclick = () => { S.lieCfg.esp = S.lieCfg.esp === false; store.set("lieCfg", S.lieCfg); Net.cfgCambiada(); };
   app.querySelectorAll("[data-chc]").forEach(b => b.onclick = () => { S.chCfg.cpus = +b.dataset.chc; store.set("chCfg", S.chCfg); Net.cfgCambiada(); });
   app.querySelectorAll("[data-crm]").forEach(b => b.onclick = () => { S.carCfg.mesa = +b.dataset.crm; store.set("carCfg", S.carCfg); Net.cfgCambiada(); });

@@ -204,8 +204,10 @@ PANTALLAS.home = () => {
   <article class="online-banner"><span class="ob-art">${MenuArte.online()}</span>
     <div class="ob-txt"><b>Jugar online</b><small>Cada uno desde su teléfono, estén donde estén. Uno crea la sala y les pasa el código.</small></div>
     <div class="ob-acc"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
+    ${typeof EnLinea !== "undefined" ? EnLinea.chip() : ""}
   </article>
   ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "preguntas")).join("")}</div></section>`).join("")}`;
+  on("verEnLinea", () => go("enLinea"));
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
     if (S.mode === "nave") return go("naveIntro");

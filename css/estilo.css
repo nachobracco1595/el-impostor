@@ -1857,3 +1857,17 @@ body.en-nave .turno-pill { display: none; }
 .ia-no { width: 32px; height: 32px; flex: none; border-radius: 50%; color: var(--muted); background: var(--card-2); }
 .ia-pasos { margin: 8px 0 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .ia-sh { display: inline-flex; vertical-align: -3px; color: #4dabf7; padding: 2px 4px; border-radius: 6px; background: var(--card-2); }
+/* Presencia: en línea, estado y salas abiertas */
+.pr-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 6px 12px; border-radius: 999px; font-size: 13px; color: var(--fg); background: rgba(61, 220, 177, .12); border: 1px solid rgba(61, 220, 177, .45); }
+.pr-chip b { color: var(--teal); } .pr-chip span { color: var(--muted); margin-left: 2px; }
+.pr-punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #6c6880; flex: none; margin-right: 5px; vertical-align: 0; }
+.pr-punto.on { background: #3ddcb1; box-shadow: 0 0 6px rgba(61, 220, 177, .8); }
+.pr-punto.on.jugando { background: #ffc53d; box-shadow: 0 0 6px rgba(255, 197, 61, .8); }
+.pr-punto.on.sala { background: #74c0fc; box-shadow: 0 0 6px rgba(116, 192, 252, .8); }
+.pr-que { display: flex; align-items: center; font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.pr-salas { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pr-salas li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--line); }
+.pr-salas li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pr-salas small { color: var(--muted); font-size: 12px; }
+.pr-cod { font-family: var(--display); letter-spacing: .15em; color: var(--spot); }
+.pr-pub { margin-top: 8px; text-align: left; }

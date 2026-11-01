@@ -1,6 +1,8 @@
 /* Arranque: si el enlace trae ?sala=ABCD, abre directamente "Unirme" */
 Referidos.capturar();
 S.screen = codigoUrl() ? "onUnirme" : "home";
+// Desde una notificación: ?ir=amigos abre la pantalla de amigos y mensajes
+if (/[?&]ir=amigos\b/.test(location.search)) S.screen = "amigos";
 // Si estaba esperando el correo para entrar (por ejemplo, salió de la app a mirar el mail), vuelve a esa pantalla
 if (S.screen === "home" && UI.mailEnviado && !BD.sesion()) S.screen = "cuenta";
 render();

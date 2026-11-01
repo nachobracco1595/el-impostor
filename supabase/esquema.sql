@@ -678,3 +678,58 @@ begin
     order by cuando desc nulls last, p.nombre limit 300) t);
 end $$;
 
+
+-- ============ Notificaciones push (mensajes, invitaciones, amistades y recordatorios) ============
+-- La función "notificar" (supabase/functions/notificar) manda las notificaciones. Esto guarda los teléfonos
+-- suscriptos y le avisa a la función cuando llega un mensaje o una solicitud de amistad, y una vez por día.
+create table if not exists public.push_subs (
+  endpoint  text primary key check (char_length(endpoint) < 800),
+  usuario   uuid not null references public.perfiles (id) on delete cascade,
+  p256dh    text not null check (char_length(p256dh) < 200),
+  auth      text not null check (char_length(auth) < 100),
+  prefs     jsonb not null default '{"mensajes": true, "recordatorios": true}'::jsonb,
+  creado    timestamptz not null default now()
+);
+create index if not exists push_subs_usuario_idx on public.push_subs (usuario);
+alter table public.push_subs enable row level security;
+grant select, insert, update, delete on public.push_subs to authenticated;
+drop policy if exists "mis suscripciones" on public.push_subs;
+create policy "mis suscripciones" on public.push_subs for all to authenticated using (usuario = auth.uid()) with check (usuario = auth.uid());
+
+-- Claves de la función (las genera ella sola). Sin políticas: solo la lee el servidor.
+create table if not exists public.push_cfg (
+  id                   integer primary key default 1 check (id = 1),
+  publica              text,
+  privada              text,
+  ultimo_recordatorio  text
+);
+alter table public.push_cfg enable row level security;
+
+alter table public.mensajes add column if not exists notificado boolean not null default false;
+
+-- Avisos a la función al insertar (pg_net hace la llamada sin frenar el insert)
+do $$ begin create extension if not exists pg_net; exception when others then raise notice 'pg_net no disponible: %', sqlerrm; end $$;
+create or replace function public.push_avisar() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform net.http_post(
+    url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/notificar',
+    body := case when tg_table_name = 'mensajes' then jsonb_build_object('tipo', 'mensaje', 'id', new.id)
+                 else jsonb_build_object('tipo', 'amistad', 'de', new.de, 'para', new.para) end,
+    headers := '{"Content-Type": "application/json"}'::jsonb);
+  return new;
+exception when others then return new;          -- si falla la notificación, el mensaje se guarda igual
+end $$;
+drop trigger if exists push_mensajes on public.mensajes;
+create trigger push_mensajes after insert on public.mensajes for each row execute function public.push_avisar();
+drop trigger if exists push_amistades on public.amistades;
+create trigger push_amistades after insert on public.amistades for each row execute function public.push_avisar();
+
+-- Recordatorio diario a las 18:30 de Argentina (21:30 UTC)
+do $$ begin
+  create extension if not exists pg_cron;
+  if exists (select 1 from cron.job where jobname = 'mesa-recordatorios') then perform cron.unschedule('mesa-recordatorios'); end if;
+  perform cron.schedule('mesa-recordatorios', '30 21 * * *',
+    $c$select net.http_post(url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/notificar', body := '{"tipo": "recordatorios"}'::jsonb, headers := '{"Content-Type": "application/json"}'::jsonb)$c$);
+exception when others then raise notice 'pg_cron no disponible: %', sqlerrm;
+end $$;

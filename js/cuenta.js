@@ -289,6 +289,7 @@ PANTALLAS.perfil = () => {
       <div class="stat"><b>${Object.keys(u.logros).length}/${LOGROS.length}</b><small>Logros</small></div>
     </div>
     ${Tarjeta.panel(u)}
+    ${typeof Avisos !== "undefined" ? Avisos.panel() : ""}
     <div class="panel"><span class="label">Por juego</span>
       <div class="juego-stats">
         <div><b>🎭 El Impostor</b><span>${st.impostor.p} pts · ${st.impostor.g}/${st.impostor.j} ganadas (${pct(st.impostor.g, st.impostor.j)})</span><small>Fue impostor ${st.impostor.imp} ${st.impostor.imp === 1 ? "vez" : "veces"} y ganó ${st.impostor.impG} · Ganó como inocente ${st.impostor.inoG}</small></div>

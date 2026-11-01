@@ -1871,3 +1871,8 @@ body.en-nave .turno-pill { display: none; }
 .pr-salas small { color: var(--muted); font-size: 12px; }
 .pr-cod { font-family: var(--display); letter-spacing: .15em; color: var(--spot); }
 .pr-pub { margin-top: 8px; text-align: left; }
+/* Cartel para activar las notificaciones */
+.av-oferta .modal { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.av-ic { font-size: 48px; line-height: 1; animation: latido 1.4s ease-in-out infinite; }
+.av-lista { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 15px; }
+.av-lista li { padding: 8px 12px; border-radius: 12px; background: var(--card-2); }

@@ -65,5 +65,25 @@ const Avisos = {
     app.querySelectorAll("[data-avpref]").forEach(b => b.onclick = () => this.cambiar(b.dataset.avpref));
   }
 };
-{ const r0 = render; render = function () { const x = r0.apply(this, arguments); try { if (S.screen === "perfil") Avisos.conectar(); } catch {} return x; }; }
-setTimeout(() => Avisos.revisar().then(() => { if (S.screen === "perfil") render(); }), 4000);
+/* Ofrecerlas al entrar: el iPhone solo deja pedir el permiso con un toque, así que se muestra un cartel con el botón.
+   Sale en el inicio a quien tiene cuenta, puede recibirlas y todavía no las activó; si dice "Ahora no", vuelve en 3 días. */
+Object.assign(Avisos, {
+  puedeOfrecer() {
+    return this.soporta() && this.enNube() && (!this.ios() || this.instalada()) && Notification.permission === "default" && !this.sub
+      && S.screen === "home" && !document.querySelector(".modal-fondo") && Date.now() - store.get("avisosOferta", 0) > 3 * 864e5;
+  },
+  ofrecer() {
+    if (!this.revisado || this.ofrecido || !this.puedeOfrecer()) return;
+    this.ofrecido = true;
+    const m = document.createElement("div"); m.className = "modal-fondo av-oferta";
+    m.innerHTML = `<div class="modal"><div class="av-ic">🔔</div><h2>¿Te avisamos?</h2>
+      <ul class="av-lista"><li>💬 Cuando un amigo te escribe</li><li>🎮 Cuando te invitan a una sala</li><li>🤝 Cuando te quieren agregar</li><li>🎁 Un recordatorio por día para tu recompensa</li></ul>
+      <button class="btn" id="avSi">Activar notificaciones</button><button class="btn ghost" id="avNo">Ahora no</button>
+      <small class="sub">Las podés cambiar cuando quieras en tu perfil.</small></div>`;
+    document.body.appendChild(m);
+    m.querySelector("#avSi").onclick = () => { m.remove(); this.activar(); };
+    m.querySelector("#avNo").onclick = () => { store.set("avisosOferta", Date.now()); m.remove(); };
+  }
+});
+{ const r0 = render; render = function () { const x = r0.apply(this, arguments); try { if (S.screen === "perfil") Avisos.conectar(); Avisos.ofrecer(); } catch {} return x; }; }
+setTimeout(() => Avisos.revisar().then(() => { Avisos.revisado = true; if (S.screen === "perfil") render(); else Avisos.ofrecer(); }), 4000);

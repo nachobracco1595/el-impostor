@@ -713,7 +713,7 @@ create or replace function public.push_avisar() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   perform net.http_post(
-    url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/notificar',
+    url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/smooth-function',
     body := case when tg_table_name = 'mensajes' then jsonb_build_object('tipo', 'mensaje', 'id', new.id)
                  else jsonb_build_object('tipo', 'amistad', 'de', new.de, 'para', new.para) end,
     headers := '{"Content-Type": "application/json"}'::jsonb);
@@ -730,6 +730,6 @@ do $$ begin
   create extension if not exists pg_cron;
   if exists (select 1 from cron.job where jobname = 'mesa-recordatorios') then perform cron.unschedule('mesa-recordatorios'); end if;
   perform cron.schedule('mesa-recordatorios', '30 21 * * *',
-    $c$select net.http_post(url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/notificar', body := '{"tipo": "recordatorios"}'::jsonb, headers := '{"Content-Type": "application/json"}'::jsonb)$c$);
+    $c$select net.http_post(url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/smooth-function', body := '{"tipo": "recordatorios"}'::jsonb, headers := '{"Content-Type": "application/json"}'::jsonb)$c$);
 exception when others then raise notice 'pg_cron no disponible: %', sqlerrm;
 end $$;

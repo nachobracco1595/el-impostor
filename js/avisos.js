@@ -12,7 +12,8 @@ const Avisos = {
     let c = Nube.cfg && Nube.cfg.push && Nube.cfg.push.publica;
     if (c) return c;
     // La primera vez la función crea las claves: se le pide y se relee la configuración
-    try { await Nube.sb.functions.invoke("notificar", { body: {} }); } catch {}
+    // (en Supabase quedó publicada como "smooth-function"; se prueban los dos nombres)
+    for (const fn of ["smooth-function", "notificar"]) { try { const r = await Nube.sb.functions.invoke(fn, { body: {} }); if (!r.error) break; } catch {} }
     const { data } = await Nube.sb.from("config").select("valor").eq("clave", "push").maybeSingle();
     return data && data.valor && data.valor.publica;
   },

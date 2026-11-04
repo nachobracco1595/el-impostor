@@ -84,6 +84,7 @@ const Cuenta = {
     else if (S.screen === "truco" && S.tru) deLocal(S.tru.jug.filter(j => !j.cpu), p => Truco.resultado(S.tru, p.id));
     else if (S.screen === "chinchon" && S.chi) deLocal(S.chi.jug.filter(j => !j.cpu), p => Chin.resultado(S.chi, p.id));
     else if (typeof EXTRA !== "undefined" && EXTRA[S.screen] && S.extra && S.extra.juego === S.screen) deLocal(S.extra.jug.filter(j => !j.cpu), p => EXTRA[S.screen].resultado(S.extra, p.id));
+    else if (S.screen === "adivina" && S.adv && S.adv.fase === "fin" && typeof Adivina !== "undefined") deLocal(S.adv.jug, p => Adivina.resultado(S.adv, p.id));
     const hechos = pend.map(([u, r]) => r && BD.registrar(u.id, r)).filter(Boolean);
     if (!hechos.length) return;
     if (hechos.length === 1) {
@@ -304,6 +305,8 @@ PANTALLAS.perfil = () => {
         <div><b>🎳 Bowling</b><span>${st.bowling.p} pts · ${st.bowling.g}/${st.bowling.j} ganadas (${pct(st.bowling.g, st.bowling.j)})</span><small>${st.bowling.strikes} strikes · ${st.bowling.spares} spares${st.bowling.mejor ? ` · mejor partida ${st.bowling.mejor}` : ""}</small></div>
         <div><b>🏹 Arco y flecha</b><span>${st.arco.p} pts · ${st.arco.g}/${st.arco.j} ganadas (${pct(st.arco.g, st.arco.j)})</span><small>${st.arco.x} flechas al centro${st.arco.mejor ? ` · mejor torneo ${st.arco.mejor}/120` : ""}</small></div>
         <div><b>❓ Preguntas Locas</b><span>${st.preguntas.p} pts · ${st.preguntas.g}/${st.preguntas.j} ganadas (${pct(st.preguntas.g, st.preguntas.j)})</span><small>${st.preguntas.correctas} respuestas correctas · ${st.preguntas.personajes} personajes</small></div>
+        <div><b>📱 Adivina qué soy</b><span>${st.adivina.p} pts · ${st.adivina.g}/${st.adivina.j} ganadas (${pct(st.adivina.g, st.adivina.j)})</span><small>${st.adivina.aciertos} palabras adivinadas · ${st.adivina.pasadas} pasadas${st.adivina.mejor ? ` · mejor turno ${st.adivina.mejor}` : ""}</small></div>
+        <div><b>✋ Basta</b><span>${st.basta.p} pts · ${st.basta.g}/${st.basta.j} ganadas (${pct(st.basta.g, st.basta.j)})</span><small>${st.basta.palabras} palabras válidas · ${st.basta.bastas} ¡basta! cantados${st.basta.mejor ? ` · mejor ronda ${st.basta.mejor}` : ""}</small></div>
         <div><b>🎪 Circo</b><span>${st.circo.p} pts · ${st.circo.g}/${st.circo.j} ganadas (${pct(st.circo.g, st.circo.j)})</span><small>${st.circo.etapas} etapas superadas${st.circo.mejor ? ` · récord ${st.circo.mejor}` : ""}</small></div>
         <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
         ${st.timba && st.timba.jugadas ? `<div><b>🎰 Casino</b><span>${st.timba.jugadas} jugadas · ${st.timba.ganado - st.timba.apostado >= 0 ? "+" : ""}${st.timba.ganado - st.timba.apostado} 🪙 en total</span><small>Mayor premio: ${st.timba.mayor} 🪙 · ${st.timba.plenos} plenos · ${st.timba.jackpots} jackpots · ${st.timba.bingos} bingos</small></div>` : ""}
@@ -367,7 +370,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"], ["adivina", "📱 Adivina"], ["basta", "✋ Basta"]];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}

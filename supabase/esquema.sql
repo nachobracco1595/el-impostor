@@ -45,6 +45,10 @@ create index if not exists perfiles_arco_idx on public.perfiles (pts_arco desc);
 create index if not exists perfiles_circo_idx on public.perfiles (pts_circo desc);
 alter table public.perfiles add column if not exists pts_preguntas integer generated always as (coalesce((stats -> 'preguntas' ->> 'p')::integer, 0)) stored;
 create index if not exists perfiles_preguntas_idx on public.perfiles (pts_preguntas desc);
+alter table public.perfiles add column if not exists pts_adivina integer generated always as (coalesce((stats -> 'adivina' ->> 'p')::integer, 0)) stored;
+create index if not exists perfiles_adivina_idx on public.perfiles (pts_adivina desc);
+alter table public.perfiles add column if not exists pts_basta integer generated always as (coalesce((stats -> 'basta' ->> 'p')::integer, 0)) stored;
+create index if not exists perfiles_basta_idx on public.perfiles (pts_basta desc);
 
 create index if not exists perfiles_puntos_idx on public.perfiles (puntos desc);
 create index if not exists perfiles_impostor_idx on public.perfiles (pts_impostor desc);

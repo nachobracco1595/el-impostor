@@ -1,0 +1,193 @@
+/* Banco de "Adivina qué soy": categorías con palabras cortas para poner en la frente.
+   Todo apto para toda la familia. Mezcla de cosas argentinas e internacionales. */
+const ADV_CATS = [
+  { k: "famar", nombre: "Famosos argentinos", ic: "🇦🇷", color: "#74c0fc", w: [
+    "Mirtha Legrand", "Susana Giménez", "Marcelo Tinelli", "Guillermo Francella", "Ricardo Darín", "Norma Aleandro", "Luis Brandoni", "Diego Peretti",
+    "Darío Grandinetti", "Leonardo Sbaraglia", "Peter Lanzani", "Luisana Lopilato", "Juana Viale", "Florencia Peña", "Adrián Suar", "Facundo Arana",
+    "Pampita", "Marley", "Santiago del Moro", "Guido Kaczka", "Nicolás Repetto", "Ángel de Brito", "Beto Casella", "Moria Casán",
+    "Antonio Gasalla", "Enrique Pinti", "Niní Marshall", "Tita Merello", "Luis Sandrini", "Alberto Olmedo", "Jorge Porcel", "Pepe Biondi",
+    "Jorge Luis Borges", "Julio Cortázar", "Ernesto Sabato", "Quino", "María Elena Walsh", "Alfonsina Storni", "René Favaloro", "Papa Francisco",
+    "José de San Martín", "Manuel Belgrano", "Domingo Faustino Sarmiento", "Juana Azurduy", "Martín Miguel de Güemes", "Manu Ginóbili", "Luis Scola", "Gabriela Sabatini",
+    "Guillermo Vilas", "Juan Martín del Potro", "Luciana Aymar", "Juan Manuel Fangio", "Paula Pareto", "Wanda Nara", "Diego Capusotto", "Alfredo Casero",
+    "Mario Pergolini", "Andy Kusnetzoff", "Alejandro Dolina", "Julio Chávez", "Cecilia Roth", "Mercedes Morán", "Joaquín Furriel", "Francis Mallmann",
+    "Doña Petrona", "Narda Lepes", "Germán Martitegui", "Juan Carlos Calabró", "Mariano Martínez", "Benjamín Rojas"
+  ] },
+  { k: "fammun", nombre: "Famosos del mundo", ic: "🌟", color: "#ffd43b", w: [
+    "Albert Einstein", "Leonardo DiCaprio", "Brad Pitt", "Angelina Jolie", "Tom Cruise", "Tom Hanks", "Will Smith", "Johnny Depp",
+    "Keanu Reeves", "La Roca (Dwayne Johnson)", "Scarlett Johansson", "Meryl Streep", "Julia Roberts", "Morgan Freeman", "Jackie Chan", "Bruce Lee",
+    "Arnold Schwarzenegger", "Sylvester Stallone", "Charles Chaplin", "Marilyn Monroe", "Audrey Hepburn", "Walt Disney", "Steven Spielberg", "Steve Jobs",
+    "Bill Gates", "Elon Musk", "Mark Zuckerberg", "Oprah Winfrey", "Pablo Picasso", "Leonardo da Vinci", "Vincent van Gogh", "Frida Kahlo",
+    "Salvador Dalí", "Miguel Ángel", "William Shakespeare", "Miguel de Cervantes", "Gabriel García Márquez", "J. K. Rowling", "Isaac Newton", "Marie Curie",
+    "Charles Darwin", "Galileo Galilei", "Nikola Tesla", "Stephen Hawking", "Thomas Edison", "Cristóbal Colón", "Napoleón Bonaparte", "Cleopatra",
+    "Julio César", "Mahatma Gandhi", "Nelson Mandela", "Martin Luther King", "La reina Isabel II", "Neil Armstrong", "Usain Bolt", "Michael Jordan",
+    "LeBron James", "Serena Williams", "Roger Federer", "Rafael Nadal", "Novak Djokovic", "Michael Phelps", "Simone Biles", "Muhammad Ali",
+    "Lewis Hamilton", "Zendaya", "Margot Robbie", "Ryan Gosling", "Emma Watson", "Daniel Radcliffe", "Robert Downey Jr.", "Jim Carrey",
+    "Adam Sandler", "Rowan Atkinson", "Salma Hayek", "Penélope Cruz", "Antonio Banderas", "Eugenio Derbez", "Roberto Gómez Bolaños", "Kim Kardashian"
+  ] },
+  { k: "futbol", nombre: "Fútbol", ic: "⚽", color: "#40c057", w: [
+    "Lionel Messi", "Diego Maradona", "Ángel Di María", "Julián Álvarez", "Dibu Martínez", "Rodrigo De Paul", "Enzo Fernández", "Alexis Mac Allister",
+    "Lautaro Martínez", "Nicolás Otamendi", "Cuti Romero", "Paulo Dybala", "Kun Agüero", "Gabriel Batistuta", "Juan Román Riquelme", "Martín Palermo",
+    "Carlos Tevez", "Mario Kempes", "Daniel Passarella", "Javier Zanetti", "Javier Mascherano", "Gonzalo Higuaín", "Hernán Crespo", "Ariel Ortega",
+    "Enzo Francescoli", "Lionel Scaloni", "Marcelo Gallardo", "Carlos Bilardo", "César Luis Menotti", "Cristiano Ronaldo", "Pelé", "Neymar",
+    "Kylian Mbappé", "Erling Haaland", "Zinedine Zidane", "Ronaldinho", "Ronaldo Nazário", "Luis Suárez", "Andrés Iniesta", "Xavi Hernández",
+    "Iker Casillas", "Luka Modrić", "Robert Lewandowski", "Mohamed Salah", "Vinícius Júnior", "Kevin De Bruyne", "Lamine Yamal", "Johan Cruyff",
+    "Franz Beckenbauer", "David Beckham", "Boca Juniors", "River Plate", "Independiente", "Racing Club", "San Lorenzo", "Estudiantes de La Plata",
+    "Vélez Sarsfield", "Newell's Old Boys", "Rosario Central", "Talleres de Córdoba", "Belgrano de Córdoba", "Huracán", "Lanús", "Banfield",
+    "Gimnasia y Esgrima La Plata", "Argentinos Juniors", "Barcelona", "Real Madrid", "Manchester United", "Manchester City", "Liverpool", "Bayern Múnich",
+    "Juventus", "Inter de Milán", "Paris Saint-Germain", "Chelsea", "Inter Miami", "La Bombonera", "El Monumental", "La Copa del Mundo"
+  ] },
+  { k: "animales", nombre: "Animales", ic: "🦁", color: "#ff922b", w: [
+    "Perro", "Gato", "León", "Tigre", "Elefante", "Jirafa", "Cebra", "Hipopótamo",
+    "Rinoceronte", "Cocodrilo", "Mono", "Gorila", "Oso panda", "Oso polar", "Koala", "Canguro",
+    "Pingüino", "Delfín", "Ballena", "Tiburón", "Pulpo", "Medusa", "Estrella de mar", "Caballito de mar",
+    "Tortuga", "Serpiente", "Camaleón", "Iguana", "Rana", "Sapo", "Caracol", "Mariposa",
+    "Abeja", "Hormiga", "Mosquito", "Araña", "Escorpión", "Cucaracha", "Vaca", "Caballo",
+    "Oveja", "Cabra", "Chancho", "Gallina", "Gallo", "Pato", "Ganso", "Pavo",
+    "Conejo", "Ratón", "Hámster", "Ardilla", "Murciélago", "Búho", "Loro", "Águila",
+    "Flamenco", "Pavo real", "Avestruz", "Carpincho", "Guanaco", "Llama", "Puma", "Yaguareté",
+    "Cóndor", "Ñandú", "Hornero", "Tatú mulita", "Oso hormiguero", "Lobo marino", "Foca", "Morsa",
+    "Lobo", "Zorro", "Mapache", "Castor", "Camello", "Dromedario", "Perezoso", "Hiena"
+  ] },
+  { k: "pelis", nombre: "Películas y series", ic: "🎬", color: "#e64980", w: [
+    "Titanic", "Harry Potter", "El Señor de los Anillos", "Star Wars", "Jurassic Park", "Avengers", "Spider-Man", "Batman",
+    "Superman", "Iron Man", "Black Panther", "Matrix", "Volver al futuro", "Indiana Jones", "Rocky", "Terminator",
+    "E.T.", "Los Goonies", "Piratas del Caribe", "Rápidos y furiosos", "Misión imposible", "James Bond", "Karate Kid", "Mi pobre angelito",
+    "Mamma Mia!", "Grease", "La La Land", "Gladiador", "Barbie", "Oppenheimer", "Avatar", "Duna",
+    "Los juegos del hambre", "Crepúsculo", "Jumanji", "Una noche en el museo", "Los Cazafantasmas", "Mary Poppins", "Charlie y la fábrica de chocolate", "Forrest Gump",
+    "El Chavo del 8", "El Chapulín Colorado", "Friends", "Stranger Things", "La casa de papel", "Merlina", "El juego del calamar", "Breaking Bad",
+    "Game of Thrones", "The Office", "La ley y el orden", "Dr. House", "Grey's Anatomy", "Lost", "Prison Break", "Los Bridgerton",
+    "The Crown", "The Mandalorian", "Loki", "Peaky Blinders", "Cobra Kai", "El Zorro", "Hannah Montana", "iCarly",
+    "Relatos salvajes", "El secreto de sus ojos", "Nueve reinas", "Argentina, 1985", "Esperando la carroza", "El hijo de la novia", "Un cuento chino", "Mi obra maestra",
+    "Elsa y Fred", "El Eternauta", "Iosi, el espía arrepentido", "Okupas", "Los simuladores", "El encargado", "Envidiosa", "División Palermo"
+  ] },
+  { k: "dibujos", nombre: "Dibujos animados", ic: "📺", color: "#9775fa", w: [
+    "Los Simpson", "Bob Esponja", "Toy Story", "El Rey León", "Frozen", "Shrek", "Buscando a Nemo", "Los Increíbles",
+    "Monsters, Inc.", "Cars", "Ratatouille", "Up", "Coco", "Intensa-Mente", "Moana", "Encanto",
+    "Mi villano favorito", "Minions", "La era de hielo", "Madagascar", "Kung Fu Panda", "Cómo entrenar a tu dragón", "Zootopia", "Enredados",
+    "La Sirenita", "La Bella y la Bestia", "Aladdín", "Blancanieves", "Cenicienta", "La Bella Durmiente", "Pinocho", "Dumbo",
+    "Bambi", "El libro de la selva", "Peter Pan", "Mulán", "Hércules", "Tarzán", "Pocahontas", "Lilo y Stitch",
+    "Wall-E", "Valiente", "Soul", "Red", "Elementos", "Pokémon", "Dragon Ball", "Los Caballeros del Zodíaco",
+    "Sailor Moon", "Doraemon", "Naruto", "Peppa Pig", "Bluey", "Paw Patrol", "Dora la exploradora", "Los Picapiedra",
+    "Los Supersónicos", "Scooby-Doo", "Tom y Jerry", "Looney Tunes", "Las chicas superpoderosas", "El laboratorio de Dexter", "Hora de aventura", "Phineas y Ferb",
+    "Gravity Falls", "Ben 10", "Los padrinos mágicos", "Hey Arnold!", "Rugrats", "Padre de familia", "Futurama", "Los Pitufos",
+    "Patoruzú", "Mafalda", "Gaturro", "Metegol", "Manuelita", "Isidoro Cañones", "Hijitus", "Zamba"
+  ] },
+  { k: "comidas", nombre: "Comidas", ic: "🍕", color: "#fa5252", w: [
+    "Asado", "Empanadas", "Milanesa a la napolitana", "Choripán", "Dulce de leche", "Alfajor", "Mate", "Locro",
+    "Pastelitos", "Medialunas", "Facturas", "Chocotorta", "Flan con dulce de leche", "Provoleta", "Matambre arrollado", "Vitel toné",
+    "Pan dulce", "Tortas fritas", "Humita", "Tamales", "Sándwich de miga", "Choclo", "Ñoquis", "Ravioles",
+    "Fideos con tuco", "Pizza", "Fainá", "Fugazzeta", "Hamburguesa", "Pancho", "Papas fritas", "Sushi",
+    "Tacos", "Paella", "Tortilla de papas", "Guiso de lentejas", "Puchero", "Polenta", "Arroz con leche", "Ensalada rusa",
+    "Huevo frito", "Panqueques", "Waffles", "Helado", "Torta de cumpleaños", "Churros", "Garrapiñada", "Pochoclo",
+    "Algodón de azúcar", "Chupetín", "Chicle", "Chocolate", "Galletitas", "Tostadas", "Manzana", "Banana",
+    "Sandía", "Frutilla", "Naranja", "Limón", "Palta", "Tomate", "Zanahoria", "Cebolla",
+    "Ajo", "Lechuga", "Brócoli", "Queso", "Jamón", "Salame", "Yogur", "Cereales",
+    "Sopa", "Lasaña", "Canelones", "Spaghetti", "Hot dog", "Nuggets de pollo", "Pollo al horno", "Bife de chorizo"
+  ] },
+  { k: "casa", nombre: "Objetos de la casa", ic: "🛋️", color: "#20c997", w: [
+    "Heladera", "Microondas", "Lavarropas", "Horno", "Licuadora", "Tostadora", "Pava eléctrica", "Cafetera",
+    "Sartén", "Olla", "Cuchara", "Tenedor", "Cuchillo", "Plato", "Vaso", "Taza",
+    "Termo", "Sacacorchos", "Abrelatas", "Rallador", "Colador", "Escoba", "Pala", "Trapo de piso",
+    "Balde", "Aspiradora", "Plancha", "Secador de pelo", "Cepillo de dientes", "Pasta dental", "Jabón", "Toalla",
+    "Inodoro", "Ducha", "Espejo", "Peine", "Cama", "Almohada", "Frazada", "Sábana",
+    "Colchón", "Ropero", "Percha", "Mesa de luz", "Velador", "Despertador", "Sillón", "Silla",
+    "Mesa", "Televisor", "Control remoto", "Ventilador", "Aire acondicionado", "Estufa", "Lámpara", "Cortina",
+    "Alfombra", "Maceta", "Florero", "Cuadro", "Reloj de pared", "Llave", "Candado", "Timbre",
+    "Enchufe", "Zapatilla eléctrica", "Cargador", "Pilas", "Tijera", "Cinta adhesiva", "Martillo", "Destornillador",
+    "Escalera", "Paraguas", "Mochila", "Valija", "Tacho de basura", "Bolsa de las compras", "Calefón", "Mantel"
+  ] },
+  { k: "profes", nombre: "Profesiones", ic: "👩‍🚒", color: "#4dabf7", w: [
+    "Médico", "Enfermera", "Dentista", "Veterinario", "Bombero", "Policía", "Maestra", "Profesor de educación física",
+    "Cocinero", "Panadero", "Carnicero", "Mozo", "Bartender", "Peluquero", "Maquilladora", "Costurera",
+    "Albañil", "Plomero", "Electricista", "Carpintero", "Pintor", "Mecánico", "Jardinero", "Cartero",
+    "Taxista", "Colectivero", "Camionero", "Piloto de avión", "Azafata", "Astronauta", "Capitán de barco", "Pescador",
+    "Agricultor", "Gaucho", "Arquitecto", "Ingeniero", "Programador", "Científico", "Abogado", "Juez",
+    "Contador", "Periodista", "Fotógrafo", "Actor", "Cantante", "Bailarín", "Músico", "Payaso",
+    "Mago", "Malabarista", "Futbolista", "Árbitro", "Entrenador", "Domador de leones", "Guardavidas", "Kiosquero",
+    "Cajero de supermercado", "Vendedor ambulante", "Repartidor", "Diariero", "Bibliotecario", "Escritor", "Detective", "Espía",
+    "Soldado", "Cirujano", "Psicólogo", "Farmacéutico", "Youtuber", "Influencer", "Locutor de radio", "Presidente",
+    "Rey", "Paseador de perros", "Niñera", "Cerrajero", "Relojero", "Zapatero", "Sastre", "Florista"
+  ] },
+  { k: "acciones", nombre: "Acciones (mímica)", ic: "🤸", color: "#ff6b6b", w: [
+    "Lavarse los dientes", "Andar en bicicleta", "Nadar", "Bailar", "Cantar", "Cocinar", "Barrer", "Planchar",
+    "Manejar un auto", "Remar", "Pescar", "Escalar una montaña", "Saltar la soga", "Jugar al fútbol", "Jugar al tenis", "Jugar al básquet",
+    "Patear un penal", "Atajar un penal", "Tomar mate", "Hacer un asado", "Cebar mate", "Sacarse una selfie", "Hablar por teléfono", "Escribir en el celular",
+    "Leer un libro", "Dormir", "Roncar", "Bostezar", "Estornudar", "Llorar", "Reírse a carcajadas", "Aplaudir",
+    "Pintar una pared", "Martillar un clavo", "Tocar la guitarra", "Tocar la batería", "Tocar el piano", "Dirigir una orquesta", "Hacer malabares", "Hacer equilibrio",
+    "Esquiar", "Surfear", "Andar en skate", "Patinar sobre hielo", "Boxear", "Hacer yoga", "Hacer abdominales", "Levantar pesas",
+    "Correr una maratón", "Ordeñar una vaca", "Montar a caballo", "Pasear al perro", "Bañar al perro", "Cambiar un pañal", "Hamacar a un bebé", "Ponerse una corbata",
+    "Atarse los cordones", "Peinarse", "Maquillarse", "Afeitarse", "Lavar los platos", "Tender la ropa", "Hacer la cama", "Regar las plantas",
+    "Inflar un globo", "Soplar las velitas", "Abrir un regalo", "Envolver un regalo", "Comer spaghetti", "Comer un choclo", "Pelar una banana", "Tomar sopa",
+    "Hacer pochoclo", "Volar un barrilete", "Tirar un avioncito de papel", "Jugar a la play", "Sacar a pasear al bebé", "Hacer la ola", "Hacer dedo", "Esperar el colectivo"
+  ] },
+  { k: "lugares", nombre: "Lugares y países", ic: "🗺️", color: "#3bc9db", w: [
+    "Argentina", "Brasil", "Uruguay", "Chile", "Paraguay", "Bolivia", "Perú", "Colombia",
+    "Venezuela", "México", "Estados Unidos", "Canadá", "España", "Italia", "Francia", "Alemania",
+    "Inglaterra", "Portugal", "Grecia", "Rusia", "China", "Japón", "India", "Australia",
+    "Egipto", "Sudáfrica", "Marruecos", "Cuba", "Jamaica", "Islandia", "Suiza", "Holanda",
+    "Buenos Aires", "Córdoba", "Rosario", "Mendoza", "Bariloche", "Ushuaia", "Mar del Plata", "Salta",
+    "Las Cataratas del Iguazú", "El Glaciar Perito Moreno", "El Obelisco", "La Casa Rosada", "Caminito", "El Aconcagua", "La Quebrada de Humahuaca", "Tierra del Fuego",
+    "La Patagonia", "París", "Londres", "Nueva York", "Roma", "Madrid", "Río de Janeiro", "Tokio",
+    "La Torre Eiffel", "La Estatua de la Libertad", "El Coliseo", "La Gran Muralla China", "Las pirámides de Egipto", "Machu Picchu", "El Big Ben", "La Torre de Pisa",
+    "El Cristo Redentor", "La Antártida", "El Polo Norte", "El desierto del Sahara", "El Amazonas", "Hollywood", "Disney", "Las Vegas",
+    "La playa", "La montaña", "El zoológico", "El hospital", "La escuela", "El supermercado", "El aeropuerto", "La luna"
+  ] },
+  { k: "personajes", nombre: "Personajes de ficción", ic: "🦸", color: "#f783ac", w: [
+    "Homero Simpson", "Bart Simpson", "Lisa Simpson", "Patricio Estrella", "Calamardo", "Don Cangrejo", "Mickey Mouse", "Minnie Mouse",
+    "El Pato Donald", "Goofy", "Bugs Bunny", "El Pato Lucas", "Piolín", "Correcaminos", "El Coyote", "Pikachu",
+    "Goku", "Vegeta", "Mario Bros", "Luigi", "Sonic", "Pac-Man", "Woody", "Buzz Lightyear",
+    "Nemo", "Dory", "Simba", "Timón y Pumba", "Elsa", "Olaf", "Fiona", "Burro",
+    "El Gato con Botas", "Stitch", "Rayo McQueen", "Mike Wazowski", "Sully", "Gru", "Darth Vader", "Yoda",
+    "Luke Skywalker", "Chewbacca", "R2-D2", "Frodo", "Gandalf", "Gollum", "Hermione Granger", "Ron Weasley",
+    "Voldemort", "Dumbledore", "Hagrid", "Sherlock Holmes", "Drácula", "Frankenstein", "Caperucita Roja", "El Lobo Feroz",
+    "Los siete enanitos", "El Hada Madrina", "Rapunzel", "Mowgli", "Campanita", "Capitán Garfio", "Pepe Grillo", "Alicia en el País de las Maravillas",
+    "El Sombrerero Loco", "Robin Hood", "El Genio de la lámpara", "Hulk", "Thor", "Capitán América", "La Mujer Maravilla", "Wolverine",
+    "El Guasón", "Garfield", "Snoopy", "Shaggy", "Pedro Picapiedra", "La Pantera Rosa", "Papá Noel", "El Ratón Pérez"
+  ] },
+  { k: "marcas", nombre: "Marcas", ic: "🏷️", color: "#fcc419", w: [
+    "Coca-Cola", "Pepsi", "Fanta", "Sprite", "McDonald's", "Burger King", "Starbucks", "KFC",
+    "Nike", "Adidas", "Reebok", "Topper", "Apple", "Samsung", "Google", "Microsoft",
+    "Amazon", "Netflix", "Disney+", "Spotify", "YouTube", "WhatsApp", "Instagram", "TikTok",
+    "Facebook", "Mercado Libre", "Rappi", "PedidosYa", "Uber", "Coto", "Carrefour", "Día",
+    "Arcor", "Bagley", "La Serenísima", "Sancor", "Havanna", "Cachafaz", "Bon o Bon", "Mantecol",
+    "Rhodesia", "Tita", "Oreo", "Toddy", "Cindor", "Tang", "Manaos", "Paty",
+    "Terrabusi", "Nesquik", "Nutella", "Kinder", "Milka", "Ferrero Rocher", "M&M's", "Lego",
+    "Playmobil", "Hot Wheels", "PlayStation", "Xbox", "Nintendo", "Ford", "Fiat", "Toyota",
+    "Volkswagen", "Ferrari", "Tesla", "Mercedes-Benz", "Aerolíneas Argentinas", "YPF", "Ikea", "Zara",
+    "Gillette", "Colgate", "Dove", "Ala", "Magistral", "Bic", "Faber-Castell", "Rexona"
+  ] },
+  { k: "musica", nombre: "Música", ic: "🎤", color: "#da77f2", w: [
+    "Charly García", "Luis Alberto Spinetta", "Gustavo Cerati", "Fito Páez", "Mercedes Sosa", "Soledad Pastorutti", "Abel Pintos", "Diego Torres",
+    "Andrés Calamaro", "Carlos Gardel", "Astor Piazzolla", "Sandro", "Palito Ortega", "Valeria Lynch", "Lali", "Tini",
+    "Bizarrap", "Duki", "María Becerra", "Nicki Nicole", "Emilia Mernes", "Wos", "Paulo Londra", "Trueno",
+    "Ca7riel y Paco Amoroso", "Los Fabulosos Cadillacs", "Soda Stereo", "Los Redondos", "Los Auténticos Decadentes", "La Mona Jiménez", "Rodrigo (el Potro)", "Gilda",
+    "Los Palmeras", "Ráfaga", "Los Nocheros", "Chaqueño Palavecino", "Les Luthiers", "Babasónicos", "Miranda!", "Airbag",
+    "La Renga", "Divididos", "Los Piojos", "Ciro y los Persas", "Shakira", "Michael Jackson", "Madonna", "Elvis Presley",
+    "The Beatles", "Queen", "Freddie Mercury", "ABBA", "Taylor Swift", "Bad Bunny", "Karol G", "Ed Sheeran",
+    "Bruno Mars", "Dua Lipa", "Billie Eilish", "Ariana Grande", "Lady Gaga", "Rihanna", "Beyoncé", "Coldplay",
+    "Bob Marley", "Luis Miguel", "Ricky Martin", "Enrique Iglesias", "Juanes", "Luis Fonsi", "Daddy Yankee", "Rosalía",
+    "Despacito", "La Macarena", "Bohemian Rhapsody", "Thriller", "Muchachos (la canción del Mundial)", "De música ligera", "La bicicleta", "Cumpleaños feliz"
+  ] },
+  { k: "memes", nombre: "Memes y cosas de internet", ic: "😂", color: "#94d82d", w: [
+    "Ola k ase", "El perro Cheems", "Doge", "Nyan Cat", "Rickroll", "Trollface", "Mujer gritándole a un gato", "El novio distraído",
+    "This is fine (el perro en el incendio)", "Grumpy Cat", "Harlem Shake", "Ice Bucket Challenge", "Gangnam Style", "Stonks", "Bob Esponja burlón", "Mr. Increíble perturbado",
+    "Coffin Dance", "Success Kid", "Hide the Pain Harold", "Baby Shark", "La chica de lofi", "Emoji llorando de risa", "Sticker de WhatsApp", "Audio de WhatsApp de cinco minutos",
+    "Dejar en visto", "El grupo de WhatsApp de la familia", "Cadena de WhatsApp", "Baile de TikTok", "Selfie", "Hashtag", "Podcast", "Streamer",
+    "Unboxing", "Clickbait", "Spoiler", "Captcha (no soy un robot)", "Error 404", "Modo avión", "Batería al 1%", "El wifi del vecino",
+    "Hacer un vivo", "Filtro de Instagram", "Historia de Instagram", "Darle like", "El dinosaurio de Google sin internet", "Keyboard Cat", "Gatitos en cajas", "Sonrían y saluden",
+    "Ibai Llanos", "MrBeast", "Luisito Comunica", "El Rubius", "AuronPlay", "Coscu", "Spreen", "La Velada del Año",
+    "Twitch", "Discord", "Minecraft", "Fortnite", "Among Us", "Roblox", "Pokémon GO", "Flappy Bird",
+    "Candy Crush", "Angry Birds", "Wordle", "Tetris", "Emoji del fueguito", "Videollamada que se congela", "Contraseña olvidada", "Inteligencia artificial"
+  ] },
+  { k: "tvar", nombre: "Novelas y TV argentina", ic: "📡", color: "#ffa94d", w: [
+    "Floricienta", "Casi Ángeles", "Chiquititas", "Rebelde Way", "Patito Feo", "Violetta", "Soy Luna", "Erreway",
+    "Graduados", "Guapas", "Educando a Nina", "Valientes", "Montecristo", "Son amores", "Los Roldán", "Gasoleros",
+    "Campeones de la vida", "Muñeca brava", "Amor en custodia", "Sos mi vida", "Lalola", "Los exitosos Pells", "Dulce amor", "Herederos de una venganza",
+    "Farsantes", "Argentina, tierra de amor y venganza", "Separadas", "Cien días para enamorarse", "Pequeña Victoria", "Las Estrellas", "Esperanza mía", "Mi familia es un dibujo",
+    "Casados con hijos", "Los Únicos", "Brigada Cola", "Showmatch", "Bailando por un sueño", "Videomatch", "MasterChef Celebrity", "Gran Hermano",
+    "Almorzando con Mirtha Legrand", "Peligro: Sin Codificar", "Caiga quien caiga", "Pasapalabra", "Los 8 escalones", "¿Quién quiere ser millonario?", "Bendita", "Intrusos",
+    "Telefe Noticias", "Cantaniño", "Panam y circo", "El Show de Carlitos Bala", "Señorita Maestra", "Zapping Zone", "Cris Morena", "Hugo Midón",
+    "Topa en Junior Express", "Piñón Fijo", "El Agente 00-P2", "Mi cuñado", "La familia Falcón", "Mesa de noticias", "Poné a Francella", "Los Campanelli",
+    "Grande, Pa!", "Nosotros y los miedos", "Verano del 98", "Jugate conmigo", "Resistiré", "Padre Coraje", "Simona", "Atreverse"
+  ] }
+];

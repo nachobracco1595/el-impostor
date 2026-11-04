@@ -27,7 +27,7 @@ const EnLinea = {
       return { estado: g ? "jugando" : "sala", que: g ? `Jugando ${nom(g) || g} online` : "En una sala online" };
     }
     if (["casino", "ruleta", "slots", "blackjack", "bingoSolo"].includes(sc)) return { estado: "jugando", que: "En el casino" };
-    const juego = { arena: "arena", arenaIntro: "arena", torre: "arena", chinchon: "chinchon", truco: "truco", burako: "burako", poker: "poker", carrera: "carrera", carreraIntro: "carrera", naval: "naval", ajedrez: "ajedrez", nave: "nave", naveIntro: "nave", liars: "liars", casos: "casos", bowling: "bowling", arco: "arco", circo: "circo", preguntas: "preguntas", pass: "impostor", reveal: "impostor", play: "impostor", vote: "impostor" }[sc];
+    const juego = { arena: "arena", arenaIntro: "arena", torre: "arena", chinchon: "chinchon", truco: "truco", burako: "burako", poker: "poker", carrera: "carrera", carreraIntro: "carrera", naval: "naval", ajedrez: "ajedrez", nave: "nave", naveIntro: "nave", liars: "liars", casos: "casos", bowling: "bowling", arco: "arco", circo: "circo", preguntas: "preguntas", adivina: "adivina", basta: "basta", bastaIntro: "basta", pass: "impostor", reveal: "impostor", play: "impostor", vote: "impostor" }[sc];
     if (juego) return { estado: "jugando", que: `Jugando ${nom(juego) || juego}` };
     if (sc === "trabajos" || sc === "trabajo") return { estado: "jugando", que: "Trabajando" };
     return { estado: "menu", que: "En el menú" };

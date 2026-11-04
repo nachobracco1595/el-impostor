@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo", preguntas: "Preguntas Locas" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo", preguntas: "Preguntas Locas", adivina: "Adivina qué soy", basta: "Basta" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -58,7 +58,11 @@ const LOGROS = [
   { id: "domador", ic: "🦁", nombre: "Domador", desc: "Termina las tres etapas del circo.", ok: u => u.stats.circo.completo >= 1 },
   { id: "sabelotodo", ic: "🤓", nombre: "Sabelotodo", desc: "Responde bien 50 preguntas locas.", ok: u => u.stats.preguntas.correctas >= 50 },
   { id: "coleccion", ic: "👑", nombre: "Coleccionista", desc: "Gana Preguntas Locas con los 6 personajes.", ok: u => u.stats.preguntas.completas >= 1 },
-  { id: "estrella", ic: "🎪", nombre: "Estrella del circo", desc: "Haz 10.000 puntos en una función de circo.", ok: u => u.stats.circo.mejor >= 10000 }
+  { id: "estrella", ic: "🎪", nombre: "Estrella del circo", desc: "Haz 10.000 puntos en una función de circo.", ok: u => u.stats.circo.mejor >= 10000 },
+  { id: "basta10", ic: "✋", nombre: "¡Basta!", desc: "Canta ¡Basta! 10 veces en el Tutti Frutti.", ok: u => u.stats.basta.bastas >= 10 },
+  { id: "cerebro", ic: "🧠", nombre: "Cerebro", desc: "Haz 100 puntos o más en una sola ronda de Basta.", ok: u => u.stats.basta.mejor >= 100 },
+  { id: "telepatico", ic: "🧠", nombre: "Telepático", desc: "Adivina 15 palabras en un solo turno de Adivina qué soy.", ok: u => u.stats.adivina.mejor >= 15 },
+  { id: "frentero", ic: "📱", nombre: "Frente de oro", desc: "Adivina 100 palabras en total en Adivina qué soy.", ok: u => u.stats.adivina.aciertos >= 100 }
 ];
 
 function total(u, k) { return Object.keys(JUEGOS).reduce((s, j) => s + (u.stats[j][k] || 0), 0); }
@@ -81,6 +85,8 @@ function statsVacias() {
     arco: { j: 0, g: 0, p: 0, mejor: 0, x: 0, dieces: 0 },
     circo: { j: 0, g: 0, p: 0, mejor: 0, completo: 0, etapas: 0 },
     preguntas: { j: 0, g: 0, p: 0, correctas: 0, personajes: 0, coronas: 0, completas: 0 },
+    adivina: { j: 0, g: 0, p: 0, mejor: 0, aciertos: 0, pasadas: 0 },
+    basta: { j: 0, g: 0, p: 0, mejor: 0, palabras: 0, unicas: 0, bastas: 0 },
     // El casino no suma partidas ni puntos: solo lleva la cuenta
     timba: { j: 0, g: 0, p: 0, jugadas: 0, apostado: 0, ganado: 0, mayor: 0, plenos: 0, jackpots: 0, lineas: 0, bingos: 0, blackjacks: 0, bjGanadas: 0 }
   };
@@ -222,6 +228,10 @@ const BD = {
       st.x += res.centros | 0; st.dieces += res.dieces | 0; if (res.max === 120) st.mejor = Math.max(st.mejor || 0, res.total | 0);
     } else if (res.juego === "preguntas") {
       st.correctas += res.correctas | 0; st.personajes += res.personajes | 0; st.coronas += res.coronas | 0; if (calc.gano && res.personajes >= 6) st.completas++;
+    } else if (res.juego === "basta") {
+      st.palabras += res.palabras | 0; st.unicas += res.unicas | 0; st.bastas += res.bastas | 0; st.mejor = Math.max(st.mejor || 0, res.mejor | 0);
+    } else if (res.juego === "adivina") {
+      st.aciertos += res.aciertos | 0; st.pasadas += res.pasadas | 0; st.mejor = Math.max(st.mejor || 0, res.mejor | 0);
     } else if (res.juego === "circo") {
       st.etapas += res.etapas | 0; if (res.completo) st.completo++; st.mejor = Math.max(st.mejor || 0, res.total | 0);
     } else if (res.juego === "casos") {
@@ -312,8 +322,12 @@ const Puntos = {
     ["Arco: 80% del máximo o más", "+8"],
     ["Circo: cada etapa superada / función completa", "+4 / +10"],
     ["Circo: cada 500 de puntaje en la función (desde 1000)", "+1 (hasta +20)"],
-    ["Bowling, Arco, Circo o Preguntas jugando solo: no se gana ni se pierde, solo suma lo que hiciste", ""],
+    ["Bowling, Arco, Circo, Preguntas, Adivina o Basta jugando solo: no se gana ni se pierde, solo suma lo que hiciste", ""],
     ["Preguntas Locas: cada respuesta correcta / cada personaje", "+1 / +2"],
+    ["Adivina qué soy: cada palabra adivinada", "+1 (hasta +20)"],
+    ["Basta: cada palabra válida / cada ¡Basta! que cantaste", "+1 (hasta +30) / +3 (hasta +15)"],
+    ["Basta: ganar la partida (contra personas / bots)", "+25 / +12"],
+    ["Adivina qué soy: ganar la partida (2 o más)", "+15"],
     ["Impostor: ganar como inocente", "+10"],
     ["Impostor: ganar como impostor", "+25"],
     ["Impostor: adivinar la palabra al ser descubierto", "+10 extra"],
@@ -419,6 +433,13 @@ const Puntos = {
       if (r.correctas) d.push([`${r.correctas} respuesta${r.correctas > 1 ? "s" : ""} correcta${r.correctas > 1 ? "s" : ""}`, Math.min(20, r.correctas)]);
       if (r.personajes) d.push([`${r.personajes} personaje${r.personajes > 1 ? "s" : ""}`, 2 * r.personajes]);
       if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "Ganaste la partida", r.vsCompu ? 12 : 25]); }
+    } else if (r.juego === "basta") {
+      if (r.palabras) d.push([`${r.palabras} palabra${r.palabras > 1 ? "s" : ""} válida${r.palabras > 1 ? "s" : ""}`, Math.min(30, r.palabras)]);
+      if (r.bastas) d.push([`Cantaste ¡Basta! ${r.bastas > 1 ? r.bastas + " veces" : "una vez"}`, 3 * Math.min(5, r.bastas)]);
+      if (r.gano) { gano = true; d.push([r.vsCompu ? "Le ganaste a los bots" : "Ganaste la partida", r.vsCompu ? 12 : 25]); }
+    } else if (r.juego === "adivina") {
+      if (r.aciertos) d.push([`${r.aciertos} palabra${r.aciertos > 1 ? "s" : ""} adivinada${r.aciertos > 1 ? "s" : ""}`, Math.min(20, r.aciertos)]);
+      if (r.gano && r.n >= 2) { gano = true; d.push(["Ganaste la partida", 15]); }
     } else if (r.juego === "circo") {
       if (r.etapas) d.push([`${r.etapas} etapa${r.etapas > 1 ? "s" : ""} superada${r.etapas > 1 ? "s" : ""}`, 4 * r.etapas]);
       if (r.total >= 1000) d.push([`Puntaje de la función (${r.total})`, Math.min(20, Math.floor(r.total / 500))]);
@@ -431,7 +452,7 @@ const Puntos = {
         if (r.votoCorrecto) d.push(["Votaste al culpable", 10]);
       }
     }
-    const puntos = d.reduce((s, x) => s + x[1], 0), solo = r.n === 1 && ["bowling", "arco", "circo", "preguntas"].includes(r.juego);
+    const puntos = d.reduce((s, x) => s + x[1], 0), solo = r.n === 1 && ["bowling", "arco", "circo", "preguntas", "adivina", "basta"].includes(r.juego);
     return { puntos, gano: gano && !solo, solo, detalle: d, resumen: `${JUEGOS[r.juego]} · ${solo ? "jugó solo" : gano ? "ganó" : "perdió"}` };
   }
 };

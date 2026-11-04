@@ -102,6 +102,26 @@ const MenuArte = {
       <g transform="translate(94 40) rotate(14)"><rect x="-17" y="-24" width="34" height="46" rx="8" fill="#fff"/><text y="3" font-size="34" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#e64980">?</text></g>
       <g font-size="13"><text x="96" y="78">😂</text><text x="2" y="16">✨</text></g></svg>`;
   },
+  /* Adivina qué soy: alguien con el teléfono acostado en la frente y los amigos tirando pistas */
+  adivina() {
+    return `<svg viewBox="0 0 120 84" width="120" height="84" aria-hidden="true">
+      <g transform="translate(34 24)">${personaje("#94d82d", "civ", 58)}</g>
+      <g transform="translate(63 26) rotate(-6)"><rect x="-27" y="-15" width="54" height="30" rx="6" fill="#1b1729" stroke="#fff" stroke-width="2.5"/>
+        <rect x="-22" y="-10" width="44" height="20" rx="3" fill="#2b8a3e"/><text y="1" font-size="11" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#fff" font-family="Arial Black, sans-serif">¿QUÉ?</text></g>
+      <g transform="translate(14 18)"><path d="M-12 -12 h24 a5 5 0 0 1 5 5 v10 a5 5 0 0 1 -5 5 h-14 l-6 6 v-6 h-4 a5 5 0 0 1 -5 -5 v-10 a5 5 0 0 1 5 -5z" fill="#ffd43b"/><text y="-2" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#1b1729">?</text></g>
+      <g transform="translate(106 58)"><path d="M-12 -12 h24 a5 5 0 0 1 5 5 v10 a5 5 0 0 1 -5 5 h-4 v6 l-6 -6 h-14 a5 5 0 0 1 -5 -5 v-10 a5 5 0 0 1 5 -5z" fill="#e64980"/><text y="-2" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="900" fill="#fff">!</text></g>
+      <g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".85"><path d="M98 14 v14 m-5 -5 l5 5 l5 -5"/></g>
+      <circle cx="98" cy="10" r="2.5" fill="#51cf66"/></svg>`;
+  },
+  basta() {
+    const oct = (cx, cy, r) => Array.from({ length: 8 }, (_, k) => { const a = (k + 0.5) / 8 * Math.PI * 2; return `${(cx + Math.cos(a) * r).toFixed(1)},${(cy + Math.sin(a) * r).toFixed(1)}`; }).join(" ");
+    return `<svg viewBox="0 0 120 84" width="120" height="84" aria-hidden="true">
+      <g transform="rotate(-8 38 44)"><rect x="10" y="8" width="54" height="70" rx="4" fill="#fbf7ee"/><path d="M10 20 H64" stroke="#ff8787" stroke-width="1.2"/><path d="M22 8 V78" stroke="#ffc9c9" stroke-width="1"/>
+        ${[30, 40, 50, 60, 70].map((y, k) => `<path d="M14 ${y} H60" stroke="#c5d4f0" stroke-width="1"/><path d="M25 ${y - 2.5} q3 -4 6 0 t6 0 t6 0${k % 2 ? " t6 0" : ""}" stroke="#4263eb" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M14 ${y - 3} l2.5 2.5 l4 -5" stroke="#2f9e44" stroke-width="1.6" fill="none" stroke-linecap="round"/>`).join("")}
+        <text x="14" y="17" font-size="7" font-weight="900" fill="#1b1726">TUTTI FRUTTI</text></g>
+      <circle cx="94" cy="24" r="18" fill="#ff922b" stroke="#fff" stroke-width="3"/><text x="94" y="25" font-size="22" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="Arial Black, sans-serif">M</text>
+      <g transform="rotate(10 88 62)"><polygon points="${oct(88, 62, 19)}" fill="#e03131" stroke="#fff" stroke-width="2.5"/><text x="88" y="63" font-size="7.4" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="Arial Black, sans-serif">¡BASTA!</text></g></svg>`;
+  },
   online() {
     return `<svg viewBox="0 0 120 84" width="120" height="84" aria-hidden="true">
       <g fill="none" stroke="#3ddcb1" stroke-width="5" stroke-linecap="round"><path d="M38 34 A32 32 0 0 1 82 34" opacity=".45"/><path d="M46 44 A20 20 0 0 1 74 44" opacity=".75"/></g><circle cx="60" cy="54" r="5" fill="#3ddcb1"/>

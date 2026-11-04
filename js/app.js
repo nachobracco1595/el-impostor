@@ -175,14 +175,16 @@ function juegosMenu() {
     ["circo", "Circo", "Aros de fuego, cuerda floja y pelotas.", MenuArte.circo(), "t-circo", "#ff922b"],
     ["bowling", "Bowling", "Strikes, spares y efecto con el dedo.", MenuArte.bowling(), "t-bowl", "#9775fa"],
     ["arco", "Arco y flecha", "Diana, viento y pulso firme.", MenuArte.arco(), "t-arco", "#ffd43b"],
-    ["preguntas", "Preguntas Locas", "Ruleta, preguntas y prendas para reírse en la juntada.", MenuArte.preguntas(), "t-preg", "#e64980"]
+    ["preguntas", "Preguntas Locas", "Ruleta, preguntas y prendas para reírse en la juntada.", MenuArte.preguntas(), "t-preg", "#e64980"],
+    ["adivina", "Adivina qué soy", "El teléfono en la frente: tus amigos te dan pistas y vos adivinás.", MenuArte.adivina(), "t-adv", "#94d82d"],
+    ["basta", "Basta", "Tutti Frutti: sale una letra y a llenar todas las categorías.", MenuArte.basta(), "t-basta", "#ff922b"]
   ];
 }
 /* Secciones del inicio */
 const MENU_SECCIONES = [
   ["⚔️ Acción", ["arena", "carrera", "circo"]],
   ["🎯 Puntería", ["bowling", "arco"]],
-  ["🎉 Para jugar en grupo", ["preguntas", "impostor", "nave", "liars", "casos"]],
+  ["🎉 Para jugar en grupo", ["preguntas", "adivina", "basta", "impostor", "nave", "liars", "casos"]],
   ["🃏 Cartas y fichas", ["truco", "chinchon", "poker", "burako"]],
   ["♟️ Duelos", ["ajedrez", "naval"]],
   ["🪙 Monedas", ["casino", "trabajos"]]
@@ -206,7 +208,7 @@ PANTALLAS.home = () => {
     <div class="ob-acc"><button class="btn" id="crear">Crear sala</button><button class="btn ghost" id="unirme">Unirme</button></div>
     ${typeof EnLinea !== "undefined" ? EnLinea.chip() : ""}
   </article>
-  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "preguntas")).join("")}</div></section>`).join("")}`;
+  ${MENU_SECCIONES.map(([t, ms]) => `<section class="menu-sec"><h3 class="sec-t">${t}</h3><div class="juegos-grid">${ms.map((m, k) => tile(m, m === "arena" || m === "preguntas" || m === "adivina" || m === "basta")).join("")}</div></section>`).join("")}`;
   on("verEnLinea", () => go("enLinea"));
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
     S.mode = b.dataset.modo; S.online = false;
@@ -216,6 +218,7 @@ PANTALLAS.home = () => {
     if (S.mode === "poker") return go("pokerIntro");
     if (S.mode === "carrera") return go("carreraIntro");
     if (S.mode === "arena") return go("arenaIntro");
+    if (S.mode === "adivina") return go("adivinaIntro");
     if (EXTRA[S.mode]) return go(S.mode + "Intro");
     go(S.mode === "ajedrez" || S.mode === "naval" ? "duelo" : "players");
   });

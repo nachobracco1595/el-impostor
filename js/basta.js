@@ -77,11 +77,23 @@ const Basta = {
     Basta.nuevaRonda(s);
     return s;
   },
+  /* Sorteo de la letra: las más usadas en castellano salen más seguido (A, C, M, P, S…) y las raras menos (Z, U, I…).
+     Además se acuerda de las últimas letras que salieron en este teléfono (también entre partidas) para no repetirlas pronto. */
+  PESOS: { A: 10, B: 7, C: 10, D: 7, E: 7, F: 6, G: 6, H: 4, I: 3, J: 4, L: 8, M: 9, N: 6, O: 4, P: 9, R: 7, S: 9, T: 8, U: 2, V: 5, Z: 2, K: 1, Ñ: 1, Q: 2, W: 1, X: 1, Y: 1 },
+  sortear(letras, usadas) {
+    const recientes = store.get("bastaRecientes", []), evitar = new Set([...usadas, ...recientes.slice(-Math.min(12, letras.length - 4))]);
+    let libres = letras.filter(l => !evitar.has(l));
+    if (!libres.length) libres = letras.filter(l => !usadas.includes(l));
+    if (!libres.length) libres = letras;
+    const tot = libres.reduce((t, l) => t + (Basta.PESOS[l] || 3), 0);
+    let r = Math.random() * tot, letra = libres[libres.length - 1];
+    for (const l of libres) { r -= Basta.PESOS[l] || 3; if (r < 0) { letra = l; break; } }
+    store.set("bastaRecientes", [...recientes, letra].slice(-20));
+    return letra;
+  },
   nuevaRonda(s) {
     s.ronda++;
-    let libres = s.letras.filter(l => !s.usadas.includes(l));
-    if (!libres.length) libres = s.letras;
-    s.letra = pick(libres); s.usadas.push(s.letra);
+    s.letra = Basta.sortear(s.letras, s.usadas); s.usadas.push(s.letra);
     Object.assign(s, { fase: "ruleta", hasta: Date.now() + BA.RULETA, bastaPor: -1, bastaFin: 0, limite: 0, votos: {}, motivo: "" });
     s.jug.forEach(J => { J.resp = s.cats.map(() => ""); J.listo = false; J.plan = null; });
     s.mov++;

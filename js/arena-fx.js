@@ -29,8 +29,15 @@ const ArenaFX = {
     return (this.mon[key] = c);
   },
 
+  /* Contorno del monstruo (silueta oscura con filo de luz, igual que los héroes) */
+  contorno(k) {
+    const key = "c" + k; if (this.mon[key]) return this.mon[key];
+    const im = this.sprite(k); if (!im.complete || !im.naturalWidth) return null;
+    return (this.mon[key] = Arena.silueta(im, im.naturalWidth, im.naturalHeight, 5));
+  },
+
   /* ---------- Partículas con textura ---------- */
-  emitir(n, p) { (n.fxp = n.fxp || []).push({ t0: performance.now(), vx: 0, vy: 0, grav: 0, rot: Math.random() * 6.28, vrot: 0, tam: 24, crece: 1, alfa: 1, add: true, ...p }); if (n.fxp.length > 320) n.fxp.splice(0, n.fxp.length - 320); },
+  emitir(n, p) { if (ArenaPixi.lo && ArenaPixi.activo && Math.random() < 0.5) return; (n.fxp = n.fxp || []).push({ t0: performance.now(), vx: 0, vy: 0, grav: 0, rot: Math.random() * 6.28, vrot: 0, tam: 24, crece: 1, alfa: 1, add: true, ...p }); if (n.fxp.length > 320) n.fxp.splice(0, n.fxp.length - 320); },
   rafaga(n, x, y, tex, color, k, vel, extra = {}) {
     for (let i = 0; i < k; i++) { const a = Math.random() * 6.28, s = vel * (0.35 + Math.random() * 0.65); this.emitir(n, { x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, tex, color, vida: 420 + Math.random() * 300, tam: 14 + Math.random() * 14, crece: 0.4, vrot: (Math.random() - 0.5) * 8, ...extra }); }
   },
@@ -91,14 +98,17 @@ const ArenaFX = {
     const tam = (j.tam || 1) * 66, w = tam * im.naturalWidth / Math.max(im.naturalWidth, im.naturalHeight), h = tam * im.naturalHeight / Math.max(im.naturalWidth, im.naturalHeight);
     const golpeado = j.hit !== undefined && vt - j.hit < 160, pegando = vt - j.golpe < 220;
     const paso = anda ? Math.sin(t * 12 + x * 0.01) : 0, rebote = anda ? Math.abs(paso) * 5 : Math.sin(t * 3 + x) * 1.5;
-    // Sombra
-    ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 16, w * 0.4, 9 * (j.tam || 1), 0, 0, 7); ctx.fill();
-    ctx.save(); ctx.translate(x + (golpeado ? Math.sin(vt / 12) * 4 : 0), y + 18 - rebote);
+    // Sombra suave
+    ctx.drawImage(Arena.sombra(), x - w * 0.48, y + 16 - 10 * (j.tam || 1), w * 0.96, 20 * (j.tam || 1));
+    const kg = golpeado ? Math.max(0, 1 - (vt - j.hit) / 160) : 0;
+    ctx.save(); ctx.translate(x + (golpeado ? Math.sin(vt / 12) * 2 - (j.cara || 1) * 6 * kg : 0), y + 18 - rebote);
     if (j.cara < 0) ctx.scale(-1, 1);
     ctx.rotate(anda ? paso * 0.07 : 0);
     // Se estira al atacar y se aplasta al caminar
-    const sx = pegando ? 1.12 : 1 + Math.abs(paso) * 0.04, sy = pegando ? 0.9 : 1 - Math.abs(paso) * 0.04;
+    const resp = anda ? 0 : Math.sin(t * 3 + x * 0.013) * 0.03;
+    const sx = (pegando ? 1.12 : 1 + Math.abs(paso) * 0.04 - resp) * (1 + kg * 0.12), sy = (pegando ? 0.9 : 1 - Math.abs(paso) * 0.04 + resp) * (1 - kg * 0.14);
     ctx.scale(sx, sy);
+    const co = this.contorno(j.sprite), r = w / im.naturalWidth; if (co) ctx.drawImage(co, -w / 2 - 7 * r, -h - 7 * r, co.width * r, co.height * r);
     ctx.drawImage(im, -w / 2, -h, w, h);
     if (golpeado) { const b = this.blanco(j.sprite); if (b) { ctx.globalAlpha = 0.85 * (1 - (vt - j.hit) / 160); ctx.drawImage(b, -w / 2, -h, w, h); ctx.globalAlpha = 1; } }
     ctx.restore();

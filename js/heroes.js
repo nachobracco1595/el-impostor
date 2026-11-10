@@ -747,6 +747,7 @@ PANTALLAS.arenaIntro = () => {
       <div class="tabs">${[["duelo", "1 contra 1"], ["todos", "Todos contra todos (4)"]].map(([k, n]) => `<button data-modo="${k}" aria-pressed="${cfg.modo === k}">${n}</button>`).join("")}</div>
       <div class="tabs">${[["facil", "Fácil"], ["normal", "Normal"], ["dificil", "Difícil"]].map(([k, n]) => `<button data-niv="${k}" aria-pressed="${cfg.nivel === k}">${n}</button>`).join("")}</div>
       <div class="opt"><div class="txt"><b>✨ Gráficos mejorados</b><small>Luces, antorchas y partículas (usa la placa de video). Apagalo si el teléfono va lento.</small></div><button class="switch" role="switch" aria-checked="${store.get("arenaPixi", true) !== false}" id="arPixi"></button></div>
+      <div class="opt"><div class="txt"><b>⚡ Calidad alta</b><small>Temblores, chispas y brillos extra en la Arena. Si el teléfono va trabado baja sola; apagala para que siempre vaya liviana.</small></div><button class="switch" role="switch" aria-checked="${store.get("arenaCalidad", "alta") !== "baja"}" id="arCal"></button></div>
       <button class="btn" id="arJugar">⚔️ ¡A pelear con ${esc(nombrePj)}!</button>
       <button class="btn ghost" id="arAmigos">Pelear con amigos (crear sala)</button>
     </div>
@@ -804,6 +805,7 @@ PANTALLAS.arenaIntro = () => {
   app.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, modo: b.dataset.modo }; render(); });
   app.querySelectorAll("[data-niv]").forEach(b => b.onclick = () => { S.arenaCfg = { ...cfg, nivel: b.dataset.niv }; render(); });
   ArenaPixi.cargar();
+  on("arCal", () => { store.set("arenaCalidad", store.get("arenaCalidad", "alta") === "baja" ? "alta" : "baja"); ArenaPixi.autoBaja = false; render(); });
   on("arPixi", () => { store.set("arenaPixi", store.get("arenaPixi", true) === false); render(); });
   on("arJugar", () => Arena.empezarLocal(cfg.modo, cfg.nivel, cfg.esc));
   on("toEntrar", () => Torre.entrar());

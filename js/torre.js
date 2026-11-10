@@ -172,9 +172,12 @@ const Torre = {
   barra(v) {
     this.unirse(v);
     const yo = v.jug[v.yo], H = v.horda, humanos = v.jug.filter(j => j.equipo === "h" && !j.inv);
-    const chip = j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.max(0, j.hp / j.max) * 100}%"></i></span>`;
+    const chip = j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : "aliado"}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:calc((100% - 12px) * ${Math.round(Math.max(0, j.hp / j.max) * 1000) / 1000})"></i></span>`;
+    // Barra grande del jefe mientras está vivo
+    const J = H.jefe && v.jug.find(j => j.equipo === "m" && j.tam > 1 && j.vivo);
+    const barraJefe = J ? `<div class="ar-jefe"><b>${J.evoIc || "☠️"} ${esc(J.name)}</b><i style="width:calc((100% - 20px) * ${Math.round(Math.max(0, J.hp / J.max) * 1000) / 1000})"></i></div>` : "";
     return `${humanos.map(chip).join("")}<span class="ar-chip to-chip"><b>🗼 Piso ${H.piso}${H.jefe ? " · Jefe" : ""}</b></span><span class="ar-chip to-chip"><b>🌊 ${H.ola}/${H.olas} · 👹 ${H.vivos}</b></span>
-      ${yo && !yo.vivo && v.fase !== "fin" && humanos.some(j => j.vivo) ? `<span class="ar-chip to-chip"><b>💀 Caíste: volvés en el próximo piso</b></span>` : ""}`;
+      ${yo && !yo.vivo && v.fase !== "fin" && humanos.some(j => j.vivo) ? `<span class="ar-chip to-chip"><b>💀 Caíste: volvés en el próximo piso</b></span>` : ""}${barraJefe}`;
   },
   fin(v, el) {
     const H = v.horda, f = H.piso, yo = v.jug[v.yo], jefe = !v.online || v.isHost;

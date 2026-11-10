@@ -2027,3 +2027,53 @@ body:has(.ba-form) .audio-ctl { display: none; }
 .ba-hist th { font-family: var(--display); font-weight: 400; color: #ff922b; }
 .ba-hist td:first-child { text-align: left; white-space: nowrap; }
 .ba-hist tr.yo td { color: var(--spot); }
+
+/* ---------- Arena: interfaz pulida (chips, avisos, cartel de la torre, botones con recarga, resultados) ---------- */
+.arena .ar-chip { background: linear-gradient(180deg, rgba(38, 32, 62, .92), rgba(14, 12, 24, .9)); border-color: rgba(255, 255, 255, .1); border-radius: 12px; padding: 4px 9px 10px; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); }
+.arena .ar-chip::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 4px; border-radius: 3px; background: rgba(255, 255, 255, .1); }
+.arena .ar-chip i { left: 6px; bottom: 3px; height: 4px; border-radius: 3px; z-index: 1; background: linear-gradient(90deg, #ff4d63, #ff8787); }
+.arena .ar-chip.yo { border-color: var(--teal); box-shadow: 0 3px 10px rgba(0, 0, 0, .35), 0 0 12px rgba(61, 220, 177, .3); }
+.arena .ar-chip.yo i { background: linear-gradient(90deg, #12b886, #3ddcb1); }
+.arena .ar-chip.aliado i { background: linear-gradient(90deg, #1c7ed6, #4dabf7); }
+.arena .ar-chip.to-chip { background: linear-gradient(180deg, rgba(132, 94, 247, .8), rgba(76, 48, 170, .8)); padding-bottom: 4px; }
+.arena .ar-chip.to-chip::after { display: none; }
+.arena .ar-jefe { position: relative; flex-basis: 100%; padding: 4px 10px 14px; border-radius: 12px; text-align: center; font-size: 13px; background: linear-gradient(180deg, rgba(90, 12, 26, .92), rgba(28, 6, 12, .92)); border: 1px solid rgba(255, 77, 99, .6); box-shadow: 0 0 18px rgba(255, 40, 60, .35); }
+.arena .ar-jefe::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 5px; height: 6px; border-radius: 4px; background: rgba(0, 0, 0, .55); }
+.arena .ar-jefe i { position: absolute; left: 10px; bottom: 5px; height: 6px; border-radius: 4px; z-index: 1; background: linear-gradient(90deg, #c92a2a, #ff6b6b); box-shadow: 0 0 8px rgba(255, 80, 90, .7); }
+.arena .ar-feed span { align-self: flex-start; padding: 3px 10px 3px 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(20, 16, 34, .88), rgba(20, 16, 34, .5)); border-left: 3px solid var(--red); }
+.arena .ar-feed span:first-child { animation: arFeed .35s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes arFeed { from { transform: translateX(-30px); opacity: 0; } }
+.arena .ar-centro { font-size: 96px; text-shadow: 0 6px 0 rgba(0, 0, 0, .55), 0 0 30px rgba(255, 197, 61, .45); }
+.arena .ar-centro.pop { animation: arCuenta .6s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes arCuenta { 0% { transform: scale(2.6) rotate(-8deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: none; } }
+.arena .ar-centro.ya { font-size: 54px; color: var(--spot); white-space: nowrap; padding: 6px 34px; background: linear-gradient(90deg, transparent, rgba(12, 10, 24, .8) 18%, rgba(12, 10, 24, .8) 82%, transparent); text-shadow: 0 5px 0 #7a3d00, 0 0 24px rgba(255, 197, 61, .6); }
+.arena .ar-centro.ya.pop { animation: arYa .9s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes arYa { 0% { transform: scale(.3) rotate(-6deg); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 40% { transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
+.ar-banner { position: absolute; left: 0; right: 0; top: 24%; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 16px; text-align: center; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(12, 10, 24, .85) 20%, rgba(12, 10, 24, .85) 80%, transparent); }
+.ar-banner b { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1.1; color: #fff; text-shadow: 0 4px 0 rgba(0, 0, 0, .5); }
+.ar-banner small { font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--spot); }
+.ar-banner.jefe { background: linear-gradient(90deg, transparent, rgba(110, 10, 26, .9) 20%, rgba(110, 10, 26, .9) 80%, transparent); }
+.ar-banner.jefe small { color: #ffa8a8; }
+.ar-banner.ola small { color: var(--teal); }
+.ar-banner.on { animation: arBanner 2.2s ease both; }
+.ar-banner.on b { animation: arBannerTx .6s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes arBanner { 0% { opacity: 0; transform: scaleY(.2); } 10% { opacity: 1; transform: scaleY(1.08); } 16% { transform: none; } 82% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
+@keyframes arBannerTx { 0% { transform: scale(1.7); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; } }
+.arena .ar-esp { background: radial-gradient(circle at 40% 30%, #5a4383, #3b2a55 65%); box-shadow: 0 4px 0 rgba(0, 0, 0, .35), 0 8px 18px rgba(0, 0, 0, .45); }
+.arena .ar-pod { background: radial-gradient(circle at 40% 30%, #7a4a1f, #4a2a12 65%); }
+.arena .ar-esp i { inset: 0; height: auto; border-radius: 50%; background: conic-gradient(rgba(6, 4, 14, .72) calc(var(--p, 0) * 1turn), rgba(255, 255, 255, .05) 0); }
+.arena .ar-esp::after { content: attr(data-s); position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; font: 900 20px/1 var(--body); color: #fff; text-shadow: 0 2px 4px #000; pointer-events: none; }
+.arena .ar-esp:not(.listo) span { opacity: .55; }
+.arena .ar-esp.listo { animation: arListo .45s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes arListo { 0% { transform: scale(.85); } 50% { transform: scale(1.18); } 100% { transform: none; } }
+.arena .ar-fin { background: radial-gradient(circle at 50% 38%, rgba(44, 32, 80, .55), rgba(5, 4, 10, .84)); }
+.arena .ar-fin-caja { background: linear-gradient(180deg, #2c2446, var(--card) 45%); border-color: rgba(255, 197, 61, .35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 20px 50px rgba(0, 0, 0, .6), 0 0 40px rgba(255, 197, 61, .12); animation: arCaja .45s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes arCaja { from { transform: translateY(24px) scale(.92); opacity: 0; } }
+.arena .ar-fin-caja h2 { font-family: var(--display); font-weight: 400; font-size: 30px; color: var(--spot); text-shadow: 0 3px 0 rgba(0, 0, 0, .45), 0 0 22px rgba(255, 197, 61, .35); }
+.arena .ar-fin-caja .tr-premio div { animation: arFila .4s .15s both; }
+.arena .ar-tabla li { animation: arFila .4s both; }
+.arena .ar-tabla li:nth-child(2) { animation-delay: .08s; } .arena .ar-tabla li:nth-child(3) { animation-delay: .16s; } .arena .ar-tabla li:nth-child(n+4) { animation-delay: .24s; }
+.arena .ar-tabla li:first-child { background: linear-gradient(90deg, rgba(255, 197, 61, .22), var(--card-2) 70%); }
+.arena .ar-tabla li:first-child > span { color: var(--spot); font-weight: 900; }
+@keyframes arFila { from { transform: translateY(10px); opacity: 0; } }
+.arena .ar-top:has(.ar-jefe) ~ .ar-feed { top: calc(122px + var(--sat)); }

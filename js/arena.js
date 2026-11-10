@@ -478,6 +478,7 @@ const Arena = {
       <div class="ar-top" id="arTop"></div>
       <div class="ar-feed" id="arFeed"></div>
       <div class="ar-centro" id="arCentro" hidden></div>
+      <div class="ar-banner" id="arBanner" hidden></div>
       <div class="nv-joy" id="arJoy"><i></i></div>
       <button class="ar-esp" id="arEsp" aria-label="Habilidad especial"><span id="arEspIc"></span><i id="arEspCd"></i></button>
       <button class="ar-esp ar-pod" id="arPod" aria-label="Poder" hidden><span id="arPodIc"></span><i id="arPodCd"></i></button>
@@ -635,6 +636,27 @@ const Arena = {
     return this.img[k];
   },
 
+  /* Sombra suave del piso (una sola vez) */
+  sombra() {
+    if (this.img.sombra) return this.img.sombra;
+    const c = document.createElement("canvas"); c.width = 64; c.height = 24; const x = c.getContext("2d"); x.scale(1, 24 / 64);
+    const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, "rgba(0,0,0,.6)"); g.addColorStop(0.55, "rgba(0,0,0,.32)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64); return (this.img.sombra = c);
+  },
+  /* Contorno del muñeco: silueta oscura engordada y un filo claro arriba a la izquierda (se guarda por look) */
+  contorno(look) {
+    const img = Mundo.muneco(look), k = "c" + (look.color || "") + (look.acc || []).join();
+    if (!this.img[k] && img.complete && img.naturalWidth) this.img[k] = Arena.silueta(img, 120, 134, 4);
+    return this.img[k];
+  },
+  silueta(img, w, h, r) {
+    const s = document.createElement("canvas"); s.width = w; s.height = h; const sx = s.getContext("2d");
+    sx.drawImage(img, 0, 0, w, h); sx.globalCompositeOperation = "source-in"; sx.fillStyle = "#120e1c"; sx.fillRect(0, 0, w, h);
+    const p = r + 2, c = document.createElement("canvas"); c.width = w + p * 2; c.height = h + p * 2; const x = c.getContext("2d");
+    x.globalAlpha = 0.85; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; x.drawImage(s, p + Math.cos(a) * r, p + Math.sin(a) * r); }
+    sx.fillStyle = "#fff4dc"; sx.fillRect(0, 0, w, h); x.globalAlpha = 0.6; x.drawImage(s, p - r * 0.75, p - r * 0.75);
+    return c;
+  },
   /* Personaje con equipo dibujado encima: casco, pechera, botas y arma según el nivel */
   dibujarLuchador(ctx, j, x, y, t, anda, vt) {
     const look = j.look || { color: colorDe(j.name), acc: [] }, img = Mundo.muneco(look);
@@ -642,15 +664,19 @@ const Arena = {
     const golpeado = j.hit !== undefined && vt - j.hit < 160;
     // Invisible (o hecho sombra): los demás apenas ven un brillito (sin sombra, nombre ni vida); uno mismo se ve transparente
     const invis = vt < j.invis || vt < j.sombra;
-    if (j.sprite) { const h = ArenaFX.monstruo(ctx, j, x, y, t, anda, vt); if (h !== false) { if (j.name) this.nombreVida(ctx, j, x, y + 10 - h); return; } }
+    if (j.sprite) { const h = ArenaFX.monstruo(ctx, j, x, y, t, anda, vt); if (h !== false) { if (j.name && !j.sinNombre) this.nombreVida(ctx, j, x, y + 10 - h); return; } }
     if (invis && !j.esYo) { ctx.save(); ctx.globalAlpha = 0.07 + Math.sin(t * 7) * 0.03; ctx.translate(x, y); if (j.cara < 0) ctx.scale(-1, 1); if (img.complete) ctx.drawImage(img, -30, -46, 60, 67); ctx.restore(); ctx.globalAlpha = 1; return; }
-    // Sombra y anillo de la clase
-    ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 16, 24, 9, 0, 0, 7); ctx.fill();
+    // Sombra suave (imagen guardada: más linda y más barata que un degradé por cuadro)
+    const tm = j.tam || 1; ctx.drawImage(this.sombra(), x - 30 * tm, y + 16 - 11 * tm, 60 * tm, 22 * tm);
     const SK = j.skin && HE.SKIN[j.skin];
     if (SK && SK.aura) { const g = ctx.createRadialGradient(x, y + 14, 4, x, y + 14, 34); g.addColorStop(0, SK.aura); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.save(); ctx.globalAlpha *= 0.45 + Math.sin(t * 4) * 0.15; ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y + 14, 34, 13, 0, 0, 7); ctx.fill(); ctx.restore(); }
     if (vt < j.invul || invis) ctx.globalAlpha = invis ? 0.4 : 0.45;
-    const fest = j.festeja, salto = fest ? Math.abs(Math.sin(t * 7)) * 22 : anda ? Math.abs(Math.sin(t * 11)) * 4 : Math.sin(t * 3) * 1;
-    const temblor = golpeado ? Math.sin(vt / 12) * 4 : 0;
+    const fest = j.festeja, rebote = Math.abs(Math.sin(t * 11)), salto = fest ? Math.abs(Math.sin(t * 7)) * 22 : anda ? rebote * 5 : 0;
+    // Golpe recibido: se aplasta y retrocede un poco (solo el dibujo, la posición real no cambia)
+    const kg = golpeado ? Math.max(0, 1 - (vt - j.hit) / 160) : 0, temblor = golpeado ? Math.sin(vt / 12) * 2 - (j.cara || 1) * 6 * kg : 0;
+    // Respira quieto, se estira y aplasta al caminar y se tira para adelante al atacar
+    const kp = vt >= j.golpe && vt - j.golpe < 140 ? 1 - (vt - j.golpe) / 140 : 0;
+    const sy = (anda ? 0.95 + rebote * 0.08 : 1 + Math.sin(t * 3.2 + x * 0.013) * 0.03) * (1 - kg * 0.14), sx = (1 + kp * 0.06 + kg * 0.04) / sy;
     // Giro del guerrero: la espada da vueltas alrededor
     // Poderes: aura dorada de la inmortalidad, estela de la súper velocidad y aura roja de absorber vida
     this.dibujarPoder(ctx, j, x, y, t, vt);
@@ -660,11 +686,13 @@ const Arena = {
       ctx.globalAlpha = 1; ctx.rotate(ang); const g = ctx.createLinearGradient(0, 0, 72, 0); g.addColorStop(0, oscurecer(col, 0.7)); g.addColorStop(0.6, "#fff"); g.addColorStop(1, col);
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(18, -4); ctx.lineTo(70, -2); ctx.lineTo(76, 0); ctx.lineTo(70, 2); ctx.lineTo(18, 4); ctx.fill(); ctx.restore();
     }
-    ctx.save(); ctx.translate(x + temblor, y - salto); if (j.tam && j.tam !== 1) ctx.scale(j.tam, j.tam); if (j.cara < 0) ctx.scale(-1, 1);
+    ctx.save(); ctx.translate(x + temblor + kp * 5 * (j.cara || 1), y - salto); if (j.tam && j.tam !== 1) ctx.scale(j.tam, j.tam); if (j.cara < 0) ctx.scale(-1, 1);
+    ctx.translate(0, 20); ctx.scale(sx, sy); ctx.translate(0, -20);
     // Inclinación al caminar
     if (anda) ctx.rotate(Math.sin(t * 11) * 0.06);
     if (SK && SK.opac) ctx.globalAlpha *= SK.opac;
-    if (img.complete) ctx.drawImage(SK && SK.tinte ? this.tenido(look, SK) : img, -30, -46, 60, 67);
+    // Contorno oscuro con un filo de luz arriba: despega al personaje del piso
+    if (img.complete) { const co = this.contorno(look); if (co) ctx.drawImage(co, -33, -49, 66, 73); ctx.drawImage(SK && SK.tinte ? this.tenido(look, SK) : img, -30, -46, 60, 67); }
     if (golpeado) { const b = this.blanco(look); if (b) { ctx.globalAlpha = 0.85 * (1 - (vt - j.hit) / 160); ctx.drawImage(b, -30, -46, 60, 67); ctx.globalAlpha = invis ? 0.4 : vt < j.invul ? 0.45 : 1; } }
     // Botas
     if (j.eq.botas >= 0) { ctx.fillStyle = N("botas").color; ctx.beginPath(); ctx.roundRect(-17, 9, 14, 9, 3); ctx.roundRect(3, 9, 14, 9, 3); ctx.fill(); ctx.strokeStyle = "#0007"; ctx.lineWidth = 1.2; ctx.stroke(); }
@@ -751,7 +779,7 @@ const Arena = {
     if (j.eq.arma >= 6 || j.eq.armadura >= 6) { ctx.strokeStyle = N(j.eq.arma >= j.eq.armadura ? "arma" : "armadura").color; ctx.globalAlpha = 0.35 + Math.sin(t * 3) * 0.15; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 14, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
     if (j.quema) { ctx.font = "15px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("🔥", x - 22, y - 44); }
     if (vt < j.lento) { ctx.fillStyle = "rgba(116,192,252,.25)"; ctx.beginPath(); ctx.arc(x, y - 14, 30, 0, 7); ctx.fill(); ctx.font = "16px " + FE; ctx.textAlign = "center"; ctx.fillStyle = "#000"; ctx.fillText("❄️", x + 22, y - 44); }
-    if (!j.name) return;
+    if (!j.name || j.sinNombre) return;
     this.nombreVida(ctx, j, x, y - 68 - ((j.tam || 1) - 1) * 60);
   },
 
@@ -782,10 +810,22 @@ const Arena = {
   nombreVida(ctx, j, x, yN) {
     ctx.textAlign = "center"; ctx.font = "bold 13px Figtree, " + FE; ctx.lineWidth = 3.5; ctx.strokeStyle = "#000b";
     const nom = `${j.evoIc || AR.CLASES[j.clase].ic} ${j.name}${j.lv && !j.equipo ? ` · ${j.pre ? HE.PRESTIGIO[j.pre - 1].ic : ""}${j.lv}` : ""}`; ctx.strokeText(nom, x, yN); ctx.fillStyle = "#fff"; ctx.fillText(nom, x, yN);
-    const p = Math.max(0, j.hp / j.max), yb = yN + 6;
-    ctx.fillStyle = "#000c"; ctx.beginPath(); ctx.roundRect(x - 28, yb, 56, 9, 4.5); ctx.fill();
-    ctx.fillStyle = j.equipo === "m" ? (p > 0.5 ? "#ff6b6b" : "#e03131") : p > 0.5 ? "#3ddcb1" : p > 0.25 ? "#ffc53d" : "#ff4d63"; ctx.beginPath(); ctx.roundRect(x - 27, yb + 1, Math.max(3, 54 * p), 7, 3.5); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - 25, yb + 2, Math.max(0, 50 * p), 2);
+    const p = Math.max(0, Math.min(1, j.hp / j.max)), yb = yN + 6, w = j.tam > 1 && j.equipo === "m" ? 84 : 54, f = this.fantasmaDe(j.id, p, performance.now());
+    ctx.fillStyle = "#0b0912d9"; ctx.beginPath(); ctx.roundRect(x - w / 2 - 1, yb, w + 2, 9, 4.5); ctx.fill();
+    if (f > p) { ctx.fillStyle = "#fff1c1"; ctx.beginPath(); ctx.roundRect(x - w / 2, yb + 1, Math.max(7, w * f), 7, 3.5); ctx.fill(); }
+    if (p > 0) { ctx.fillStyle = this.LADOS[this.lado(j)][0]; ctx.beginPath(); ctx.roundRect(x - w / 2, yb + 1, Math.max(7, w * p), 7, 3.5); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(x - w / 2 + 2, yb + 2, Math.max(0, w * p - 4), 2); }
+  },
+  /* Color de la vida según el lado: vos, aliados (y tus bichos), rivales y monstruos */
+  LADOS: [["#3ddcb1", 0x3ddcb1], ["#4dabf7", 0x4dabf7], ["#ff6b6b", 0xff6b6b], ["#e8384f", 0xe8384f]],
+  lado(j) { const v = Arena.v, yo = v && v.jug[v.yo]; return !v || j.id === v.me ? 0 : yo && Arena.aliado(yo, j) ? 1 : j.equipo === "m" ? 3 : 2; },
+  /* Barra "fantasma": muestra un ratito lo que se acaba de perder y después baja despacio */
+  fantasmaDe(id, p, ahora) {
+    const F = this.fant = this.fant || {}; let f = F[id];
+    if (!f) { if (Object.keys(F).length > 150) this.fant = {}; f = this.fant[id] = { g: p, u: p, t: 0, a: ahora }; }
+    const dt = Math.min(0.1, (ahora - f.a) / 1000); f.a = ahora;
+    if (p < f.u - 1e-4) f.t = ahora; f.u = p;
+    if (p >= f.g) f.g = p; else if (ahora - f.t > 320) f.g = Math.max(p, f.g - dt * 0.9);
+    return f.g;
   },
 
   /* Cámara (la usan el dibujo de siempre y el de PixiJS): se aleja o se acerca sola para que veas a tu personaje y al rival más cercano */
@@ -816,17 +856,25 @@ const Arena = {
   interfaz(v, yo, vt) {
     if (yo) {
       const C = AR.CLASES[yo.clase], falta = Math.max(0, yo.cdE - vt), p = falta / C.esp.cd;
-      const cdEl = byId("arEspCd"); if (cdEl) { cdEl.style.height = p * 100 + "%"; byId("arEsp").classList.toggle("listo", falta <= 0 && v.fase === "pelea"); }
+      this.recarga(byId("arEsp"), p, falta, v.fase === "pelea");
       const P = yo.poder && HE.PODERES[yo.poder], pod = byId("arPod");
-      if (pod && P) { const f2 = Math.max(0, yo.cdP - vt); byId("arPodCd").style.height = Math.min(1, f2 / P.cd) * 100 + "%"; pod.classList.toggle("listo", f2 <= 0 && v.fase === "pelea"); }
+      if (pod && P) { const f2 = Math.max(0, yo.cdP - vt); this.recarga(pod, Math.min(1, f2 / P.cd), f2, v.fase === "pelea"); }
     }
     if (v.fase === "cuenta") { const c = byId("arCentro"); if (c) { const num = Math.max(1, Math.ceil((v.inicio - vt) / 1000)); c.hidden = false; if (c.textContent !== String(num)) { c.textContent = num; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } } }
+  },
+  /* Botón con anillo de recarga (--p) y los segundos que faltan; solo toca el DOM si algo cambió */
+  recarga(b, p, falta, pelea) {
+    if (!b) return;
+    const q = Math.round(Math.min(1, p) * 200) / 200, s = falta > 0 ? String(Math.ceil(falta / 1000)) : "";
+    if (b._p !== q) { b._p = q; b.style.setProperty("--p", q); }
+    if (b._s !== s) { b._s = s; b.dataset.s = s; }
+    const listo = falta <= 0 && pelea; if (b._l !== listo) { b._l = listo; b.classList.toggle("listo", listo); }
   },
   /* Animación al caer: se desploma, sale el fantasmita y queda la lápida */
   dibujarCaido(ctx, j, x, y, t, k) {
     if (k < 1) {
       ctx.save(); ctx.globalAlpha = 1 - k * 0.7; ctx.translate(x, y + 10); ctx.rotate((j.cara < 0 ? -1 : 1) * Math.min(1, k * 1.6) * 1.45); ctx.translate(-x, -(y + 10));
-      Arena.dibujarLuchador(ctx, { ...j, name: "", hit: undefined, invis: 0, giro: 0, vivo: true }, x, y, t, false, -1e9); ctx.restore();
+      Arena.dibujarLuchador(ctx, { ...j, name: "", hit: -1e9 - k * 1100, invis: 0, giro: 0, vivo: true }, x, y, t, false, -1e9); ctx.restore();
       const look = j.look || { color: colorDe(j.name || "x"), acc: [] }, b = j.sprite ? ArenaFX.blanco(j.sprite) : this.blanco(look);
       if (b) { ctx.globalAlpha = 0.55 * (1 - k); ctx.drawImage(b, x - 18, y - 60 - k * 70, 36, 40); ctx.globalAlpha = 1; }
     }
@@ -863,7 +911,7 @@ const Arena = {
     if (vt < j.drena && Math.random() < 0.4) Arena.particula(n, o.x + (Math.random() - 0.5) * 70, o.y - 14 + (Math.random() - 0.5) * 50, 0, -30, 500, "#ff6b6b", 4);
   },
   /* Partículas solo visuales (polvo, chispas, brasas) */
-  particula(n, x, y, vx, vy, vida, color, tam = 4, grav = 0) { n.part.push({ x, y, vx, vy, t0: performance.now(), vida, color, tam, grav }); if (n.part.length > 260) n.part.shift(); },
+  particula(n, x, y, vx, vy, vida, color, tam = 4, grav = 0) { if (ArenaPixi.lo && ArenaPixi.activo && Math.random() < 0.5) return; n.part.push({ x, y, vx, vy, t0: performance.now(), vida, color, tam, grav }); if (n.part.length > 260) n.part.shift(); },
 
   dibujar(cv, now) {
     const v = Arena.v, n = UI.arena, E = AR.ESCENARIOS[v.esc], D = Arena.decoracion(v.esc), dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1009,7 +1057,7 @@ const Arena = {
         ctx.stroke(); ctx.strokeStyle = "#ffe3e3"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
       }
       else if (f.tipo === "humo") { ctx.fillStyle = `rgba(80,70,110,${0.6 * (1 - k)})`; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(f.x + Math.cos(i * 1.3) * 20 * (1 + k), f.y + Math.sin(i * 1.3) * 14 * (1 + k), 18 + k * 16, 0, 7); ctx.fill(); } }
-      else if (f.tipo === "num") { const kk = (vt - f.t) / 1000; if (kk > 1) return; const esc2 = kk < 0.15 ? 0.6 + kk / 0.15 * 0.6 : 1.2 - kk * 0.2; ctx.globalAlpha = 1 - Math.max(0, kk - 0.5) * 2; ctx.save(); ctx.translate(f.x, f.y - kk * 50); ctx.scale(esc2, esc2); ctx.font = "900 24px Figtree, " + FE; ctx.lineWidth = 5; ctx.strokeStyle = "#000c"; ctx.strokeText(f.txt, 0, 0); ctx.fillStyle = f.color; ctx.fillText(f.txt, 0, 0); ctx.restore(); }
+      else if (f.tipo === "num") { const kk = (vt - f.t) / 1000; if (kk > 1) return; const esc2 = (kk < 0.12 ? 0.4 + kk / 0.12 * 1 : kk < 0.24 ? 1.4 - (kk - 0.12) / 0.12 * 0.4 : 1) * (f.color === "#ffd43b" && /\d$/.test(f.txt) ? 1.4 : 1); ctx.globalAlpha = 1 - Math.max(0, kk - 0.5) * 2; ctx.save(); ctx.translate(f.x, f.y - kk * 50); ctx.scale(esc2, esc2); ctx.font = "900 24px Figtree, " + FE; ctx.lineWidth = 5; ctx.strokeStyle = "#000c"; ctx.strokeText(f.txt, 0, 0); ctx.fillStyle = f.color; ctx.fillText(f.txt, 0, 0); ctx.restore(); }
       ctx.globalAlpha = 1;
     });
     if (n.vistos.size > 400) n.vistos = new Set([...n.vistos].slice(-200));
@@ -1045,13 +1093,14 @@ const Arena = {
     const top = byId("arTop"); if (!top) return;
     // Se pinta solo si cambió (se llama 20 veces por segundo)
     const poner = (el, h) => { if (el && el._h !== h) { el._h = h; el.innerHTML = h; } };
-    poner(top, v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : ""}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:${Math.round(Math.max(0, j.hp / j.max) * 1000) / 10}%"></i></span>`).join(""));
+    poner(top, v.horda ? Torre.barra(v) : v.jug.filter(j => !j.inv).map(j => `<span class="ar-chip ${j.vivo ? "" : "fuera"} ${j.id === v.me ? "yo" : "rival"}">${j.evoIc || AR.CLASES[j.clase].ic}<b>${esc(j.name)}</b><i style="width:calc((100% - 12px) * ${Math.round(Math.max(0, j.hp / j.max) * 1000) / 1000})"></i></span>`).join(""));
     poner(byId("arFeed"), v.feed.map(f => `<span>${esc(f.txt)}</span>`).join("") + (v.sub ? `<span class="sub">🔥 ¡Muerte súbita!</span>` : ""));
     if (yo) { const e = byId("arEspIc"), ic = AR.CLASES[yo.clase].esp.ic; if (e.textContent !== ic) e.textContent = ic; }
     const pod = byId("arPod"), P = yo && yo.poder && HE.PODERES[yo.poder];
     if (pod) { if (pod.hidden === !!P) pod.hidden = !P; if (P && byId("arPodIc").textContent !== P.ic) { byId("arPodIc").textContent = P.ic; pod.setAttribute("aria-label", "Poder: " + P.nombre); } }
     const c = byId("arCentro");
-    if (v.fase === "pelea" && c && !c.hidden && c.textContent !== "¡YA!") { c.textContent = "¡YA!"; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); setTimeout(() => { if (Arena.v && Arena.v.fase === "pelea") c.hidden = true; }, 700); }
+    if (v.fase === "pelea" && c && !c.hidden && c.textContent !== "¡PELEA!") { c.textContent = "¡PELEA!"; c.classList.add("ya"); c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); setTimeout(() => { if (Arena.v && Arena.v.fase === "pelea") c.hidden = true; }, 900); }
+    Arena.cartel(v);
     const fin = byId("arFin");
     if (v.fase === "fin" && fin && fin.hidden && v.horda) { fin.hidden = false; Torre.fin(v, fin); }
     if (v.fase === "fin" && fin && fin.hidden) {
@@ -1071,6 +1120,19 @@ const Arena = {
       on("arVolver", () => { if (Arena.opts.local) { Arena.parar(); go("arenaIntro"); } else if (v.isHost) Arena.send({ t: "lobby" }); else { UI.confirmSalir = true; render(); } });
     }
     if (v.fase !== "fin" && fin && !fin.hidden) fin.hidden = true;
+  },
+
+  /* Cartel grande de la torre: piso al empezar, cada ola nueva y la llegada del jefe */
+  cartel(v) {
+    const bn = byId("arBanner"), n = UI.arena, H = v.horda; if (!bn || !n || !H || v.fase === "fin") return;
+    const jefe = H.jefe && H.ola === H.olas && v.fase === "pelea" ? v.jug.find(j => j.equipo === "m" && j.tam > 1 && j.vivo) : null;
+    const clave = v.fase === "cuenta" ? "p" + H.piso : jefe ? "j" + H.piso : "o" + H.ola;
+    if (n.banner === clave) return; n.banner = clave;
+    const olas = `${H.olas} ola${H.olas > 1 ? "s" : ""}`;
+    const m = clave[0] === "p" ? [`🗼 Piso ${H.piso}`, H.jefe ? `${olas} · ¡jefe al final!` : olas, ""] : jefe ? [`${jefe.evoIc || "☠️"} ${esc(jefe.name)}`, "¡Llegó el jefe!", "jefe"] : H.ola > 1 ? [`🌊 Ola ${H.ola} de ${H.olas}`, "+15% de vida", "ola"] : null;
+    if (!m) return;
+    bn.innerHTML = `<small>${m[1]}</small><b>${m[0]}</b>`; bn.className = "ar-banner " + m[2]; bn.hidden = false; void bn.offsetWidth; bn.classList.add("on");
+    clearTimeout(n.tBanner); n.tBanner = setTimeout(() => { bn.hidden = true; }, 2200);
   },
 
   /* ---------- Contra la compu ---------- */

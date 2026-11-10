@@ -37,7 +37,8 @@ const Burako = {
       if (!otros.length) return null;
       const c = otros[0][0];
       if (!otros.every(t => t[0] === c)) return null;
-      for (const dosNat of [null, ...doses.filter(t => t[0] === c).slice(0, 1)]) for (const alto of [false, true]) {
+      // Primero se prueba el 2 del mismo color en su lugar (cuenta como 2, juego limpio); si no entra, como comodín
+      for (const dosNat of [...doses.filter(t => t[0] === c).slice(0, 1), null]) for (const alto of [false, true]) {
         if (alto && !otros.some(t => num(t) === 1)) continue;
         const nat = dosNat ? [...otros, dosNat] : otros, wild = [...jok, ...doses.filter(t => t !== dosNat)];
         if (wild.length > 1) continue;

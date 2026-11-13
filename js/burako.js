@@ -4,7 +4,8 @@
    - Juegos: escalera (3 o más seguidas del mismo color; el 1 va antes del 2 o después del 13) o pierna (3 o más del mismo número).
      Un solo comodín por juego. Con 7 fichas es canasta: limpia (sin comodín) 200 puntos, sucia 100.
    - Al quedarte sin fichas por primera vez tomas el muerto. Para cerrar hace falta haber tomado el muerto y tener una canasta.
-   - Cuenta: lo bajado suma, lo que queda en la mano resta, cerrar suma 100 y no tomar el muerto resta 100. */
+   - Cuenta: lo bajado suma (si el equipo no tiene canasta, resta), lo que queda en la mano resta, cerrar suma 100,
+     tomar el muerto suma 100 y no tomarlo resta 100. */
 const BK = {
   COLORES: { R: ["rojo", "#e03131"], A: ["azul", "#1c7ed6"], N: ["negro", "#212529"], Y: ["amarillo", "#e67700"] },
   METAS: [[0, "Una mano"], [1500, "A 1500"], [3000, "A 3000"]],
@@ -156,7 +157,9 @@ const Burako = {
       const mesa = s.mesa[q].reduce((t, j) => t + j.fichas.reduce((a, f) => a + Burako.valor(f), 0), 0);
       const canastas = s.mesa[q].reduce((t, j) => t + (j.canasta ? (j.limpia ? 200 : 100) : 0), 0);
       const mano = s.jug.filter((_, i) => Burako.equipo(s, i) === q).reduce((t, j) => t + j.mano.reduce((a, f) => a + Burako.valor(f), 0), 0);
-      const r = { mesa, canastas, cierre: cerro === q ? 100 : 0, mano: -mano, muerto: s.muertoTomado[q] ? 0 : -100 };
+      // Reglas de la casa: tomar el muerto suma 100 (no tomarlo resta 100) y sin canasta lo bajado también resta
+      const conCanasta = s.mesa[q].some(j => j.canasta);
+      const r = { mesa: conCanasta ? mesa : -mesa, canastas, cierre: cerro === q ? 100 : 0, mano: -mano, muerto: s.muertoTomado[q] ? 100 : -100, sinCanasta: !conCanasta };
       r.total = r.mesa + r.canastas + r.cierre + r.mano + r.muerto;
       return r;
     });
@@ -312,7 +315,7 @@ const Burako = {
     if (v.fase === "finMano" || v.fase === "fin") {
       const r = v.res, fila = (t, k) => `<tr><td>${t}</td>${[miEq, 1 - miEq].map(q => `<td class="${r.cuenta[q][k] < 0 ? "neg" : ""}">${r.cuenta[q][k] > 0 && k !== "total" ? "+" : ""}${r.cuenta[q][k]}</td>`).join("")}</tr>`;
       cartel = `${v.fase === "fin" ? `<div class="verdict ${v.ganador === miEq && v.yo >= 0 ? "good" : "bad"}"><div class="big">${v.yo < 0 ? `Ganó ${esc(eqNom(v.ganador))}` : v.ganador === miEq ? "¡Ganaron!" : "Perdieron"}</div><div class="note">${v.pts[miEq]} a ${v.pts[1 - miEq]}</div></div>` : `<div class="verdict"><div class="big">${r.cerro != null ? `Cerró ${esc(eqNom(r.cerro))}` : "Se terminó el mazo"}</div><div class="note">Mano ${v.ronda}${v.meta ? ` · se juega a ${v.meta}` : ""}</div></div>`}
-        <table class="bk-cuenta"><tr><th></th><th>${eqNom(miEq)}</th><th>${eqNom(1 - miEq)}</th></tr>${fila("Fichas bajadas", "mesa")}${fila("Canastas", "canastas")}${fila("Cierre", "cierre")}${fila("En la mano", "mano")}${fila("Muerto", "muerto")}${fila("<b>Total de la mano</b>", "total")}</table>
+        <table class="bk-cuenta"><tr><th></th><th>${eqNom(miEq)}</th><th>${eqNom(1 - miEq)}</th></tr>${fila("Fichas bajadas" + (r.cuenta.some(c => c.sinCanasta) ? " <small>(sin canasta restan)</small>" : ""), "mesa")}${fila("Canastas", "canastas")}${fila("Cierre", "cierre")}${fila("En la mano", "mano")}${fila("Muerto", "muerto")}${fila("<b>Total de la mano</b>", "total")}</table>
         ${opts.local || opts.isHost ? `<div class="row">${v.fase === "fin" ? `<button class="btn" id="bkOtra">Otra partida</button><button class="btn ghost" id="bkSalir">${opts.local ? "Inicio" : "Volver a la sala"}</button>` : `<button class="btn" id="bkSig">Siguiente mano</button>`}</div>` : `<p class="sub center">El anfitrión reparte la siguiente.</p>`}`;
     } else {
       const sel = U.sel, jg = sel.length >= 3 ? Burako.analizar(sel) : null;
@@ -348,7 +351,7 @@ const Burako = {
       ${marcador}${rivales}${aviso}${mesa}${levTxt}
       ${estado ? `<p class="aj-estado bk-estado">${estado}${v.log.length && !miTurno ? ` <small>${esc(v.log[v.log.length - 1])}.</small>` : ""}</p>` : ""}
       ${cartel}${mano}${botones}
-      <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Robás del mazo o levantás todo el pozo (las fichas tiradas); bajás juegos y tirás una ficha. <b>Escalera</b>: 3 o más seguidas del mismo color (el 1 va antes del 2 o después del 13). <b>Pierna</b>: 3 o más del mismo número. Un comodín por juego (★ y los 2). Con 7 fichas es <b>canasta</b>: limpia 200, sucia 100. Al quedarte sin fichas tomás el muerto. Para cerrar hay que haber tomado el muerto y tener una canasta: cerrar suma 100. Fichas: ★ 50, 2 → 20, 1 → 15, del 8 al 13 → 10, del 3 al 7 → 5. Lo de la mano resta.</p></details>
+      <details class="panel"><summary class="label">Reglas rápidas</summary><p class="summary">Robás del mazo o levantás todo el pozo (las fichas tiradas); bajás juegos y tirás una ficha. <b>Escalera</b>: 3 o más seguidas del mismo color (el 1 va antes del 2 o después del 13). <b>Pierna</b>: 3 o más del mismo número. Un comodín por juego (★ y los 2). Con 7 fichas es <b>canasta</b>: limpia 200, sucia 100. Al quedarte sin fichas tomás el muerto. Para cerrar hay que haber tomado el muerto y tener una canasta: cerrar suma 100. Tomar el muerto suma 100 y no tomarlo resta 100. Fichas: ★ 50, 2 → 20, 1 → 15, del 8 al 13 → 10, del 3 al 7 → 5. Lo de la mano resta, y <b>si el equipo no hizo ninguna canasta, lo bajado también resta</b>.</p></details>
     </section>`;
     // La ventana del pozo va directo en la página (dentro de la pantalla se descoloca con la animación de entrada)
     document.querySelectorAll(".bk-pozo-fondo").forEach(x => x.remove());

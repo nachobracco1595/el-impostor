@@ -44,6 +44,8 @@ async function cargar() {
   const [tb, tc, to, pc, cc] = await Promise.all([P.sb.rpc("panel_timba", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "timba").maybeSingle(), P.sb.from("config").select("valor").eq("clave", "torre").maybeSingle(),
     P.sb.rpc("panel_compras", { dias: P.dias }), P.sb.from("config").select("valor").eq("clave", "catalogo").maybeSingle()]);
   const rd = await P.sb.from("config").select("valor").eq("clave", "red").maybeSingle();
+  const lg = await P.sb.rpc("panel_ligas", { semana: semanaLiga() });
+  P.ligas = lg.error ? null : lg.data || {};
   P.red = Object.assign({ ice: [] }, (rd.data && rd.data.valor) || {});
   P.compras = pc.error ? null : pc.data;
   const cv = (cc.data && cc.data.valor) || {};
@@ -107,6 +109,11 @@ function pintar() {
     <h2>Eventos de temporada</h2>
     <p class="sub">Prende un evento y los jugadores ven el cartel en el inicio, los colores de la temporada, la pestaña especial en la tienda y el trabajo del evento.</p>
     ${pantallaEvento()}
+  </section>
+
+  <section class="tarjeta">
+    <h2>🎟️ Temporada y ligas</h2>
+    ${pantallaLigas()}
   </section>
 
   <section class="dos-col">
@@ -422,6 +429,19 @@ addEventListener("resize", () => { clearTimeout(redim); redim = setTimeout(() =>
 iniciar();
 
 /* ---------- Eventos de temporada (config "evento") ---------- */
+/* Temporada del pase y jugadores por liga esta semana (mismas cuentas que js/misiones.js) */
+const LIGAS_ADM = [["🥉", "Bronce"], ["🥈", "Plata"], ["🥇", "Oro"], ["💠", "Platino"], ["💎", "Diamante"], ["👑", "Leyenda"]];
+const TEMAS_ADM = ["Fiesta Loca", "Noche de Casino", "Leyendas de la Arena", "Misterio en la Mesa", "Galaxia Loca", "Verano Loco"];
+function semanaLiga() { const d = new Date(Date.now() - 3 * 36e5); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
+function pantallaLigas() {
+  const L = 28 * 864e5, n = Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 10, 23, 3)) / L)), fin = Date.UTC(2026, 10, 23, 3) + (n + 1) * L;
+  const dias = Math.ceil((fin - Date.now()) / 864e5), total = P.ligas ? Object.values(P.ligas).reduce((a, b) => a + (+b || 0), 0) : 0;
+  return `<p class="sub">Temporada ${n + 1}: <b>${TEMAS_ADM[n % TEMAS_ADM.length]}</b> · termina en ${dias} día${dias === 1 ? "" : "s"} (${new Date(fin).toLocaleDateString("es-AR")}).</p>
+    ${P.ligas ? `<p class="sub">Semana del ${semanaLiga()}: ${num(total)} jugadores con puntos de liga.</p>
+      <div class="kpis">${LIGAS_ADM.map(([ic, nom], i) => `<div class="kpi"><small>${ic} ${nom}</small><b>${num(P.ligas[i] || 0)}</b></div>`).join("")}</div>`
+      : `<p class="sub">Corre el SQL nuevo (supabase/esquema.sql) para ver las ligas.</p>`}`;
+}
+
 function pantallaEvento() {
   const e = P.evento || { id: null, items: {} }, E = EVENTOS[e.id];
   const prev = (tipo, valor) => tipo === "color" ? personaje(valor, "civ", 44) : tipo === "titulo" ? `<span class="tit-prev">«${esc(valor)}»</span>` : personaje("#748ffc", "civ", 44, [valor]);

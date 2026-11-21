@@ -51,7 +51,7 @@ const Cuenta = {
         <div class="xp"><i style="width:${nv.pct}%"></i></div></div>
       <div class="yc-acc"><button class="yc-mon ${regalo ? "aviso" : ""}" id="verTienda" aria-label="Tienda, ${u.monedas} monedas">🪙 <b>${u.monedas}</b></button>
         <div class="yc-btns">${typeof Social !== "undefined" ? Social.boton() : ""}<button class="btn ghost chico" id="verRanking" aria-label="Ranking">🏆</button></div></div>
-    </div>`;
+    </div>${typeof Progreso !== "undefined" ? Progreso.hub(u) : ""}`;
   },
   conectarBarra() {
     on("entrar2", () => go("cuenta"));
@@ -61,6 +61,7 @@ const Cuenta = {
     on("verRanking", () => go("ranking"));
     on("verTienda", () => go("tienda"));
     on("verAmigos", () => go("amigos"));
+    if (typeof Progreso !== "undefined") Progreso.conectar();
   },
 
   /* Después de cada pantalla: si terminó una partida, suma puntos (una sola vez) */
@@ -89,7 +90,7 @@ const Cuenta = {
     if (!hechos.length) return;
     if (hechos.length === 1) {
       const h = hechos[0];
-      Toast.mostrar(`<div class="t-pts">+${h.puntos}<small>puntos</small></div><div class="t-txt"><b>${esc(h.usuario.nombre)} · +${h.monedas} 🪙</b>${h.detalle.map(([t, p]) => `<span>${esc(t)} <em>+${p}</em></span>`).join("")}</div>`, "puntos");
+      Toast.mostrar(`<div class="t-pts">+${h.puntos}<small>puntos</small></div><div class="t-txt"><b>${esc(h.usuario.nombre)} · +${h.monedas} 🪙</b>${h.detalle.map(([t, p]) => `<span>${esc(t)} <em>+${p}</em></span>`).join("")}${h.pase ? `<span class="t-prog">🎟️ +${h.pase} XP${h.lp ? ` · 🏆 +${h.lp} LP` : ""}</span>` : ""}</div>`, "puntos");
     } else {
       Toast.mostrar(`<div class="t-txt"><b>Puntos de la partida</b>${hechos.map(h => `<span>${esc(h.usuario.nombre)} <em>+${h.puntos} pts · +${h.monedas} 🪙</em></span>`).join("")}</div>`, "puntos");
     }
@@ -370,7 +371,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"], ["adivina", "📱 Adivina"], ["basta", "✋ Basta"]];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"], ["adivina", "📱 Adivina"], ["basta", "✋ Basta"], ...(typeof Liga !== "undefined" ? [["liga", "🏆 Liga"]] : [])];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}
@@ -389,7 +390,7 @@ PANTALLAS.ranking = () => {
       <p class="summary">Niveles: ${NIVELES.map(([p, t], i) => `${i + 1}. ${t} (${p})`).join(" · ")} · y siguen sin fin: ${[10, 14, 15, 20, 25, 30].map(n => `${n}. ${tituloNivel(n)} (${puntosNivel(n)})`).join(" · ")}…</p></details>
     <button class="btn ghost" id="volver">Volver</button>
   </section>`;
-  app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { UI.tabRank = b.dataset.tab; render(); });
+  app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { if (b.dataset.tab === "liga") { UI.tabPg = "liga"; return go("progreso"); } UI.tabRank = b.dataset.tab; render(); });
   app.querySelectorAll("[data-scope]").forEach(b => b.onclick = () => { UI.rankScope = b.dataset.scope; render(); });
   app.querySelectorAll("[data-tarjeta]").forEach(li => li.onclick = () => Tarjeta.abrir({ id: li.dataset.tarjeta }));
   on("crear", () => { UI.creando = !Nube.config(); go("cuenta"); });

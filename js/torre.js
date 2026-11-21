@@ -149,6 +149,7 @@ const Torre = {
       if (f % 5 === 0) { t.base = Math.max(t.base | 0, f + 1); this.regenerar(u); r.vidas = true; }
       const sa = u.stats.arena = u.stats.arena || {}; sa.torreMejor = Math.max(sa.torreMejor | 0, f);
       r = { ...p, sinPremio: false, vidas: f % 5 === 0, botin: Heroes.botinTorre(u, clase, f) };
+      if (typeof Misiones !== "undefined") try { Misiones.evento("torre", { piso: f }, u); } catch (e) { console.warn(e); }
     }
     r.base = t.base; r.quedan = this.quedan(u);
     hechos[k] = r; store.set("torreCobrado", Object.fromEntries(Object.entries(hechos).slice(-30)));

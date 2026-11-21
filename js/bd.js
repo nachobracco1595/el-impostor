@@ -249,9 +249,12 @@ const BD = {
     u.contadas = [clave, ...u.contadas].slice(0, 100);
     const nuevos = LOGROS.filter(l => !u.logros[l.id] && l.ok(u));
     nuevos.forEach(l => u.logros[l.id] = Date.now());
+    // Misiones, pase de temporada y liga (js/misiones.js)
+    let prog = null;
+    if (typeof Misiones !== "undefined") try { prog = Misiones.evento("partida", { res, calc, online: typeof Net !== "undefined" && Net.activo() }, u); } catch (e) { console.warn(e); }
     this.guardar();
     if (u.nube && typeof Nube !== "undefined") { Nube.subir(u); Nube.actividad("partida", res.juego, calc.puntos, monedas); }
-    return { ...calc, monedas, logros: nuevos, usuario: u };
+    return { ...calc, monedas, logros: nuevos, usuario: u, pase: prog ? prog.xp : 0, lp: prog ? prog.lp : 0 };
   },
 
   /* Exporta solo los perfiles locales: los de la nube ya están guardados allá */

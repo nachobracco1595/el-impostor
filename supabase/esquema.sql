@@ -737,3 +737,71 @@ do $$ begin
     $c$select net.http_post(url := 'https://brvpaoerqcioqxeirxmq.supabase.co/functions/v1/smooth-function', body := '{"tipo": "recordatorios"}'::jsonb, headers := '{"Content-Type": "application/json"}'::jsonb)$c$);
 exception when others then raise notice 'pg_cron no disponible: %', sqlerrm;
 end $$;
+
+-- ============ Ligas semanales (js/misiones.js) ============
+-- Cada perfil guarda en diario.liga: { semana: 'AAAA-MM-DD' (el lunes, hora de Argentina), tier: 0 Bronce … 5 Leyenda, lp,
+--   ant: { semana, tier, lp } (la semana anterior, para poder armar los grupos viejos aunque ya haya empezado otra) }.
+-- Grupos: los de la misma liga esa semana con al menos 1 LP, mezclados por md5(id || semana) y cortados de a 20.
+create index if not exists perfiles_liga_semana_idx on public.perfiles ((diario -> 'liga' ->> 'semana'));
+create index if not exists perfiles_liga_ant_idx on public.perfiles ((diario -> 'liga' -> 'ant' ->> 'semana'));
+
+-- Grupo de un jugador en una semana (uso interno: solo nombre, personaje, LP y liga)
+create or replace function public.liga_grupo_de(quien uuid, cual text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  with sem as (
+    select p.id, p.nombre, p.look,
+      case when p.diario -> 'liga' ->> 'semana' = cual then p.diario -> 'liga' else p.diario -> 'liga' -> 'ant' end as l
+    from public.perfiles p
+    where p.diario -> 'liga' ->> 'semana' = cual or p.diario -> 'liga' -> 'ant' ->> 'semana' = cual
+  ), jug as (
+    select id, nombre, look,
+      case when l ->> 'lp' ~ '^\d{1,9}$' then least((l ->> 'lp')::integer, 100000) else 0 end as lp,
+      case when l ->> 'tier' ~ '^[0-5]$' then (l ->> 'tier')::integer else 0 end as tier
+    from sem
+  ), activos as (select * from jug where lp > 0 or id = quien),
+  num as (
+    select a.*, (row_number() over (order by md5(a.id::text || cual)) - 1) / 20 as grupo
+    from activos a where a.tier = (select tier from activos where id = quien)
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'nombre', nombre, 'look', look, 'lp', lp, 'tier', tier) order by lp desc, nombre, id), '[]'::jsonb)
+  from num where grupo = (select grupo from num where id = quien)
+$$;
+revoke execute on function public.liga_grupo_de(uuid, text) from public;
+do $$ begin revoke execute on function public.liga_grupo_de(uuid, text) from anon, authenticated; exception when others then null; end $$;
+
+-- Mi grupo de esta semana
+create or replace function public.liga_grupo(semana text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when auth.uid() is null or semana !~ '^\d{4}-\d{2}-\d{2}$' then '[]'::jsonb else public.liga_grupo_de(auth.uid(), semana) end
+$$;
+
+-- Posición final de un jugador en una semana: { pos, n (con al menos 1 LP), lp, tier }
+create or replace function public.liga_pos(quien uuid, cual text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  with g as (select x, o from jsonb_array_elements(public.liga_grupo_de(quien, cual)) with ordinality as t(x, o))
+  select case when not exists (select 1 from g where x ->> 'id' = quien::text) then null else jsonb_build_object(
+    'pos', (select o from g where x ->> 'id' = quien::text),
+    'n', (select count(*) from g where (x ->> 'lp')::integer > 0 or x ->> 'id' = quien::text),
+    'lp', (select (x ->> 'lp')::integer from g where x ->> 'id' = quien::text),
+    'tier', (select (x ->> 'tier')::integer from g where x ->> 'id' = quien::text)) end
+$$;
+revoke execute on function public.liga_pos(uuid, text) from public;
+do $$ begin revoke execute on function public.liga_pos(uuid, text) from anon, authenticated; grant execute on function public.liga_pos(uuid, text) to service_role; exception when others then null; end $$;
+
+-- Cómo terminé la semana pasada (para subir o bajar de liga)
+create or replace function public.liga_resultado(semana text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when auth.uid() is null or semana !~ '^\d{4}-\d{2}-\d{2}$' then null else public.liga_pos(auth.uid(), semana) end
+$$;
+
+-- Panel: cuántos jugadores hay en cada liga esta semana (con al menos 1 LP)
+create or replace function public.panel_ligas(semana text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.es_admin() then raise exception 'Solo administradores' using errcode = '42501'; end if;
+  return (select coalesce(jsonb_object_agg(tier, n), '{}'::jsonb) from (
+    select case when diario -> 'liga' ->> 'tier' ~ '^[0-5]$' then (diario -> 'liga' ->> 'tier')::integer else 0 end as tier, count(*) as n
+    from public.perfiles
+    where diario -> 'liga' ->> 'semana' = semana and diario -> 'liga' ->> 'lp' ~ '^\d{1,9}$' and (diario -> 'liga' ->> 'lp')::integer > 0
+    group by 1) t);
+end $$;

@@ -64,13 +64,20 @@ const Eco = {
       if (opciones.length) { const [id, it] = pick(opciones); u.inv.push(id); item = { id, ...it }; }
       else u.monedas += 100;
     }
+    if (typeof Misiones !== "undefined") try { Misiones.evento("diario", {}, u); } catch (e) { console.warn(e); }
     Eco.guardar(u);
     return { ...e, item };
   },
 
   sumarPartida(u) { Eco.completar(u); u.diario.partidasSemana++; },
-  mision(u) { Eco.completar(u); const d = u.diario; return { hechas: Math.min(d.partidasSemana, MISION_SEMANA.partidas), meta: MISION_SEMANA.partidas, premio: MISION_SEMANA.premio, cobrada: d.semanaCobrada === d.semana }; },
+  /* La misión semanal ahora es la de js/misiones.js (esto queda por compatibilidad) */
+  mision(u) {
+    Eco.completar(u); const d = u.diario;
+    if (typeof Misiones !== "undefined") { const w = Misiones.estado(u).w; return { hechas: w.prog, meta: w.meta, premio: w.m, cobrada: w.ok, texto: Misiones.texto(w) }; }
+    return { hechas: Math.min(d.partidasSemana, MISION_SEMANA.partidas), meta: MISION_SEMANA.partidas, premio: MISION_SEMANA.premio, cobrada: d.semanaCobrada === d.semana };
+  },
   cobrarMision(u) {
+    if (typeof Misiones !== "undefined") return Misiones.cobrar(u, "w");
     const m = Eco.mision(u);
     if (m.cobrada || m.hechas < m.meta) return false;
     u.diario.semanaCobrada = u.diario.semana; u.monedas += m.premio;
@@ -229,7 +236,8 @@ PANTALLAS.tienda = () => {
     <div class="panel misiones">
       <div class="mision"><span class="m-ic">🔥</span><div class="txt"><b>Racha de ${e.puede ? Math.max(e.racha - 1, 0) : e.racha} día${(e.puede ? e.racha - 1 : e.racha) === 1 ? "" : "s"}</b><small>${e.puede ? `Hoy te espera el premio del día ${e.dia}.` : `Mañana: ${PREMIO_DIA[e.dia % 7]} 🪙${e.dia === 6 ? " y el cofre 🎁" : ""}.`}</small></div>${e.puede ? `<button class="btn chico" id="diario">Cobrar</button>` : `<span class="ok">✓ Hoy</span>`}</div>
       ${Anuncios.activos(u) ? `<div class="mision"><span class="m-ic">📺</span><div class="txt"><b>Mirar un anuncio</b><small>+${Anuncios.cfg().monedas} 🪙 cada uno · hasta ${Anuncios.cfg().porDia} por día</small></div><button class="btn chico" id="verAnuncio">Mirar</button></div>` : ""}
-      <div class="mision"><span class="m-ic">🎯</span><div class="txt"><b>Misión semanal: ${m.meta} partidas</b><small>${m.hechas} de ${m.meta} · premio ${m.premio} 🪙</small><div class="xp"><i style="width:${(m.hechas / m.meta) * 100}%"></i></div></div>${m.cobrada ? `<span class="ok">✓ Cobrada</span>` : `<button class="btn chico" id="mision" ${m.hechas < m.meta ? "disabled" : ""}>Cobrar</button>`}</div>
+      ${typeof Misiones !== "undefined" ? (() => { const pc = Misiones.porCobrar(u); return `<div class="mision"><span class="m-ic">🎯</span><div class="txt"><b>Misiones: ${Misiones.hechas(u)}/3 hoy</b><small>${esc(m.texto)} · ${m.hechas}/${m.meta}${m.cobrada ? " ✓" : ""}</small><div class="xp"><i style="width:${(m.hechas / m.meta) * 100}%"></i></div></div><button class="btn chico ${pc ? "" : "ghost"}" id="verMisiones">${pc ? `Cobrar (${pc})` : "Ver"}</button></div>`; })()
+        : `<div class="mision"><span class="m-ic">🎯</span><div class="txt"><b>Misión semanal: ${m.meta} partidas</b><small>${m.hechas} de ${m.meta} · premio ${m.premio} 🪙</small><div class="xp"><i style="width:${(m.hechas / m.meta) * 100}%"></i></div></div>${m.cobrada ? `<span class="ok">✓ Cobrada</span>` : `<button class="btn chico" id="mision" ${m.hechas < m.meta ? "disabled" : ""}>Cobrar</button>`}</div>`}
     </div>
     ${ev ? `<div class="evento-banner chico" style="--ev:${ev.color}"><span class="ev-ic">${ev.ic}</span><div><b>Evento de ${esc(ev.nombre)}</b><small>Cosas especiales por tiempo limitado.</small></div></div>` : ""}
     <div class="tabs scroll">${[...(ev ? [["evento", ev.ic + " " + ev.nombre]] : []), ...TIPOS_TIENDA].map(([k, n]) => `<button data-tt="${k}" aria-pressed="${tab === k}">${esc(n)}</button>`).join("")}</div>
@@ -249,6 +257,7 @@ PANTALLAS.tienda = () => {
   app.querySelectorAll("[data-eq]").forEach(b => b.onclick = () => { Eco.equipar(u, b.dataset.eq); render(); });
   on("diario", () => mostrarDiario(u));
   on("verAnuncio", () => Anuncios.ver(u));
+  on("verMisiones", () => { UI.tabPg = "misiones"; go("progreso"); });
   on("mision", () => { if (Eco.cobrarMision(u)) Toast.mostrar(`<div class="t-pts">+${MISION_SEMANA.premio}<small>monedas</small></div><div class="t-txt"><b>¡Misión semanal cumplida!</b><span>Jugaste ${MISION_SEMANA.partidas} partidas esta semana.</span></div>`, "logro"); render(); });
   on("volver", () => go("home"));
 };

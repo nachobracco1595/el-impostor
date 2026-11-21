@@ -52,6 +52,33 @@ const CONSEJOS = [
   { title: "🎳 ¿Un bowling rápido?", body: "Jugá una partida contra los bots o invitá a alguien." }
 ];
 
+// Ligas: lunes de la semana (hora de Argentina) y cuántos días le quedan
+const LIGAS = ["Bronce", "Plata", "Oro", "Platino", "Diamante", "Leyenda"];
+function semanaAR() { const d = new Date(Date.now() - 3 * 36e5); const dow = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - dow); return { semana: d.toISOString().slice(0, 10), dow }; }
+/* Aviso de misiones o de liga (lee perfiles.diario; si falta algo, no dice nada) */
+async function avisoProgreso(p: { id: string; diario: Record<string, any> }, hoy: string) {
+  const d = p.diario || {}, mis = d.mis, liga = d.liga, w = semanaAR();
+  if (mis && mis.dia === hoy && Array.isArray(mis.d)) {
+    const faltan = mis.d.filter((m: any) => !(m && m.prog >= m.meta)).length;
+    const cobrar = mis.d.filter((m: any) => m && m.prog >= m.meta && !m.ok).length;
+    if (cobrar > 0) return { title: "🎯 Tenés misiones para cobrar", body: `${cobrar} misión${cobrar > 1 ? "es" : ""} cumplida${cobrar > 1 ? "s" : ""}: entrá a cobrar monedas y XP del pase.` };
+    if (faltan > 0) return { title: `🎯 Te queda${faltan > 1 ? "n" : ""} ${faltan} misi${faltan > 1 ? "ones" : "ón"} por hoy`, body: "Cumplilas antes de medianoche: monedas y XP para el pase de temporada." };
+  }
+  if (liga && liga.semana === w.semana && (liga.lp | 0) > 0 && w.dow >= 5) {
+    const cuando = w.dow === 6 ? "hoy" : "mañana", tier = Math.max(0, Math.min(5, liga.tier | 0));
+    let pos: any = null;
+    try { const r = await sb.rpc("liga_pos", { quien: p.id, cual: w.semana }); if (!r.error) pos = r.data; } catch { /* SQL viejo */ }
+    if (pos && pos.pos) {
+      const sube = Math.min(5, Math.ceil(pos.n / 3));
+      if (pos.pos <= sube && tier < 5) return { title: `🏆 Tu liga termina ${cuando}`, body: `Estás ${pos.pos}º: si seguís así subís a ${LIGAS[tier + 1]}.` };
+      if (pos.pos <= sube + 3 && tier < 5) return { title: `🏆 Tu liga termina ${cuando}`, body: `Estás ${pos.pos}º, a un paso de subir a ${LIGAS[tier + 1]}. ¡Jugá una partida!` };
+      return { title: `🏆 Tu liga termina ${cuando}`, body: `Estás ${pos.pos}º de ${pos.n} en ${LIGAS[tier]}. Cada partida suma puntos.` };
+    }
+    return { title: `🏆 Tu liga termina ${cuando}`, body: `Sumá puntos en ${LIGAS[tier]} para ganar un cofre más grande.` };
+  }
+  return null;
+}
+
 async function recordatorios() {
   const hoy = hoyAR(), { data: cfg } = await sb.from("push_cfg").select("ultimo_recordatorio").eq("id", 1).maybeSingle();
   if (cfg && cfg.ultimo_recordatorio === hoy) return { ya: true };          // una sola vez por día
@@ -64,10 +91,12 @@ async function recordatorios() {
     for (const p of perfiles || []) {
       const d = p.diario || {}, t = d.torre || {};
       let aviso;
-      if (d.ultimo !== hoy) aviso = { title: "🎁 Tu recompensa del día", body: `${p.nombre}, entrá a cobrarla${d.racha > 1 ? ` y no pierdas tu racha de ${d.racha} días` : ""}.` };
+      const prog = d.ultimo === hoy ? await avisoProgreso(p, hoy) : null;
+      if (d.ultimo !== hoy) aviso = { title: "🎁 Tu recompensa del día", body: `${p.nombre}, entrá a cobrarla${d.racha > 1 ? ` y no pierdas tu racha de ${d.racha} días` : ""} (y mirá tus misiones nuevas).` };
+      else if (prog) aviso = prog;
       else if (t.hoy !== hoy) aviso = { title: "🗼 Tus vidas de la Torre están listas", body: "Entrá a la batalla y subí pisos para conseguir botín." };
       else continue;                                                         // ya jugó hoy: no molestamos
-      if (Math.random() < 0.35 && d.ultimo === hoy) aviso = CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)];
+      if (Math.random() < 0.35 && d.ultimo === hoy && !prog) aviso = CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)];
       enviados += await enviar(p.id, "recordatorios", { ...aviso, url: "./", tag: "recordatorio" });
     }
   }

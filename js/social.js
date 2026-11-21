@@ -114,6 +114,7 @@ const Social = {
     if (!texto) return;
     const { error } = await Nube.sb.from("mensajes").insert({ de: this.yo(), para, texto, ...(sala ? { sala } : {}) });
     if (error) throw new Error("No se pudo enviar. ¿Siguen siendo amigos?");
+    if (!sala && typeof Misiones !== "undefined") try { const u = BD.sesion(); if (u) { Misiones.evento("mensaje", {}, u); Eco.guardar(u); } } catch (e) { console.warn(e); }
   }
 };
 

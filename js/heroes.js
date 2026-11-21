@@ -455,12 +455,12 @@ const Heroes = {
   reiniciar(u, pres = false) { const p = this.pj(u); if (pres) p.ppts = Heroes.cero(); else p.pts = Heroes.cero(); this.guardar(u); },
   /* ---------- Skins ---------- */
   /* Las skins de una clase que se pueden ver (las que el panel sacó de la venta solo las ve quien ya las tiene) */
-  skinsDe(clase, u) { const mias = (u && this.datos(u).skins) || []; return HE.SKINS.map(x => HE.SKIN[x[0]]).filter(S => (!S.clase || S.clase === clase) && (Catalogo.visible("skin:" + S.id) || mias.includes(S.id))); },
+  skinsDe(clase, u) { const mias = (u && this.datos(u).skins) || []; return HE.SKINS.map(x => HE.SKIN[x[0]]).filter(S => (!S.clase || S.clase === clase) && (!S.pase || mias.includes(S.id)) && (Catalogo.visible("skin:" + S.id) || mias.includes(S.id))); },
   precioSkin(S) { return Catalogo.precio("skin:" + S.id, S.precio); },
   comprarSkin(u, id) {
     const a = this.datos(u), S = HE.SKIN[id]; a.skins = a.skins || [];
     const precio = S && this.precioSkin(S);
-    if (!S || a.skins.includes(id) || (S.clase && S.clase !== a.clase) || (u.monedas || 0) < precio || !Catalogo.visible("skin:" + id)) return false;
+    if (!S || S.pase || a.skins.includes(id) || (S.clase && S.clase !== a.clase) || (u.monedas || 0) < precio || !Catalogo.visible("skin:" + id)) return false;
     u.monedas -= precio; a.skins.push(id); a.pj[a.clase].skin = id;
     Catalogo.anotar(u, "skin", "skin:" + id, S.nombre, precio);
     if (typeof Sonido !== "undefined") Sonido.sfx("victoria");

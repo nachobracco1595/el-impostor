@@ -28,6 +28,7 @@ const Timba = {
     st.ganado += premio; st.mayor = Math.max(st.mayor, premio);
     for (const k of ["plenos", "jackpots", "lineas", "bingos", "blackjacks", "bjGanadas"]) st[k] += extra[k] | 0;
     u.monedas += premio - apuesta;
+    if (apuesta > 0 && typeof Misiones !== "undefined") try { Misiones.evento("casino", {}, u); } catch (e) { console.warn(e); }
     BD.guardar();
     if (!(u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Nube.user.id === u.id)) this.pozoLocal(u, juego, apuesta);
     if (u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Nube.user.id === u.id) {

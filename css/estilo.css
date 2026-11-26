@@ -2181,3 +2181,49 @@ body:has(.ba-form) .audio-ctl { display: none; }
 .t-prog { color: var(--violet) !important; font-weight: 800; }
 @media (max-width: 360px) { .pg-ic { font-size: 18px; } .pg-chip { padding: 8px 6px; gap: 5px; } .pg-t b { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .pg-badge, .btn.brilla, .btn.brilla::after, .pg-cartel.nueva { animation: none; } }
+
+/* ---------- Golpe (robo en la ciudad) ---------- */
+.golpe canvas#gpCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.golpe .nv-salir { top: calc(10px + var(--sat)); right: 10px; z-index: 3; }
+.gp-top { position: absolute; left: 8px; right: 54px; top: calc(8px + var(--sat)); display: flex; flex-wrap: wrap; gap: 5px; align-items: center; z-index: 2; pointer-events: none; }
+.gp-top .ar-chip { max-width: none; padding: 4px 8px; }
+.gp-top .ar-chip small { opacity: .7; margin-left: 3px; }
+.gp-urge { border-color: #ff6b6b !important; animation: gp-lat 1s infinite; }
+@keyframes gp-lat { 50% { background: rgba(255, 60, 60, .35); } }
+.gp-vida { position: relative; flex: 1 1 140px; max-width: 220px; height: 22px; border-radius: 8px; background: rgba(15, 13, 24, .82); border: 1px solid var(--line); overflow: hidden; }
+.gp-vida i { position: absolute; left: 0; top: 0; bottom: 0; transition: width .15s; opacity: .85; }
+.gp-vida span { position: relative; font-size: 12px; font-weight: 800; padding-left: 7px; line-height: 21px; text-shadow: 0 1px 2px #000; }
+.gp-arma { font-size: 13px; font-weight: 900; padding: 3px 8px; border-radius: 8px; background: rgba(15, 13, 24, .82); border: 1px solid var(--line); }
+.gp-arma small { opacity: .75; font-weight: 700; }
+.gp-moch { display: flex; gap: 3px; flex-basis: 100%; }
+.gp-moch i { font-style: normal; font-size: 15px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: rgba(15, 13, 24, .82); border: 2px solid var(--rc); font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.gp-mini { position: absolute; right: 10px; top: calc(60px + var(--sat)); width: 104px; height: 104px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .25); z-index: 2; opacity: .9; pointer-events: none; image-rendering: pixelated; }
+.gp-feed { position: absolute; left: 8px; top: calc(118px + var(--sat)); z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 3px; max-width: 62%; }
+.gp-feed div { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: rgba(15, 13, 24, .75); animation: gp-entra .25s; }
+@keyframes gp-entra { from { opacity: 0; transform: translateX(-10px); } }
+.golpe .gp-centro { font-family: system-ui, sans-serif; font-weight: 900; font-size: 26px; top: 34%; white-space: nowrap; text-shadow: 0 3px 10px #000; pointer-events: none; }
+.gp-joy { position: absolute; width: 110px; height: 110px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .06); display: none; pointer-events: none; z-index: 2; }
+.gp-joy.der { border-color: rgba(255, 107, 107, .45); }
+.gp-joy.on { display: block; }
+.gp-joy i { position: absolute; left: 30px; top: 30px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, .5); }
+.gp-joy.der i { background: rgba(255, 107, 107, .6); }
+.gp-acc { position: absolute; right: 12px; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; align-items: flex-end; z-index: 3; }
+.gp-b { padding: 10px 14px; border-radius: 14px; font-weight: 900; font-size: 15px; background: rgba(15, 13, 24, .88); border: 2px solid var(--spot); color: #fff; touch-action: manipulation; }
+.gp-b small { font-weight: 800; }
+.gp-b:disabled { opacity: .45; }
+.gp-ayuda-dedos { position: absolute; left: 0; right: 0; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 14px; font-weight: 800; opacity: .75; pointer-events: none; z-index: 2; text-shadow: 0 2px 6px #000; }
+.gp-roles { display: grid; gap: 8px; }
+.gp-rol { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 10px; text-align: left; padding: 10px 12px; border-radius: 14px; background: var(--card, rgba(255, 255, 255, .05)); border: 2px solid var(--line); color: inherit; }
+.gp-rol span { grid-row: span 2; font-size: 34px; display: grid; place-items: center; }
+.gp-rol b { font-size: 16px; }
+.gp-rol small { opacity: .75; font-size: 12px; line-height: 1.3; }
+.gp-rol.on { border-color: var(--rc); background: color-mix(in srgb, var(--rc) 18%, transparent); }
+.gp-banco { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.gp-banco b { font-size: 28px; color: #ffd43b; }
+.gp-banco small { opacity: .7; }
+.gp-ayuda summary { font-weight: 800; cursor: pointer; }
+.gp-ayuda p { font-size: 13px; line-height: 1.45; margin: 8px 0 0; }
+.t-golpe .tile-art svg { width: 120px; height: auto; }
+body.en-golpe .audio-ctl { top: calc(176px + var(--sat)); }
+body.en-golpe .chat-flot { top: calc(268px + var(--sat)); }
+body.en-golpe .voz-flot { top: calc(322px + var(--sat)); }

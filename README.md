@@ -5,7 +5,7 @@
   <img alt="Mesa Loca" src="img/logo-horizontal-oscuro.png" width="420">
 </picture>
 
-Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Truco, el Casino (ruleta, tragamonedas, blackjack y bingo), Batalla naval, Ajedrez, La Nave, la Arena y los trabajos diarios.
+Juegos de fiesta para jugar con amigos, en un solo teléfono o cada uno en el suyo (online): El Impostor, Mesa del Mentiroso, Detectives, Chinchón, Truco, el Casino (ruleta, tragamonedas, blackjack y bingo), Batalla naval, Ajedrez, La Nave, la Arena, Golpe y los trabajos diarios.
 
 Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `logo-horizontal-oscuro.png`, `logo-vertical.png`).
 
@@ -98,6 +98,15 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - Escenarios: Ring, Coliseo (columnas), Volcán (lava que quema) y Nave espacial (cajas y rayos que se prenden). Hay pociones de vida y, a los 90 s, muerte súbita.
 - Contra la compu (1 contra 1 o todos contra todos, fácil, normal o difícil) u online de 2 a 8 en una sala (el anfitrión elige el escenario).
 - Las peleas **online con amigos** cambian tu **ELO** (sube más si le ganas a alguien con más ELO); contra la compu el ELO no se mueve, pero igual da monedas y experiencia. Todas las peleas dan monedas. Hay ranking de la Arena por ELO.
+
+### Golpe (robo en la ciudad)
+- Ciudad vista desde arriba que sale de una semilla: casas, kioscos, farmacias, depósito, joyería, banco, museo, comisaría y plazas. Adentro de los edificios hay artefactos (celulares, relojes, cuadros, lingotes, diamantes…) en 5 rarezas, armas, chalecos y botiquines. El banco, la joyería y el museo tienen lo mejor.
+- Todos entran como 🧍 **civil**: no puede robar ni tiene armas. Con un botón se vuelve 🦹 **ladrón** (puede atacar a cualquiera y quedarse con lo que lleva), o va a la 🚓 **comisaría** y se hace 👮 **policía** (solo hiere ladrones: al bajarlos los arresta y confisca lo robado). No hay vuelta atrás.
+- Solo el ladrón ve su mochila. Para quedarse con el botín tiene que llegar a una **salida** y aguantar 4 segundos. El policía cobra al terminar su turno (en una salida o al acabarse el tiempo): sueldo, una parte de lo confiscado y algunos ítems incautados.
+- Armas (pistola, subfusil, escopeta, rifle) en 5 rarezas: la rareza sube el daño y la **penetración**. Los chalecos (nivel 1 a 3) frenan parte del daño, pero una bala de mucha penetración los atraviesa.
+- Doble joystick: el dedo izquierdo mueve y el derecho apunta y dispara. En la compu: WASD, mouse y clic (E agarra un arma, Q usa botiquín).
+- Contra bots en un teléfono u online (hasta 8, los del mismo rol son equipo). Online, el teléfono del anfitrión es el **servidor**: los demás solo mandan hacia dónde se mueven y apuntan, el anfitrión calcula todo y a cada uno le manda solo lo que ve (nadie recibe la posición de alguien escondido en otro edificio). Lo sacado se guarda como botín (más adelante: comprar terrenos).
+- Código: `js/golpe.js` (ciudad, reglas, bots y servidor) y `js/golpe-vista.js` (dibujo, controles y HUD).
 
 ### Trabajos diarios: Tala, Mina y Pesca
 - Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.

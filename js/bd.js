@@ -2,7 +2,7 @@
    Todo pasa por el objeto BD: para usar una base de datos real (como Supabase)
    alcanza con reimplementar estas funciones. */
 const BD_CLAVE = "impostor:bd";
-const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo", preguntas: "Preguntas Locas", adivina: "Adivina qué soy", basta: "Basta" };
+const JUEGOS = { impostor: "El Impostor", liars: "Mesa del Mentiroso", casos: "Detectives", chinchon: "Chinchón", truco: "Truco", burako: "Burako", poker: "Póker", carrera: "Carrera Loca", naval: "Batalla naval", ajedrez: "Ajedrez", nave: "La Nave", arena: "Arena", bowling: "Bowling", arco: "Arco y flecha", circo: "Circo", golpe: "Golpe", preguntas: "Preguntas Locas", adivina: "Adivina qué soy", basta: "Basta" };
 
 const NIVELES = [
   [0, "Novato"], [50, "Aprendiz"], [150, "Sospechoso"], [300, "Pícaro"], [500, "Detective"],
@@ -84,6 +84,7 @@ function statsVacias() {
     bowling: { j: 0, g: 0, p: 0, mejor: 0, strikes: 0, spares: 0, turkeys: 0 },
     arco: { j: 0, g: 0, p: 0, mejor: 0, x: 0, dieces: 0 },
     circo: { j: 0, g: 0, p: 0, mejor: 0, completo: 0, etapas: 0 },
+    golpe: { j: 0, g: 0, p: 0, mejor: 0, escapes: 0, kills: 0, arrestos: 0, botin: 0 },
     preguntas: { j: 0, g: 0, p: 0, correctas: 0, personajes: 0, coronas: 0, completas: 0 },
     adivina: { j: 0, g: 0, p: 0, mejor: 0, aciertos: 0, pasadas: 0 },
     basta: { j: 0, g: 0, p: 0, mejor: 0, palabras: 0, unicas: 0, bastas: 0 },
@@ -232,6 +233,8 @@ const BD = {
       st.palabras += res.palabras | 0; st.unicas += res.unicas | 0; st.bastas += res.bastas | 0; st.mejor = Math.max(st.mejor || 0, res.mejor | 0);
     } else if (res.juego === "adivina") {
       st.aciertos += res.aciertos | 0; st.pasadas += res.pasadas | 0; st.mejor = Math.max(st.mejor || 0, res.mejor | 0);
+    } else if (res.juego === "golpe") {
+      if (res.escapo) st.escapes++; st.kills += res.kills | 0; st.arrestos += res.arrestos | 0; st.botin += res.valor | 0; st.mejor = Math.max(st.mejor || 0, res.valor | 0);
     } else if (res.juego === "circo") {
       st.etapas += res.etapas | 0; if (res.completo) st.completo++; st.mejor = Math.max(st.mejor || 0, res.total | 0);
     } else if (res.juego === "casos") {
@@ -443,6 +446,11 @@ const Puntos = {
     } else if (r.juego === "adivina") {
       if (r.aciertos) d.push([`${r.aciertos} palabra${r.aciertos > 1 ? "s" : ""} adivinada${r.aciertos > 1 ? "s" : ""}`, Math.min(20, r.aciertos)]);
       if (r.gano && r.n >= 2) { gano = true; d.push(["Ganaste la partida", 15]); }
+    } else if (r.juego === "golpe") {
+      if (r.rol === "policia") { if (r.arrestos) d.push([`${r.arrestos} arresto${r.arrestos > 1 ? "s" : ""}`, 5 * Math.min(6, r.arrestos)]); if (r.valor) d.push([`$${r.valor} confiscados`, Math.min(20, Math.floor(r.valor / 150))]); }
+      else { if (r.escapo) d.push(["Escapaste de la ciudad", 10]); if (r.valor) d.push([`Botín de $${r.valor}`, Math.min(30, Math.floor(r.valor / 120))]); }
+      if (r.kills) d.push([`${r.kills} rival${r.kills > 1 ? "es" : ""} abatido${r.kills > 1 ? "s" : ""}`, 2 * Math.min(8, r.kills)]);
+      if (r.gano) { gano = true; d.push([r.rol === "policia" ? "Buen patrullaje" : "Golpe exitoso", r.vsCompu ? 12 : 20]); }
     } else if (r.juego === "circo") {
       if (r.etapas) d.push([`${r.etapas} etapa${r.etapas > 1 ? "s" : ""} superada${r.etapas > 1 ? "s" : ""}`, 4 * r.etapas]);
       if (r.total >= 1000) d.push([`Puntaje de la función (${r.total})`, Math.min(20, Math.floor(r.total / 500))]);

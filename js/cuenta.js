@@ -309,6 +309,7 @@ PANTALLAS.perfil = () => {
         <div><b>📱 Adivina qué soy</b><span>${st.adivina.p} pts · ${st.adivina.g}/${st.adivina.j} ganadas (${pct(st.adivina.g, st.adivina.j)})</span><small>${st.adivina.aciertos} palabras adivinadas · ${st.adivina.pasadas} pasadas${st.adivina.mejor ? ` · mejor turno ${st.adivina.mejor}` : ""}</small></div>
         <div><b>✋ Basta</b><span>${st.basta.p} pts · ${st.basta.g}/${st.basta.j} ganadas (${pct(st.basta.g, st.basta.j)})</span><small>${st.basta.palabras} palabras válidas · ${st.basta.bastas} ¡basta! cantados${st.basta.mejor ? ` · mejor ronda ${st.basta.mejor}` : ""}</small></div>
         <div><b>🎪 Circo</b><span>${st.circo.p} pts · ${st.circo.g}/${st.circo.j} ganadas (${pct(st.circo.g, st.circo.j)})</span><small>${st.circo.etapas} etapas superadas${st.circo.mejor ? ` · récord ${st.circo.mejor}` : ""}</small></div>
+        <div><b>🦹 Golpe</b><span>${st.golpe.p} pts · ${st.golpe.g}/${st.golpe.j} golpes buenos (${pct(st.golpe.g, st.golpe.j)})</span><small>${st.golpe.escapes} escapes · $${st.golpe.botin} sacados · ${st.golpe.arrestos} arrestos · ${st.golpe.kills} abatidos${st.golpe.mejor ? ` · mejor golpe $${st.golpe.mejor}` : ""}</small></div>
         <div><b>🚀 La Nave</b><span>${st.nave.p} pts · ${st.nave.g}/${st.nave.j} ganadas (${pct(st.nave.g, st.nave.j)})</span><small>${st.nave.tareas} tareas · ${st.nave.kills} eliminaciones</small></div>
         ${st.timba && st.timba.jugadas ? `<div><b>🎰 Casino</b><span>${st.timba.jugadas} jugadas · ${st.timba.ganado - st.timba.apostado >= 0 ? "+" : ""}${st.timba.ganado - st.timba.apostado} 🪙 en total</span><small>Mayor premio: ${st.timba.mayor} 🪙 · ${st.timba.plenos} plenos · ${st.timba.jackpots} jackpots · ${st.timba.bingos} bingos</small></div>` : ""}
         <div><b>🔍 Detectives</b><span>${st.casos.p} pts · ${st.casos.g}/${st.casos.j} ganadas (${pct(st.casos.g, st.casos.j)})</span><small>Casos resueltos: ${st.casos.resueltos.length} de ${CASOS.length}</small></div>
@@ -371,7 +372,7 @@ PANTALLAS.ranking = () => {
     else filas = r.filas;
   } else filas = BD.ranking(tab || null);
   const yo = BD.sesion();
-  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["preguntas", "❓ Preguntas"], ["adivina", "📱 Adivina"], ["basta", "✋ Basta"], ...(typeof Liga !== "undefined" ? [["liga", "🏆 Liga"]] : [])];
+  const tabs = [["", "General"], ["impostor", "Impostor"], ["liars", "Mentiroso"], ["casos", "Detectives"], ["chinchon", "Chinchón"], ["truco", "Truco"], ["burako", "Burako"], ["poker", "Póker"], ["carrera", "Carrera"], ["naval", "Naval"], ["ajedrez", "Ajedrez"], ["nave", "Nave"], ["arena", "Arena (ELO)"], ["torre", "🗼 Torre"], ["bowling", "🎳 Bowling"], ["arco", "🏹 Arco"], ["circo", "🎪 Circo"], ["golpe", "🦹 Golpe"], ["preguntas", "❓ Preguntas"], ["adivina", "📱 Adivina"], ["basta", "✋ Basta"], ...(typeof Liga !== "undefined" ? [["liga", "🏆 Liga"]] : [])];
   const podio = filas.slice(0, 3);
   const orden = [1, 0, 2].filter(i => podio[i]);
   app.innerHTML = `${head(0)}

@@ -151,7 +151,7 @@ const Net = {
       else if (EXTRA[R.game]) EXTRA[R.game].actOn(R, pid, a);
     } catch (e) { console.error(e); }
     // En La Nave las posiciones se reparten con el reloj (10 por segundo), no con cada movimiento
-    if (!((R.game === "nave" || R.game === "arena" || R.game === "carrera" || R.game === "circo") && a.t === "pos")) this.broadcast();
+    if (!((R.game === "nave" || R.game === "arena" || R.game === "carrera" || R.game === "circo") && a.t === "pos") && !(R.game === "golpe" && a.t === "in")) this.broadcast();
   },
 
   viewFor(pid) {
@@ -376,7 +376,7 @@ PANTALLAS.online = () => {
   if (v.game === "arena") return Arena.render(v, enviar, op);
   if (UI.arena) Arena.parar();
   if (EXTRA[v.game]) return EXTRA[v.game].render(v, enviar, op);
-  if (UI.bw) Bowling.parar(); if (UI.ac) Arco.parar(); if (UI.ci) Circo.parar();
+  if (UI.bw) Bowling.parar(); if (UI.ac) Arco.parar(); if (UI.ci) Circo.parar(); if (UI.gp) Golpe.parar();
   if (document.body.classList.contains("en-nave")) Nave.parar();
   if (v.game === "casos") { if (v.phase === "intro") UI.vistas = new Set(); marcarResuelto(v); return Casos.render(v, a => Net.send(a), { local: false, isHost: v.isHost }); }
   renderLobby(v);

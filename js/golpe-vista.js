@@ -167,6 +167,13 @@ Object.assign(Golpe, {
     if (Golpe.enNube()) { try { const { data, error } = await Nube.sb.rpc("golpe_ficha"); if (!error && typeof data === "string") base.ficha = data; } catch (e) { } }
     Golpe.send(base);
   },
+  /* Paso de la caminata: avanza según lo que se movió; vel (0 a 1) suaviza el arranque y la frenada */
+  pasos(o, dx, dy, dt) {
+    const d = Math.hypot(dx, dy), v = dt > 0 ? d / dt : 0;
+    o.vel = (o.vel || 0) + (Math.min(1, v / GP.VEL) - (o.vel || 0)) * Math.min(1, dt * 10);
+    o.paso = (o.paso || 0) + d * 0.16;
+    if (d > 0.3) o.movA = Math.atan2(dy, dx);
+  },
   leerEntrada() {
     const U = UI.gp, T = U.teclas;
     let mx = U.mov.x, my = U.mov.y;
@@ -184,12 +191,14 @@ Object.assign(Golpe, {
     const msg = { t: "in", mx: r2(I.mx), my: r2(I.my), ax: r2(I.ax), ay: r2(I.ay), f: I.f ? 1 : 0 }, txt = JSON.stringify(msg);
     if (v.fase === "juego" && v.yo && v.yo.est === "vivo" && ((txt !== U.ult.s && now - U.ult.t > 45) || now - U.ult.t > 120)) { U.ult = { t: now, s: txt }; Golpe.send(msg); }
     const k = 1 - Math.exp(-dt * 12);
-    for (const o of Object.values(U.ents)) { o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; let da = o.ta - o.a; da = Math.atan2(Math.sin(da), Math.cos(da)); o.a += da * k; }
+    for (const o of Object.values(U.ents)) { const ox = o.x, oy = o.y; o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; let da = o.ta - o.a; da = Math.atan2(Math.sin(da), Math.cos(da)); o.a += da * k; Golpe.pasos(o, o.x - ox, o.y - oy, dt); }
     for (const o of Object.values(U.autos)) { o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; let da = o.ta - o.a; da = Math.atan2(Math.sin(da), Math.cos(da)); o.a += da * k; }
     if (U.yo && v.yo && v.yo.est === "vivo" && !v.yo.auto && v.t >= 0 && v.fase === "juego") {
       let mx = I.mx, my = I.my; const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
       const vel = GP.VEL * (v.yo.rol === "civil" ? 1.1 : 1) * (v.yo.moch.length > v.yo.cupo * 0.7 ? 0.9 : 1) * (v.yo.trab ? 0.4 : 1);
+      const ox = U.yo.x, oy = U.yo.y;
       Golpe.mover(U.M, U.yo, mx * vel * dt, my * vel * dt);
+      Golpe.pasos(U.anim || (U.anim = {}), U.yo.x - ox, U.yo.y - oy, dt);
       if (Math.hypot(I.ax, I.ay) > 0.25) U.ang = Math.atan2(I.ay, I.ax); else if (m > 0.2) U.ang = Math.atan2(my, mx);
       const ex = U.srv.x - U.yo.x, ey = U.srv.y - U.yo.y, e = Math.hypot(ex, ey);
       if (e > 160) { U.yo.x = U.srv.x; U.yo.y = U.srv.y; }
@@ -232,6 +241,8 @@ Object.assign(Golpe, {
     }
     if (U.visto.size > 300) U.visto = new Set([...U.visto].slice(-150));
     if (v.yo && v.yo.junto && typeof Sonido !== "undefined") Sonido.sfx("monedas");
+    // Cada vuelta (escape, arresto, muerte, turno) se guarda en el momento: en la nube si hay sesión
+    for (const r of (v.yo && v.yo.runs) || []) { U.runsVistos = U.runsVistos || new Set(); if (U.runsVistos.has(r.id)) continue; U.runsVistos.add(r.id); Golpe.guardarBotin(r); }
     Golpe.hud();
   },
 
@@ -376,8 +387,8 @@ Object.assign(Golpe, {
       ctx.strokeStyle = "rgba(255,236,170,.9)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - b.vx * 0.02, y - b.vy * 0.02); ctx.lineTo(x, y); ctx.stroke();
     }
     // Personas
-    for (const o of Object.values(U.ents)) Golpe.dibPersona(ctx, o.x, o.y, o.a, o.d, false, now, U);
-    if (vivo && !enAuto && U.yoJ) Golpe.dibPersona(ctx, U.yo.x, U.yo.y, U.ang ?? U.yoJ.a, { ...U.yoJ, hp: v.yo.hp, ext: v.yo.ext, esc: v.yo.esc }, true, now, U);
+    for (const o of Object.values(U.ents)) Golpe.dibPersona(ctx, o.x, o.y, o.a, o.d, false, now, U, o);
+    if (vivo && !enAuto && U.yoJ) Golpe.dibPersona(ctx, U.yo.x, U.yo.y, U.ang ?? U.yoJ.a, { ...U.yoJ, rol: v.yo.rol, hp: v.yo.hp, ext: v.yo.ext, esc: v.yo.esc, arma: v.yo.arma ? v.yo.arma.a : null, ar: v.yo.arma ? v.yo.arma.r : 0 }, true, now, U, U.anim);
     // Arbustos encima de la gente (tapan al que se esconde)
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (M.t[y * N + x] === 7) {
       const px = x * T, py = y * T;
@@ -401,11 +412,16 @@ Object.assign(Golpe, {
   },
   /* Persona vista desde arriba: hombros, brazos y cabeza */
   dibCuerpo(ctx, x, y, a, o) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    const br = o.braceo || 0, bob = 1 + (o.bob || 0) * 0.05;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(bob, bob);
     ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(3, 4, 12, 17, 0, 0, 7); ctx.fill();
     ctx.fillStyle = o.ropa;
     if (o.arma) { ctx.beginPath(); ctx.ellipse(8, -8, 9, 4, 0.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(10, 7, 10, 4, -0.3, 0, 7); ctx.fill(); ctx.fillStyle = o.piel; ctx.beginPath(); ctx.arc(16, 1, 3.5, 0, 7); ctx.fill(); }
-    else { ctx.beginPath(); ctx.ellipse(1, -14, 6, 4.5, 0.2, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(1, 14, 6, 4.5, -0.2, 0, 7); ctx.fill(); }
+    else {
+      // brazos que se balancean al caminar (opuestos a los pies)
+      ctx.beginPath(); ctx.ellipse(1 - br, -14, 6, 4.5, 0.2, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(1 + br, 14, 6, 4.5, -0.2, 0, 7); ctx.fill();
+      ctx.fillStyle = o.piel; ctx.beginPath(); ctx.arc(5 - br * 1.2, -15, 2.6, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(5 + br * 1.2, 15, 2.6, 0, 7); ctx.fill(); ctx.fillStyle = o.ropa;
+    }
     ctx.fillStyle = o.ropa; ctx.beginPath(); ctx.ellipse(0, 0, 9, 14, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 1.2; ctx.stroke();
     if (o.detalle) o.detalle(ctx);
@@ -422,13 +438,25 @@ Object.assign(Golpe, {
     const ropas = ["#c0504d", "#4f81bd", "#9bbb59", "#8064a2", "#f79646", "#d9d9d9", "#4bacc6", "#7f6a4f", "#c9a227"];
     return { ropa: ropas[h % ropas.length], piel, pelo: ["#2a1d14", "#5a3b22", "#b08d57", "#111", "#7a4a2a"][(h >> 3) % 5] };
   },
-  dibPersona(ctx, x, y, a, d, yo, now, U) {
+  dibPersona(ctx, x, y, a, d, yo, now, U, anim) {
     if (!d) return;
+    const vel = anim ? anim.vel || 0 : 0, paso = anim ? anim.paso || 0 : 0, movA = anim && anim.movA !== undefined ? anim.movA : a;
+    // Piernas: los pies se adelantan y atrasan en la dirección en que camina
+    if (vel > 0.05) {
+      const sw = Math.sin(paso) * 13 * vel;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(movA);
+      ctx.strokeStyle = "#2b2830"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(sw, -5); ctx.moveTo(0, 5); ctx.lineTo(-sw, 5); ctx.stroke();
+      ctx.fillStyle = "#151318";
+      ctx.beginPath(); ctx.ellipse(sw + Math.sign(sw) * 2, -5, 5, 3.4, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-sw - Math.sign(sw) * 2, 5, 5, 3.4, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
     if (yo && d.esc) ctx.globalAlpha = 0.55;
     if (d.ext > 0) { ctx.strokeStyle = "#51cf66"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 24, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, d.ext / GP.ESCAPE)); ctx.stroke(); }
     if (yo) { ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 20, 0, 7); ctx.stroke(); }
     if (d.arma) Golpe.dibArmaMano(ctx, x, y, a, d.arma, GP.RAR[d.ar || 0][1]);
-    Golpe.dibCuerpo(ctx, x, y, a, { ...Golpe.aspecto(d), arma: !!d.arma });
+    Golpe.dibCuerpo(ctx, x, y, a, { ...Golpe.aspecto(d), arma: !!d.arma, braceo: Math.sin(paso) * 5 * vel, bob: Math.abs(Math.sin(paso)) * vel });
     if (d.arma && U.flash.some(f => f.id === d.id)) { const L = { pistola: 26, subfusil: 30, escopeta: 34, rifle: 40 }[d.arma] || 26; ctx.fillStyle = "rgba(255,225,130,.95)"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * L, y + Math.sin(a) * L, 6, 0, 7); ctx.fill(); }
     if (d.golpe) { ctx.fillStyle = "rgba(255,50,50,.4)"; ctx.beginPath(); ctx.arc(x, y, 15, 0, 7); ctx.fill(); }
     if (d.prot) { ctx.strokeStyle = `rgba(116,192,252,${0.45 + 0.3 * Math.sin(now / 120)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 21, 0, 7); ctx.stroke(); }
@@ -523,9 +551,12 @@ Object.assign(Golpe, {
       let txt = "";
       if (v.fase === "fin") txt = "";
       else if (v.t < 0) txt = String(Math.ceil(-v.t));
-      else if (Y.est === "escapo") txt = Y.rol === "policia" ? `Turno terminado: $${Y.premio || 0}` : `Escapaste${Y.valor + Y.plata ? ` con $${Y.valor + Y.plata}` : ""}`;
-      else if (Y.est === "preso") txt = "Te arrestaron";
-      else if (Y.est === "muerto") txt = "Te mataron";
+      else if (Y.nota) txt = Y.nota;
+      else if (Y.ultRun && Y.ultRun.tipo === "escape") txt = `Escapaste${Y.ultRun.plata ? ` con $${Y.ultRun.plata}` : ""} · volvés a la zona segura`;
+      else if (Y.ultRun && Y.ultRun.tipo === "preso") txt = "Te arrestaron: perdiste lo robado, conservás tu equipo";
+      else if (Y.ultRun && Y.ultRun.tipo === "muerto") txt = "Te mataron: perdiste todo";
+      else if (Y.ultRun && Y.ultRun.tipo === "turno") txt = `Terminaste el turno: cobraste $${Y.ultRun.plata}`;
+      else if (Y.est === "casa") txt = `Volviendo a la zona segura… ${Y.vuelve}`;
       else if (Y.est === "caido") txt = `Caíste · volvés a la comisaría en ${Y.vuelve}`;
       else if (Y.ext > 0) txt = `Escapando… ${Math.max(0, GP.ESCAPE - Y.ext).toFixed(1)}`;
       else if (Y.vendio) txt = `Vendiste por $${Y.vendio}`;
@@ -541,12 +572,11 @@ Object.assign(Golpe, {
         fin.dataset.listo = 1;
         const yoH = (v.humanos || []).find(h => h.id === v.me);
         const res = Golpe.opts.local && S.extra ? Golpe.resultado(S.extra, v.me) : v.resultado;
-        if (res) Golpe.guardarBotin(res);
-        const estado = h => h.rol === "policia" ? `${h.rango || "Policía"} · cobró $${h.valor}${h.items ? ` y ${h.items} ítem${h.items > 1 ? "s" : ""}` : ""}` : h.est === "escapo" ? (h.rol === "civil" ? "se fue sin robar" : `escapó con $${h.valor}`) : h.est === "preso" ? "terminó preso" : h.est === "muerto" ? "lo mataron" : "se quedó sin tiempo";
+        const estado = h => h.valor ? `ganó $${h.valor}${h.escapes ? ` · ${h.escapes} escape${h.escapes > 1 ? "s" : ""}` : ""}` : "no sacó plata";
         const filas = (v.humanos || []).slice().sort((a, b) => (a.puesto || 9) - (b.puesto || 9)).map(h => ({ puesto: h.puesto, name: `${h.name} · ${(GP.ROLES[h.rol] || {}).n || ""}`, yo: h.id === v.me, txt: `${estado(h)}${h.kills ? ` · ${h.kills} baja${h.kills > 1 ? "s" : ""}` : ""}${h.arrestos ? ` · ${h.arrestos} arresto${h.arrestos > 1 ? "s" : ""}` : ""}` }));
-        const titulo = !yoH ? "Fin del golpe" : yoH.est === "escapo" && yoH.valor ? "Golpe exitoso" : yoH.rol === "policia" ? "Turno cumplido" : yoH.est === "preso" ? "Caíste preso" : yoH.est === "muerto" ? "Te mataron" : "Fin del golpe";
-        const banco = Golpe.banco(), conserva = res && res.kit !== undefined ? (res.kit === null ? "Perdiste tu equipo." : "Conservás tu equipo.") : "";
-        const sub = `${res && res.plata ? `+$${res.plata} · ` : ""}${res && res.gasto ? `Gastaste $${res.gasto} en la armería · ` : ""}Plata guardada: <b>$${banco.total.toLocaleString("es-AR")}</b>${conserva ? `<br>${conserva}` : ""}${res ? "<br>" + Golpe.textoCuenta(res) : ""}`;
+        const titulo = yoH && yoH.valor ? `Fin de la sesión · ganaste $${yoH.valor}` : "Fin de la sesión";
+        const banco = Golpe.banco();
+        const sub = `Plata guardada: <b>$${banco.total.toLocaleString("es-AR")}</b>${res ? "<br>" + Golpe.textoCuenta(res) : ""}`;
         fin.innerHTML = Turnero.tablaFin(v, filas, titulo, sub, Golpe.send, Golpe.opts);
         Turnero.conectarFin(Golpe.send, Golpe.opts);
       }
@@ -561,7 +591,8 @@ Object.assign(Golpe, {
     if (vivo) {
       const enComi = (U.M.ed[Golpe.edificioEn(U.M, p.x, p.y)] || {}).tipo === "comisaria";
       if (Y.seguro && cerca("armeria", 110)) b.push(["tienda", "Armería", "gp-dorado"]);
-      if (Y.rol === "civil" && enComi) b.push(["policia", "Hacerse policía", "gp-azul"]);
+      if (Y.rol === "civil" && enComi) b.push(["policia", `Hacerse policía · ${Y.policias}/${GP.MAX_POLI}`, Y.policias >= GP.MAX_POLI ? "gp-off" : "gp-azul"]);
+      if (Y.rol === "policia" && enComi) b.push(["turno", "Terminar turno y cobrar", "gp-dorado"]);
       if (Y.rol === "civil") b.push(["ladron", "Volverse ladrón", "gp-rojo"]);
       if (Y.auto) b.push(["bajar", "Bajar del auto"]);
       else {

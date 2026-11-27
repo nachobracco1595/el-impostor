@@ -13,6 +13,9 @@
      en su panel. Las CAJAS FUERTES se abren con LLAVES que se encuentran por la ciudad: tienen lo mejor y plata.
    - Para esconderse: arbustos en las plazas y contenedores en las veredas. Escondido, nadie te ve de lejos.
    - AUTOS estacionados (con baúl para guardar lo robado) y patrulleros. Los civiles también manejan.
+   - La partida es una SESIÓN: nadie queda afuera. El ladrón que escapa, cae preso o muere vuelve a la zona
+     segura como civil (preso: conserva su equipo; muerto: pierde todo) y puede volver a salir. Cada vuelta se
+     guarda en el momento. Al empezar no hay policías: los civiles eligen serlo (hasta 6 por ciudad).
    - POLICÍA: solo hiere ladrones; al bajarlos los arresta y confisca lo robado. Tiene RANGOS según sus arrestos
      (mejor arma, chaleco y sueldo). Si lo matan, vuelve a la comisaría. Al terminar el turno cobra sueldo,
      una parte de lo confiscado y algunos ítems incautados. No tiene inventario.
@@ -70,7 +73,7 @@ const GP = {
     ["Cadete", "Cad.", 0, { a: "pistola", r: 0 }, 1, 100], ["Agente", "Ag.", 3, { a: "pistola", r: 1 }, 2, 150],
     ["Cabo", "Cabo", 8, { a: "subfusil", r: 1 }, 2, 200], ["Sargento", "Sgto.", 15, { a: "subfusil", r: 2 }, 3, 260],
     ["Inspector", "Insp.", 25, { a: "rifle", r: 2 }, 3, 330], ["Comisario", "Crio.", 40, { a: "rifle", r: 3 }, 3, 420]],
-  PARTE: 0.3, QUEDA: 2, ALARMA: 45, ABRIR: 2.5, DESACTIVAR: 3, VUELVE: 6,
+  PARTE: 0.3, QUEDA: 2, ALARMA: 45, ABRIR: 2.5, DESACTIVAR: 3, MAX_POLI: 6, VUELVE_MIN: 14, CASTIGO: 8, CASA: 4,
   AUTO: { auto: { vmax: 300, cupo: 6 }, patrullero: { vmax: 340, cupo: 0 } },
   COLORES_AUTO: ["#e03131", "#1971c2", "#f08c00", "#2f9e44", "#868e96", "#f8f9fa", "#5f3dc4", "#212529"],
   NOMBRES: {
@@ -78,7 +81,7 @@ const GP = {
     policia: ["Díaz", "Paz", "Ríos", "Luna", "Vera", "Soto", "Ruiz", "Funes", "Ledesma", "Ochoa"],
     civil: ["Doña Rosa", "Kevin", "Marta", "Don Julio", "Yesi", "Beto", "Lili", "Ramón", "Nati", "Coco", "Pocho", "Chiqui", "Tito", "Mirta"]
   },
-  DENS: { pocos: [6, 3, 8], normal: [9, 5, 11], muchos: [13, 7, 15] }   // ladrones, policías, civiles (bots)
+  DENS: { pocos: [6, 0, 11], normal: [9, 0, 16], muchos: [13, 0, 22] }   // ladrones, policías (ninguno al empezar: salen de los civiles), civiles
 };
 
 const Golpe = {
@@ -291,7 +294,7 @@ const Golpe = {
     J.rol = rol; J.hp = J.hpMax = rol === "policia" ? 120 : 100; J.moch = []; J.plata = 0; J.llaves = 0; J.est = "vivo"; J.ext = 0; J.cd = 0; J.ang = J.ang || 0; J.trab = null;
     J.cupo = 10; J.arma = null; J.chaleco = 0; J.cura = 1;
     if (rol === "ladron") { const K = J.cpu ? { arma: Math.random() < 0.4 ? { a: "pistola", r: Math.random() < 0.3 ? 1 : 0 } : null, chaleco: Math.random() < 0.3 ? 1 : 0, bolso: 10 } : Golpe.limpiarKit(J.kit); J.arma = K.arma ? { ...K.arma } : null; J.chaleco = K.chaleco; J.cupo = K.bolso; }
-    if (rol === "policia") { const R = GP.RANGOS[J.rango = Golpe.rango((J.xp || 0) + (J.arrestos || 0))]; J.arma = { ...R[3] }; J.chaleco = R[4]; J.cura = 2; }
+    if (rol === "policia") { const R = GP.RANGOS[J.rango = Golpe.rango((J.xp || 0) + (J.arrTurno || 0))]; J.arma = { ...R[3] }; J.chaleco = R[4]; J.cura = 2; }
     J.incaut = J.incaut || []; J.premio = null;
     J.team = J.cpu ? (rol === "policia" ? "pol" : J.id) : rol === "policia" ? "pol" : "h-" + rol;
     J.in = { mx: 0, my: 0, ax: 0, ay: 0, f: false };
@@ -324,7 +327,7 @@ const Golpe = {
     const semilla = Math.floor(Math.random() * 1e9);
     const s = { id: Turnero.nuevoId("gp"), semilla, M: Golpe.mapa(semilla), fase: "juego", t: -3, mov: 0, local: !!cfg.local,
       nivel: cfg.nivel || "normal", dens: GP.DENS[cfg.dens] ? cfg.dens : "normal", jug: [], items: [], balas: [], autos: [], feed: [], hits: [], nId: 0, nBot: 0, respawn: [] };
-    for (const h of humanos) s.jug.push({ ...h, cpu: false, kills: 0, arrestos: 0, confis: 0, rol: "civil", kit: Golpe.limpiarKit(h.kit), xp: Math.max(0, Math.min(999, h.xp | 0)), banco: Math.max(0, Math.min(1e7, h.banco | 0)), gastoBanco: 0, clan: Golpe.limpiarTag(h.clan) });
+    for (const h of humanos) s.jug.push({ ...h, cpu: false, kills: 0, arrestos: 0, confis: 0, rol: "civil", kit: Golpe.limpiarKit(h.kit), xp: Math.max(0, Math.min(999, h.xp | 0)), banco: Math.max(0, Math.min(1e7, h.banco | 0)), gastoPend: 0, clan: Golpe.limpiarTag(h.clan), runs: [], ganado: 0, escapes: 0, arrTurno: 0, castigo: 0 });
     Golpe.llenar(s);
     Golpe.arrancar(s);
     return s;
@@ -344,19 +347,52 @@ const Golpe = {
     for (let i = 0; i < np; i++) Golpe.bot(s, "policia");
     for (let i = 0; i < nc; i++) Golpe.bot(s, "civil");
   },
+  policias(s) { return s.jug.filter(j => j.rol === "policia" && (j.est === "vivo" || j.est === "caido")).length; },
+  nota(s, J, txt) { J.nota = { txt, t: s.t }; },
   convertir(s, J, rol) {
     if (J.est !== "vivo" || J.rol !== "civil") return;
     if (rol === "policia" && !(J.bldg && s.M.ed[J.bldg].tipo === "comisaria")) return;
+    if (rol === "policia" && Golpe.policias(s) >= GP.MAX_POLI) { Golpe.nota(s, J, `La comisaría está completa (${GP.MAX_POLI} policías). Esperá a que alguien termine su turno.`); return; }
     if (J.auto) Golpe.bajar(s, J);
     const { x, y, cura } = J;
+    if (rol === "policia") { J.incaut = []; J.confis = 0; J.arrTurno = 0; }
     Golpe.armar(J, rol); J.x = x; J.y = y; J.cura = Math.max(J.cura, cura);
-    if (rol === "policia") Golpe.aviso(s, `${J.name} se unió a la policía como ${GP.RANGOS[J.rango][0].toLowerCase()}`);
+    if (rol === "policia") { J.turnoDesde = s.t; if (J.cpu) J.turnoFin = s.t + 200 + Math.random() * 240; Golpe.aviso(s, `${J.name} entró a la policía como ${GP.RANGOS[J.rango][0].toLowerCase()}`); }
+    if (J.cpu) delete J.ia;
   },
+  /* Lo que cobra un policía al terminar el turno: sueldo + una parte de lo confiscado + algunos ítems incautados */
   cerrarTurno(J) {
     if (J.rol !== "policia" || J.premio != null) return;
     const items = J.incaut.slice().sort(() => Math.random() - 0.5).slice(0, GP.QUEDA);
     J.premioItems = items;
     J.premio = GP.RANGOS[J.rango || 0][5] + Math.round(J.confis * GP.PARTE / 10) * 10 + items.reduce((a, it) => a + (it.v || 0), 0);
+  },
+  /* El policía deja de trabajar (en la comisaría): cobra y deja el lugar libre para otro */
+  terminarTurno(s, J) {
+    if (J.rol !== "policia" || J.est !== "vivo" || !(J.bldg && s.M.ed[J.bldg].tipo === "comisaria")) return;
+    Golpe.cerrarTurno(J);
+    const premio = J.premio || 0;
+    Golpe.run(s, J, "turno", { plata: premio, arrestos: J.arrTurno || 0 });
+    J.xp = (J.xp || 0) + (J.arrTurno || 0);
+    Golpe.aviso(s, `${Golpe.nombreVisible(J)} terminó su turno y cobró $${premio}`);
+    const { x, y } = J, kit = J.kit;
+    Golpe.armar(J, "civil"); J.x = x; J.y = y; J.kit = kit; J.arrTurno = 0; J.confis = 0; J.incaut = []; J.castigo = 0;
+    if (J.cpu) { J.nace = s.t - 9999; delete J.ia; }
+  },
+  /* Una "vuelta" de una persona: escape, arresto, muerte, turno o cierre. Se guarda en el momento (cada teléfono
+     la manda al servidor). gasto: lo que salió de la plata guardada en la armería desde la vuelta anterior. */
+  run(s, J, tipo, extra) {
+    if (J.cpu) return;
+    J.nRun = (J.nRun || 0) + 1;
+    const r = Object.assign({ id: `${s.id.slice(-10)}-${String(J.id).slice(-10)}-${J.nRun}`, tipo, rol: J.rol, escapo: tipo === "escape", plata: 0, gasto: J.gastoPend || 0, arrestos: 0, guarida: [], t: Math.round(s.t) }, extra);
+    J.gastoPend = 0; J.banco = Math.max(0, (J.banco || 0) + r.plata); J.ganado = (J.ganado || 0) + r.plata;
+    if (r.escapo) J.escapes = (J.escapes || 0) + 1;
+    J.runs.push(r); if (J.runs.length > 40) J.runs.shift();
+    J.ultRun = { tipo, plata: r.plata, t: s.t };
+  },
+  /* Vuelve a la zona segura (su casa) y al rato reaparece como civil, con el equipo que le quedó */
+  aCasa(s, J, kit) {
+    J.kit = Golpe.limpiarKit(kit); J.est = "casa"; J.vuelve = s.t + GP.CASA; J.auto = null; J.trab = null; J.moch = []; J.plata = 0; J.llaves = 0;
   },
   aviso(s, txt) { s.feed.push({ txt, t: s.t }); if (s.feed.length > 6) s.feed.shift(); },
 
@@ -368,9 +404,17 @@ const Golpe = {
     for (const J of s.jug) {
       // Policías humanos que cayeron: vuelven a la comisaría
       if (J.est === "caido" && s.t >= J.vuelve) {
-        const p = Golpe.enComisaria(s); const { incaut, confis, arrestos, kills } = J;
-        Golpe.armar(J, "policia"); Object.assign(J, { incaut, confis, arrestos, kills, x: p.x, y: p.y, bldg: Golpe.edificioEn(M, p.x, p.y), prot: 4 });
+        const p = Golpe.enComisaria(s); const { incaut, confis, arrestos, arrTurno, kills, castigo, kit } = J;
+        Golpe.armar(J, "policia"); Object.assign(J, { incaut, confis, arrestos, arrTurno, kills, castigo, kit, x: p.x, y: p.y, bldg: Golpe.edificioEn(M, p.x, p.y), prot: 4 });
       }
+      // De vuelta en la zona segura, como civil
+      if (J.est === "casa" && s.t >= J.vuelve) {
+        const Z = s.M.segura, kit = J.kit; Golpe.armar(J, "civil"); J.kit = kit;
+        let p = { x: Z.cx + (Math.random() - 0.5) * 120, y: Z.cy + 40 + (Math.random() - 0.5) * 60 }; if (!Golpe.libre(M, p.x, p.y, GP.R)) p = { x: Z.cx, y: Z.cy + 60 };
+        J.x = p.x; J.y = p.y; J.bldg = 0; J.seguro = true;
+      }
+      // Cuanto más aguanta vivo un policía, menos tarda en volver la próxima vez que caiga
+      if (J.rol === "policia" && J.est === "vivo" && J.castigo > 0) J.castigo = Math.max(0, J.castigo - dt / 10);
       if (J.est !== "vivo") continue;
       if (J.cpu) Golpe.pensar(s, J, dt);
       const I = J.in;
@@ -395,7 +439,7 @@ const Golpe = {
         Golpe.trabajar(s, J, dt);
       }
       // Salida (a pie o en auto)
-      if (s.M.salidas.some(o => Math.hypot(o.x - J.x, o.y - J.y) < GP.SALIDA_R) && (J.rol !== "policia" || !J.cpu)) {
+      if (J.rol !== "policia" && s.M.salidas.some(o => Math.hypot(o.x - J.x, o.y - J.y) < GP.SALIDA_R)) {
         J.ext += dt;
         if (J.ext >= GP.ESCAPE) Golpe.escapar(s, J);
       } else J.ext = 0;
@@ -408,26 +452,35 @@ const Golpe = {
     for (const r of s.respawn.slice()) if (s.t >= r.t && s.t < GP.DURACION - 40) { s.respawn.splice(s.respawn.indexOf(r), 1); Golpe.bot(s, r.rol); }
     if (s.jug.length > 70) s.jug = s.jug.filter(j => !j.cpu || j.est === "vivo" || s.t - (j.fin || 0) < 30);
     const humanos = s.jug.filter(j => !j.cpu);
-    if (humanos.every(j => j.est !== "vivo" && j.est !== "caido")) { s.cierre = s.cierre ?? s.t + 2.5; if (s.t >= s.cierre) Golpe.terminar(s); }
-    else if (s.t >= GP.DURACION) Golpe.terminar(s);
+    if (s.t >= GP.DURACION) Golpe.terminar(s);
   },
   escapar(s, J) {
     if (J.auto) { const A = s.autos.find(a => a.id === J.auto); if (A) { J.moch.push(...A.baul); A.baul = []; s.autos.splice(s.autos.indexOf(A), 1); } J.auto = null; }
-    J.est = "escapo"; J.fin = s.t; J.kitFinal = J.rol === "ladron" ? { arma: J.arma, chaleco: J.chaleco, bolso: J.cupo } : J.rol === "civil" ? J.kit : undefined;
-    if (J.rol === "policia") { Golpe.cerrarTurno(J); Golpe.aviso(s, `${Golpe.nombreVisible(J)} terminó su turno`); }
-    else { const v = Golpe.botin(J); Golpe.aviso(s, `${J.name} escapó${v ? ` con $${v}` : ""}`); }
-    if (J.cpu) s.respawn.push({ rol: J.rol, t: s.t + 15 });
+    if (J.cpu) { J.est = "escapo"; J.fin = s.t; if (J.rol === "ladron") Golpe.aviso(s, `${J.name} escapó`); s.respawn.push({ rol: J.rol === "policia" ? "civil" : J.rol, t: s.t + 15 }); return; }
+    if (J.rol === "ladron") {
+      // Escapó: se queda con la plata, lo que no vendió va a su guarida y conserva el equipo
+      const gear = { arma: J.arma, chaleco: J.chaleco, bolso: J.cupo }, v = Golpe.botin(J);
+      Golpe.run(s, J, "escape", { plata: J.plata, guarida: J.moch.map(it => ({ a: it.a, r: it.r, v: it.v })), kit: gear });
+      Golpe.aviso(s, `${J.name} escapó${v ? ` con $${v}` : ""}`);
+      Golpe.aCasa(s, J, gear);
+    } else {
+      if (J.gastoPend) Golpe.run(s, J, "cierre", { kit: J.kit });
+      Golpe.aCasa(s, J, J.kit);
+    }
   },
+  /* Fin de la sesión: los policías cobran su turno; los ladrones en la calle pierden lo que llevan (no el equipo) */
   terminar(s) {
     if (s.fase === "fin") return;
-    for (const J of s.jug) if (!J.cpu && (J.est === "vivo" || J.est === "caido")) {
-      J.est = "tiempo"; J.fin = s.t;
-      if (J.rol === "policia") Golpe.cerrarTurno(J);
-      else { J.kitFinal = J.rol === "ladron" ? { arma: J.arma, chaleco: J.chaleco, bolso: J.cupo } : J.rol === "civil" ? J.kit : undefined; J.moch = []; J.plata = 0; }
+    for (const J of s.jug) {
+      if (J.cpu) continue;
+      if (J.rol === "policia" && (J.est === "vivo" || J.est === "caido")) { Golpe.cerrarTurno(J); Golpe.run(s, J, "turno", { plata: J.premio || 0, arrestos: J.arrTurno || 0 }); }
+      else if (J.rol === "ladron" && J.est === "vivo") Golpe.run(s, J, "tiempo", { kit: { arma: J.arma, chaleco: J.chaleco, bolso: J.cupo } });
+      else if (J.gastoPend) Golpe.run(s, J, "cierre", { kit: J.kit });
+      J.fin = s.t;
     }
     Golpe.ordenar(s); s.fase = "fin"; s.mov++;
   },
-  puntaje(J) { return J.rol === "policia" ? J.premio || 0 : J.est === "escapo" ? Golpe.botin(J) : 0; },
+  puntaje(J) { return J.ganado || 0; },
   ordenar(s) { s.jug.filter(j => !j.cpu).sort((a, b) => Golpe.puntaje(b) - Golpe.puntaje(a) || b.kills - a.kills).forEach((j, k) => j.puesto = k + 1); },
 
   /* ---------- Juntar cosas ---------- */
@@ -510,9 +563,9 @@ const Golpe = {
     if (P.tipo === "bolso" && K.bolso >= P.c) return;
     if (P.tipo === "cura" && J.cura >= 3) return;
     if (P.tipo === "arma" && K.arma && K.arma.a === P.a && K.arma.r >= P.r) return;
-    const banco = Math.max(0, (J.banco || 0) - (J.gastoBanco || 0));
+    const banco = Math.max(0, J.banco || 0);
     if ((J.plata || 0) + banco < precio) { J.compra = { ok: 0, t: s.t }; return; }
-    const dePlata = Math.min(J.plata || 0, precio); J.plata = (J.plata || 0) - dePlata; J.gastoBanco = (J.gastoBanco || 0) + precio - dePlata;
+    const dePlata = Math.min(J.plata || 0, precio); J.plata = (J.plata || 0) - dePlata; J.banco = banco - (precio - dePlata); J.gastoPend = (J.gastoPend || 0) + precio - dePlata;
     if (P.tipo === "arma") K.arma = { a: P.a, r: P.r };
     if (P.tipo === "mejora") K.arma = { a: K.arma.a, r: K.arma.r + 1 };
     if (P.tipo === "chaleco") K.chaleco = P.c;
@@ -630,11 +683,10 @@ const Golpe = {
     if (q.auto) Golpe.bajar(s, q);
     if (b.rol === "policia" && q.rol === "ladron") {
       // Arrestado: pierde lo robado y la plata, conserva armas, chaleco y bolso
-      const v = Golpe.botin(q); q.est = "preso";
-      q.kitFinal = { arma: q.arma, chaleco: q.chaleco, bolso: q.cupo };
+      const v = Golpe.botin(q), gear = { arma: q.arma, chaleco: q.chaleco, bolso: q.cupo };
       if (autor) {
-        autor.confis += v; autor.arrestos++; autor.incaut.push(...q.moch.map(it => ({ ...it })));
-        const nuevo = Golpe.rango((autor.xp || 0) + autor.arrestos);
+        autor.confis += v; autor.arrestos++; autor.arrTurno = (autor.arrTurno || 0) + 1; autor.incaut.push(...q.moch.map(it => ({ ...it })));
+        const nuevo = Golpe.rango((autor.xp || 0) + autor.arrTurno);
         if (nuevo > (autor.rango || 0)) {
           autor.rango = nuevo; const R = GP.RANGOS[nuevo];
           if (Golpe.puntajeArma(R[3]) > Golpe.puntajeArma(autor.arma)) autor.arma = { ...R[3] };
@@ -642,12 +694,13 @@ const Golpe = {
           Golpe.aviso(s, `${autor.name} ascendió a ${R[0].toLowerCase()}`);
         }
       }
-      q.moch = []; q.plata = 0;
       Golpe.aviso(s, `${autor ? Golpe.nombreVisible(autor) : "La policía"} arrestó a ${q.name}${v ? ` · $${v} confiscados` : ""}`);
+      if (q.cpu) { q.est = "preso"; q.moch = []; q.plata = 0; }
+      else { Golpe.run(s, q, "preso", { kit: gear }); Golpe.aCasa(s, q, gear); return; }
     } else if (q.rol === "policia" && !q.cpu) {
-      // Policía humano: cae y vuelve a la comisaría al rato, sigue en la partida
+      // Policía humano: cae y vuelve a la comisaría. Cada caída suma espera; aguantar vivo la va bajando (mínimo 14 s).
       if (autor) autor.kills++;
-      q.est = "caido"; q.vuelve = s.t + GP.VUELVE;
+      q.est = "caido"; q.vuelve = s.t + GP.VUELVE_MIN + (q.castigo || 0); q.castigo = (q.castigo || 0) + GP.CASTIGO;
       Golpe.aviso(s, `${autor ? autor.name : "Alguien"} bajó a ${Golpe.nombreVisible(q)}: vuelve a la comisaría`);
       return;
     } else {
@@ -661,10 +714,11 @@ const Golpe = {
       if (q.rol === "ladron" && q.cupo > 10) Golpe.soltar(s, { k: "bolso", n: q.cupo }, q.x, q.y);
       if (q.cura) Golpe.soltar(s, { k: "cura" }, q.x, q.y);
       q.moch = []; q.plata = 0;
-      q.kitFinal = q.rol === "ladron" || q.rol === "civil" ? null : undefined;   // null: empieza de cero la próxima
       Golpe.aviso(s, `${autor ? autor.name : "Alguien"} bajó a ${Golpe.nombreVisible(q)}`);
+      if (!q.cpu) { Golpe.run(s, q, "muerto", { kit: null, perdio: true }); Golpe.aCasa(s, q, null); return; }
     }
-    if (q.cpu) s.respawn.push({ rol: q.rol, t: s.t + 18 + Math.random() * 10 });
+    // Los policías bot que caen se reemplazan por civiles (la policía sale de los civiles)
+    if (q.cpu) s.respawn.push({ rol: q.rol === "policia" ? "civil" : q.rol, t: s.t + 18 + Math.random() * 10 });
   },
 
   /* ---------- Bots ---------- */
@@ -679,7 +733,7 @@ const Golpe = {
     return Golpe.botin(q) > 400 && Golpe.botin(J) < 200;
   },
   pensar(s, J, dt) {
-    const M = s.M, IA = J.ia || (J.ia = { t: 0, camino: null, meta: null, obj: null, reac: 0, lado: 1, cambio: 0, quieto: 0, px: J.x, py: J.y, repensar: 0, meta2: 0, objetivo: (J.rol === "civil" ? 200 : 300) + Math.random() * 600, malo: Math.random() < 0.4, cuidadoso: Math.random() < 0.55 }), h = Golpe.hab(J.nivel);
+    const M = s.M, IA = J.ia || (J.ia = { t: 0, camino: null, meta: null, obj: null, reac: 0, lado: 1, cambio: 0, quieto: 0, px: J.x, py: J.y, repensar: 0, meta2: 0, objetivo: (J.rol === "civil" ? 200 : 300) + Math.random() * 600, malo: Math.random() < 0.4, cuidadoso: Math.random() < 0.55, poli: J.rol === "civil" && !J.auto && Math.random() < 0.35 }), h = Golpe.hab(J.nivel);
     IA.t -= dt; IA.repensar -= dt;
     if (J.auto) return Golpe.pensarAuto(s, J, IA, dt);
     let enemigo = IA.obj ? s.jug.find(q => q.id === IA.obj) : null;
@@ -753,6 +807,19 @@ const Golpe = {
     IA.meta2 -= 0.25;
     if (huyendo && enemigo) {
       if (!IA.meta || IA.meta2 <= 0 || Math.hypot(IA.meta.x - enemigo.x, IA.meta.y - enemigo.y) < 300) { const [x, y] = Golpe.calleAzar(M, Math.random); IA.meta = { x: (x + 0.5) * T, y: (y + 0.5) * T }; IA.camino = null; IA.meta2 = 4; }
+      return;
+    }
+    const comisaria = () => { const E = M.ed.find(e => e && e.tipo === "comisaria"), [x, y] = Golpe.pisoAzar(M, Math.random, E); return { x: (x + 0.5) * T, y: (y + 0.5) * T, comi: true }; };
+    if (J.rol === "policia" && J.turnoFin && s.t > J.turnoFin) {
+      // Terminó su turno: vuelve a la comisaría, cobra y deja el lugar
+      if (J.bldg && M.ed[J.bldg].tipo === "comisaria") { Golpe.terminarTurno(s, J); return; }
+      if (!IA.meta || !IA.meta.comi) { IA.meta = comisaria(); IA.camino = null; }
+      return;
+    }
+    if (J.rol === "civil" && IA.poli && Golpe.policias(s) < GP.MAX_POLI) {
+      // Este civil quiere trabajar de policía
+      if (J.bldg && M.ed[J.bldg].tipo === "comisaria") { Golpe.convertir(s, J, "policia"); return; }
+      if (!IA.meta || !IA.meta.comi) { IA.meta = comisaria(); IA.camino = null; }
       return;
     }
     if (J.rol === "policia") {
@@ -861,17 +928,18 @@ const Golpe = {
       alarmas: Object.entries(s.alarmas).map(([id, a]) => [+id, a.on ? 1 : 0, a.son ? 1 : 0]),
       cajas: Object.entries(s.cajas).filter(([, c]) => c.ab).map(([id]) => +id),
       equipo: s.jug.filter(j => me && !j.cpu && j.team === me.team && j !== me).map(j => ({ id: j.id, name: j.name, x: Math.round(j.x), y: Math.round(j.y), est: j.est, hp: Math.round(j.hp) })),
-      humanos: s.jug.filter(j => !j.cpu).map(j => ({ id: j.id, name: j.name, rol: j.rol, est: j.est, valor: j.rol === "policia" ? j.premio || 0 : Golpe.botin(j), items: j.premioItems ? j.premioItems.length : 0, kills: j.kills, arrestos: j.arrestos, puesto: j.puesto, pts: Golpe.puntaje(j), rango: j.rol === "policia" ? GP.RANGOS[j.rango || 0][0] : null }))
+      humanos: s.jug.filter(j => !j.cpu).map(j => ({ id: j.id, name: j.name, rol: j.rol, est: j.est, valor: j.ganado || 0, escapes: j.escapes || 0, items: 0, kills: j.kills, arrestos: j.arrestos, puesto: j.puesto, pts: Golpe.puntaje(j), rango: j.rol === "policia" ? GP.RANGOS[j.rango || 0][0] : null }))
     };
     if (me) {
       const A = me.auto ? s.autos.find(a => a.id === me.auto) : null, Ac = !me.auto && me.rol === "ladron" ? Golpe.autoCerca(s, me) : null;
       v.yo = { id: me.id, rol: me.rol, est: me.est, x: Math.round(me.x * 10) / 10, y: Math.round(me.y * 10) / 10, hp: Math.round(me.hp), hpMax: me.hpMax, ch: me.chaleco, arma: me.arma, cura: me.cura,
         moch: me.rol === "ladron" ? me.moch : [], cupo: me.cupo, valor: me.rol === "ladron" ? Golpe.valor(me) : 0, plata: me.rol === "ladron" ? me.plata : 0, llaves: me.llaves || 0, premio: me.premio,
         kills: me.kills, arrestos: me.arrestos, rango: me.rol === "policia" ? me.rango || 0 : null, ext: Math.round(me.ext * 10) / 10, bldg: me.bldg, auto: me.auto || null, esc: me.escondido ? 1 : 0,
-        trab: me.trab ? { tipo: me.trab.tipo, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
+        trab: me.trab ? { tipo: me.trab.tipo, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" || me.est === "casa" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
         baul: (A || Ac) && (A || Ac).cupo ? { id: (A || Ac).id, n: (A || Ac).baul.length, cupo: (A || Ac).cupo, items: (A || Ac).baul } : null,
         junto: me.junto && s.t - me.junto < 0.3 ? 1 : 0, vendio: me.vendio && s.t - me.vendio.t < 2 ? me.vendio.v : 0,
-        seguro: me.seguro ? 1 : 0, verif: me.verif === false ? 0 : 1, banco: Math.max(0, (me.banco || 0) - (me.gastoBanco || 0)), kit: me.rol === "civil" ? Golpe.limpiarKit(me.kit) : null, compra: me.compra && s.t - me.compra.t < 1.5 ? me.compra : null };
+        seguro: me.seguro ? 1 : 0, verif: me.verif === false ? 0 : 1, banco: Math.max(0, me.banco || 0),
+        runs: me.runs || [], ultRun: me.ultRun && s.t - me.ultRun.t < 4 ? me.ultRun : null, nota: me.nota && s.t - me.nota.t < 3 ? me.nota.txt : null, policias: Golpe.policias(s), castigo: Math.round(me.castigo || 0), kit: me.rol === "civil" ? Golpe.limpiarKit(me.kit) : null, compra: me.compra && s.t - me.compra.t < 1.5 ? me.compra : null };
     }
     return v;
   },
@@ -883,6 +951,7 @@ const Golpe = {
     else if (a.t === "volverse" && (a.r === "ladron" || a.r === "policia")) Golpe.convertir(s, J, a.r);
     else if (a.t === "agarrar" && J.est === "vivo") Golpe.agarrar(s, J);
     else if (a.t === "cura") Golpe.curar(s, J);
+    else if (a.t === "usar" && a.q === "turno") Golpe.terminarTurno(s, J);
     else if (a.t === "usar" && typeof a.q === "string") Golpe.usar(s, J, a.q);
     // Lo que trae cada uno de partidas anteriores (equipo de ladrón y experiencia de policía); solo antes de elegir rol
     else if (a.t === "comprar" && typeof a.i === "string") Golpe.comprar(s, J, a.i);
@@ -907,7 +976,7 @@ const Golpe = {
         if (error) throw error;
         for (const { s, J, ficha } of lote) {
           const d = data && data[ficha]; if (!d || s.fase === "fin") continue;
-          J.verif = true; J.clan = Golpe.limpiarTag(d.clan); J.banco = Math.max(0, Number(d.banco) || 0);
+          J.verif = true; J.clan = Golpe.limpiarTag(d.clan); J.banco = Math.max(0, (Number(d.banco) || 0) - (J.gastoPend || 0));
           if (J.rol === "civil") { J.kit = Golpe.limpiarKit(d.kit); J.xp = Math.max(0, d.xp | 0); }
         }
       } catch (e) { console.warn("Golpe: no se pudieron verificar los equipos", e); }
@@ -917,11 +986,8 @@ const Golpe = {
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;
     const J = s.jug.find(j => j.id === pid); if (!J || J.cpu) return null;
-    const humanos = s.jug.filter(j => !j.cpu), escapo = J.est === "escapo", valor = J.rol === "policia" ? J.premio || 0 : escapo ? Golpe.botin(J) : 0;
-    const gano = J.rol === "policia" ? J.arrestos >= 1 : escapo && valor > 0;
-    return { juego: "golpe", id: s.id, gano, puesto: J.puesto, n: s.jug.length, vsCompu: humanos.length === 1, rol: J.rol, escapo, valor, kills: J.kills, arrestos: J.arrestos,
-      plata: J.rol === "policia" ? J.premio || 0 : escapo ? J.plata : 0, guarida: escapo && J.rol === "ladron" ? J.moch.map(it => ({ a: it.a, r: it.r, v: it.v })) : [],
-      kit: J.kitFinal === undefined ? undefined : J.kitFinal === null ? null : Golpe.limpiarKit(J.kitFinal), gasto: J.gastoBanco || 0 };
+    const humanos = s.jug.filter(j => !j.cpu);
+    return { juego: "golpe", id: s.id, gano: (J.ganado || 0) > 0, puesto: J.puesto, n: s.jug.length, vsCompu: humanos.length === 1, rol: J.rol, escapo: (J.escapes || 0) > 0, valor: J.ganado || 0, kills: J.kills, arrestos: J.arrestos };
   },
   textoCuenta(r) {
     if (!r || typeof Puntos === "undefined" || !BD.sesion()) return "";
@@ -976,7 +1042,7 @@ const Golpe = {
     if (!r) return;
     const b = Golpe.banco(); if (b.golpes.includes(r.id)) return;
     // Al toque en el teléfono (para mostrarlo), y después lo confirma el servidor
-    b.golpes = [r.id, ...b.golpes].slice(0, 50); b.total = Math.max(0, b.total + (r.plata || 0) - (r.gasto || 0)); store.set(Golpe.claveP("Banco"), b);
+    b.golpes = [r.id, ...b.golpes].slice(0, 200); b.total = Math.max(0, b.total + (r.plata || 0) - (r.gasto || 0)); store.set(Golpe.claveP("Banco"), b);
     if (r.guarida && r.guarida.length) store.set(Golpe.claveP("Guarida"), [...Golpe.guarida(), ...r.guarida].slice(-60));
     if (r.kit !== undefined) store.set(Golpe.claveP("Kit"), r.kit === null ? Golpe.kitBase() : r.kit);
     if (r.rol === "policia" && r.arrestos) store.set(Golpe.claveP("Xp"), Golpe.xp() + r.arrestos);

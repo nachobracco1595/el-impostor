@@ -871,7 +871,7 @@ const Golpe = {
         trab: me.trab ? { tipo: me.trab.tipo, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
         baul: (A || Ac) && (A || Ac).cupo ? { id: (A || Ac).id, n: (A || Ac).baul.length, cupo: (A || Ac).cupo, items: (A || Ac).baul } : null,
         junto: me.junto && s.t - me.junto < 0.3 ? 1 : 0, vendio: me.vendio && s.t - me.vendio.t < 2 ? me.vendio.v : 0,
-        seguro: me.seguro ? 1 : 0, banco: Math.max(0, (me.banco || 0) - (me.gastoBanco || 0)), kit: me.rol === "civil" ? Golpe.limpiarKit(me.kit) : null, compra: me.compra && s.t - me.compra.t < 1.5 ? me.compra : null };
+        seguro: me.seguro ? 1 : 0, verif: me.verif === false ? 0 : 1, banco: Math.max(0, (me.banco || 0) - (me.gastoBanco || 0)), kit: me.rol === "civil" ? Golpe.limpiarKit(me.kit) : null, compra: me.compra && s.t - me.compra.t < 1.5 ? me.compra : null };
     }
     return v;
   },
@@ -886,7 +886,33 @@ const Golpe = {
     else if (a.t === "usar" && typeof a.q === "string") Golpe.usar(s, J, a.q);
     // Lo que trae cada uno de partidas anteriores (equipo de ladrón y experiencia de policía); solo antes de elegir rol
     else if (a.t === "comprar" && typeof a.i === "string") Golpe.comprar(s, J, a.i);
-    else if (a.t === "kit" && J.rol === "civil" && !J.kitListo) { J.kitListo = 1; J.kit = Golpe.limpiarKit(a.kit); J.xp = Math.max(0, Math.min(999, a.xp | 0)); J.banco = Math.max(0, Math.min(1e7, a.banco | 0)); J.clan = Golpe.limpiarTag(a.clan); }
+    else if (a.t === "kit" && J.rol === "civil" && !J.kitListo) {
+      // Lo que dice el propio teléfono no se cree del todo: hasta que se verifique con su ficha, equipo limitado
+      J.kitListo = 1; J.verif = false;
+      const k = Golpe.limpiarKit(a.kit); if (k.arma) k.arma.r = Math.min(k.arma.r, 1); k.chaleco = Math.min(k.chaleco, 1); k.bolso = Math.min(k.bolso, 14);
+      J.kit = k; J.xp = Math.max(0, Math.min(3, a.xp | 0)); J.banco = Math.max(0, Math.min(3000, a.banco | 0)); J.clan = "";
+      if (typeof a.ficha === "string" && /^[0-9a-f]{32}$/.test(a.ficha)) Golpe.verificar(s, J, a.ficha);
+    }
+  },
+  /* El anfitrión canjea las fichas de los invitados en el servidor y recibe su equipo real (de a varias juntas) */
+  verificar(s, J, ficha) {
+    if (!Golpe.enNube()) return;
+    Golpe.fichas = Golpe.fichas || [];
+    if (J) Golpe.fichas.push({ s, J, ficha });
+    clearTimeout(Golpe.fichasT);
+    Golpe.fichasT = setTimeout(async () => {
+      const lote = Golpe.fichas.splice(0, 8);
+      try {
+        const { data, error } = await Nube.sb.rpc("golpe_canjear", { fichas: lote.map(x => x.ficha) });
+        if (error) throw error;
+        for (const { s, J, ficha } of lote) {
+          const d = data && data[ficha]; if (!d || s.fase === "fin") continue;
+          J.verif = true; J.clan = Golpe.limpiarTag(d.clan); J.banco = Math.max(0, Number(d.banco) || 0);
+          if (J.rol === "civil") { J.kit = Golpe.limpiarKit(d.kit); J.xp = Math.max(0, d.xp | 0); }
+        }
+      } catch (e) { console.warn("Golpe: no se pudieron verificar los equipos", e); }
+      if (Golpe.fichas.length) Golpe.verificar(lote[0].s, null, null);
+    }, 300);
   },
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;

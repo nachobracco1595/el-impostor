@@ -161,6 +161,12 @@ Object.assign(Golpe, {
       window.removeEventListener("keydown", teclaAbajo); window.removeEventListener("keyup", teclaArriba);
     };
   },
+  /* Le pasa al anfitrión una ficha de un solo uso (si hay nube) para que lea el equipo real desde el servidor */
+  async mandarKit() {
+    const base = { t: "kit", kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total, clan: Golpe.clanTag() };
+    if (Golpe.enNube()) { try { const { data, error } = await Nube.sb.rpc("golpe_ficha"); if (!error && typeof data === "string") base.ficha = data; } catch (e) { } }
+    Golpe.send(base);
+  },
   leerEntrada() {
     const U = UI.gp, T = U.teclas;
     let mx = U.mov.x, my = U.mov.y;
@@ -173,7 +179,7 @@ Object.assign(Golpe, {
   moverYo(dt, now) {
     const U = UI.gp, v = U.v; if (!v) return;
     // Al empezar, le cuenta al anfitrión qué equipo, experiencia y plata trae (online; en este teléfono ya lo sabe)
-    if (!U.kitMandado && !Golpe.opts.local && v.yo && v.yo.rol === "civil") { U.kitMandado = true; Golpe.send({ t: "kit", kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total, clan: Golpe.clanTag() }); }
+    if (!U.kitMandado && !Golpe.opts.local && v.yo && v.yo.rol === "civil") { U.kitMandado = true; Golpe.mandarKit(); }
     const I = Golpe.leerEntrada(), r2 = x => Math.round(x * 20) / 20;
     const msg = { t: "in", mx: r2(I.mx), my: r2(I.my), ax: r2(I.ax), ay: r2(I.ay), f: I.f ? 1 : 0 }, txt = JSON.stringify(msg);
     if (v.fase === "juego" && v.yo && v.yo.est === "vivo" && ((txt !== U.ult.s && now - U.ult.t > 45) || now - U.ult.t > 120)) { U.ult = { t: now, s: txt }; Golpe.send(msg); }
@@ -498,6 +504,7 @@ Object.assign(Golpe, {
         <span class="ar-chip ${falta < 60 ? "gp-urge" : ""}"><b>${mm}:${ss}</b></span>
         ${Y.seguro ? `<span class="ar-chip gp-segura">Zona segura</span>` : ""}
         ${Y.esc ? `<span class="ar-chip gp-oculto">Escondido</span>` : ""}
+        ${Y.seguro && !Y.verif && !Golpe.opts.local ? `<span class="ar-chip gp-sinverif" title="Tu equipo se limita hasta que el anfitrión lo verifique con la nube">Equipo sin verificar</span>` : ""}
         ${Y.rol === "ladron" ? `<span class="ar-chip">${ic("bolso")}<b>${Y.moch.length}/${Y.cupo}</b><small>$${Y.valor}</small></span><span class="ar-chip">${ic("plata")}<b>$${Y.plata}</b></span>${Y.llaves ? `<span class="ar-chip">${ic("llave")}<b>${Y.llaves}</b></span>` : ""}` : ""}
         ${Y.rol === "policia" ? `<span class="ar-chip">${ic("placa")}<b>${Y.arrestos}</b><small>arresto${Y.arrestos === 1 ? "" : "s"}</small></span>` : ""}
         <div class="gp-vida"><i style="width:${k * 100}%;background:${k > 0.5 ? "#40c057" : k > 0.25 ? "#fcc419" : "#fa5252"}"></i><span>Vida ${Math.max(0, Y.hp)}${Y.ch ? ` · Chaleco ${Y.ch}` : ""}</span></div>

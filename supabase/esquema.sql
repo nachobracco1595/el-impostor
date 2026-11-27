@@ -950,3 +950,50 @@ grant execute on function public.golpe_estado(jsonb) to authenticated;
 grant execute on function public.golpe_resultado(text, text, boolean, integer, integer, jsonb, boolean, jsonb, integer) to authenticated;
 grant execute on function public.golpe_vender_guarida() to authenticated;
 grant execute on function public.golpe_ranking(integer) to anon, authenticated;
+
+-- ============ Fichas para partidas online ============
+-- Al entrar a una partida, cada jugador pide una ficha de un solo uso y se la pasa al anfitrión. El anfitrión la
+-- canjea y recibe el equipo, la experiencia, el clan y la plata reales de ese jugador. Así nadie puede inventar su
+-- equipo ni hacerse pasar por otro, y el anfitrión nunca recibe la sesión de nadie. Las fichas vencen a los 10 minutos.
+create table if not exists public.golpe_fichas (
+  ficha   text primary key,
+  usuario uuid not null references public.golpe_cuentas (id) on delete cascade,
+  creado  timestamptz not null default now()
+);
+alter table public.golpe_fichas enable row level security;   -- sin políticas: nadie la lee ni escribe directo
+
+create or replace function public.golpe_ficha() returns text
+language plpgsql security definer set search_path = public as $$
+declare f text;
+begin
+  if auth.uid() is null or not exists (select 1 from public.perfiles where id = auth.uid()) then
+    raise exception 'Necesitas un perfil en la nube' using errcode = '42501';
+  end if;
+  insert into public.golpe_cuentas (id, importado) values (auth.uid(), true) on conflict (id) do nothing;
+  delete from public.golpe_fichas where creado < now() - interval '10 minutes' or usuario = auth.uid();
+  f := md5(random()::text || clock_timestamp()::text || auth.uid()::text);
+  insert into public.golpe_fichas (ficha, usuario) values (f, auth.uid());
+  return f;
+end $$;
+
+create or replace function public.golpe_canjear(fichas text[]) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare res jsonb := '{}'::jsonb; r record;
+begin
+  if auth.uid() is null then raise exception 'Necesitas un perfil en la nube' using errcode = '42501'; end if;
+  if array_length(fichas, 1) > 8 then return res; end if;
+  for r in
+    delete from public.golpe_fichas f using public.golpe_cuentas g
+    where f.ficha = any (fichas) and f.creado >= now() - interval '10 minutes' and g.id = f.usuario
+    returning f.ficha, g.kit, g.xp, g.plata,
+      (select k.tag from public.golpe_clan_miembros m join public.golpe_clanes k on k.id = m.clan where m.usuario = g.id) as tag
+  loop
+    res := res || jsonb_build_object(r.ficha, jsonb_build_object('kit', r.kit, 'xp', r.xp, 'banco', r.plata, 'clan', r.tag));
+  end loop;
+  return res;
+end $$;
+
+revoke all on function public.golpe_ficha() from public, anon;
+revoke all on function public.golpe_canjear(text[]) from public, anon;
+grant execute on function public.golpe_ficha() to authenticated;
+grant execute on function public.golpe_canjear(text[]) to authenticated;

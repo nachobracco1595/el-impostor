@@ -2267,3 +2267,28 @@ body.en-golpe .voz-flot { top: calc(322px + var(--sat)); }
 .golpe .gp-mini { top: calc(56px + var(--sat)); }
 body.en-golpe .audio-ctl { top: calc(180px + var(--sat)); }
 .golpe .gp-feed { top: auto; bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
+/* Golpe: ciudades, terrenos y clanes */
+.gc-resumen { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gc-resumen div { display: flex; flex-direction: column; }
+.gc-resumen b { font-size: 20px; color: #ffd43b; }
+.gc-tabs { margin: 4px 0 8px; }
+.gc-ciudad-cab { display: flex; flex-direction: column; margin-bottom: 8px; }
+.gc-ciudad-cab small { opacity: .7; }
+.gc-zona { border: 1px solid var(--line); border-radius: 12px; padding: 8px; margin-bottom: 8px; }
+.gc-zona.mia { border-color: #2f9e44; background: rgba(47, 158, 68, .08); }
+.gc-zona-cab { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-weight: 800; }
+.gc-zona-cab small { font-weight: 600; opacity: .75; }
+.gc-lotes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.gc-lote b { font-size: 12px; }
+.gc-lote { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: inherit; text-align: left; font-size: 13px; }
+.gc-lote small { opacity: .75; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gc-lote.libre { border-style: dashed; }
+.gc-lote.mio { border-color: #f59f00; background: rgba(245, 159, 0, .12); }
+.gc-lote.ocupado { opacity: .8; }
+.gc-form { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+.gc-form input { flex: 1 1 120px; min-width: 0; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); color: inherit; font: inherit; }
+.gc-form input#gcTag { flex: 0 0 80px; text-transform: uppercase; }
+.gc-codigo { letter-spacing: 2px; color: #ffd43b; }
+.gc-clan-nom { font-size: 17px; margin: 4px 0; }
+.gp-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 9999; max-width: 86vw; padding: 10px 16px; border-radius: 12px; background: rgba(18, 16, 26, .95); border: 1px solid var(--line); font-weight: 700; transition: opacity .2s, transform .2s; }
+.gp-toast.on { opacity: 1; transform: translate(-50%, 0); }

@@ -173,7 +173,7 @@ Object.assign(Golpe, {
   moverYo(dt, now) {
     const U = UI.gp, v = U.v; if (!v) return;
     // Al empezar, le cuenta al anfitrión qué equipo, experiencia y plata trae (online; en este teléfono ya lo sabe)
-    if (!U.kitMandado && !Golpe.opts.local && v.yo && v.yo.rol === "civil") { U.kitMandado = true; Golpe.send({ t: "kit", kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total }); }
+    if (!U.kitMandado && !Golpe.opts.local && v.yo && v.yo.rol === "civil") { U.kitMandado = true; Golpe.send({ t: "kit", kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total, clan: Golpe.clanTag() }); }
     const I = Golpe.leerEntrada(), r2 = x => Math.round(x * 20) / 20;
     const msg = { t: "in", mx: r2(I.mx), my: r2(I.my), ax: r2(I.ax), ay: r2(I.ay), f: I.f ? 1 : 0 }, txt = JSON.stringify(msg);
     if (v.fase === "juego" && v.yo && v.yo.est === "vivo" && ((txt !== U.ult.s && now - U.ult.t > 45) || now - U.ult.t > 120)) { U.ult = { t: now, s: txt }; Golpe.send(msg); }

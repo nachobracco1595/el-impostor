@@ -316,14 +316,15 @@ const Golpe = {
     for (let i = 0; i < 30; i++) { const [x, y] = Golpe.pisoAzar(s.M, Math.random, E); const px = (x + 0.5) * T, py = (y + 0.5) * T; if (Golpe.libre(s.M, px, py, GP.R)) return { x: px, y: py }; }
     return { x: (E.x0 + 2) * T, y: (E.y0 + 2) * T };
   },
-  nombreVisible(J) { return J.rol === "policia" ? `${GP.RANGOS[J.rango || 0][1]} ${J.name}` : J.name; },
+  nombreVisible(J) { const n = J.clan ? `[${J.clan}] ${J.name}` : J.name; return J.rol === "policia" ? `${GP.RANGOS[J.rango || 0][1]} ${n}` : n; },
+  limpiarTag(t) { t = String(t || "").toUpperCase(); return /^[A-Z0-9]{2,4}$/.test(t) ? t : ""; },
 
   /* ---------- Partida ---------- */
   crear(humanos, cfg) {
     const semilla = Math.floor(Math.random() * 1e9);
     const s = { id: Turnero.nuevoId("gp"), semilla, M: Golpe.mapa(semilla), fase: "juego", t: -3, mov: 0, local: !!cfg.local,
       nivel: cfg.nivel || "normal", dens: GP.DENS[cfg.dens] ? cfg.dens : "normal", jug: [], items: [], balas: [], autos: [], feed: [], hits: [], nId: 0, nBot: 0, respawn: [] };
-    for (const h of humanos) s.jug.push({ ...h, cpu: false, kills: 0, arrestos: 0, confis: 0, rol: "civil", kit: Golpe.limpiarKit(h.kit), xp: Math.max(0, Math.min(999, h.xp | 0)), banco: Math.max(0, Math.min(1e7, h.banco | 0)), gastoBanco: 0 });
+    for (const h of humanos) s.jug.push({ ...h, cpu: false, kills: 0, arrestos: 0, confis: 0, rol: "civil", kit: Golpe.limpiarKit(h.kit), xp: Math.max(0, Math.min(999, h.xp | 0)), banco: Math.max(0, Math.min(1e7, h.banco | 0)), gastoBanco: 0, clan: Golpe.limpiarTag(h.clan) });
     Golpe.llenar(s);
     Golpe.arrancar(s);
     return s;
@@ -852,7 +853,7 @@ const Golpe = {
     const cerca = (o, r) => ojo && Math.abs(o.x - ojo.x) < r && Math.abs(o.y - ojo.y) < r;
     const v = {
       ...base, ojo: ojo ? ojo.id : null,
-      jug: visibles.map(j => j !== me && j.seguro && j.team !== (me && me.team) ? { id: j.id, name: j.name, cpu: !!j.cpu, look: j.look, rol: "civil", x: Math.round(j.x), y: Math.round(j.y), a: Math.round(j.ang * 100) / 100, hp: Math.round(j.hp), hpMax: j.hpMax, ch: 0, arma: null, ar: 0, seg: 1 } : ({ id: j.id, name: Golpe.nombreVisible(j), cpu: !!j.cpu, look: j.look, rol: j.rol, seg: j.seguro ? 1 : 0, x: Math.round(j.x), y: Math.round(j.y), a: Math.round(j.ang * 100) / 100, hp: Math.round(j.hp), hpMax: j.hpMax, ch: j.chaleco, arma: j.arma ? j.arma.a : null, ar: j.arma ? j.arma.r : 0, tiro: j.tiro && s.t - j.tiro < 0.08 ? 1 : 0, ext: j.ext ? Math.round(j.ext * 10) / 10 : 0, golpe: j.golpe && s.t - j.golpe < 0.2 ? 1 : 0, prot: j.prot > 0 ? 1 : 0, esc: j.escondido ? 1 : 0, trab: j.trab ? 1 : 0 })),
+      jug: visibles.map(j => j !== me && j.seguro && j.team !== (me && me.team) ? { id: j.id, name: j.clan ? `[${j.clan}] ${j.name}` : j.name, cpu: !!j.cpu, look: j.look, rol: "civil", x: Math.round(j.x), y: Math.round(j.y), a: Math.round(j.ang * 100) / 100, hp: Math.round(j.hp), hpMax: j.hpMax, ch: 0, arma: null, ar: 0, seg: 1 } : ({ id: j.id, name: Golpe.nombreVisible(j), cpu: !!j.cpu, look: j.look, rol: j.rol, seg: j.seguro ? 1 : 0, x: Math.round(j.x), y: Math.round(j.y), a: Math.round(j.ang * 100) / 100, hp: Math.round(j.hp), hpMax: j.hpMax, ch: j.chaleco, arma: j.arma ? j.arma.a : null, ar: j.arma ? j.arma.r : 0, tiro: j.tiro && s.t - j.tiro < 0.08 ? 1 : 0, ext: j.ext ? Math.round(j.ext * 10) / 10 : 0, golpe: j.golpe && s.t - j.golpe < 0.2 ? 1 : 0, prot: j.prot > 0 ? 1 : 0, esc: j.escondido ? 1 : 0, trab: j.trab ? 1 : 0 })),
       autos: s.autos.filter(a => cerca(a, GP.VISION + 80)).map(a => { const C = a.cond && s.jug.find(j => j.id === a.cond); return { id: a.id, x: Math.round(a.x), y: Math.round(a.y), a: Math.round(a.ang * 100) / 100, tipo: a.tipo, color: a.color, v: Math.round(a.v), cond: C ? { id: C.id, rol: C.rol, name: Golpe.nombreVisible(C), cpu: !!C.cpu, hp: Math.round(C.hp), hpMax: C.hpMax, ext: C.ext ? Math.round(C.ext * 10) / 10 : 0 } : null, baul: a.baul.length, cupo: a.cupo }; }),
       items: s.items.filter(it => cerca(it, GP.VISION + 60) && (!Golpe.edificioEn(s.M, it.x, it.y) || Golpe.edificioEn(s.M, it.x, it.y) === ojo.bldg)).map(it => ({ id: it.id, x: Math.round(it.x), y: Math.round(it.y), k: it.k, a: it.a, r: it.r, n: it.n, v: it.v })),
       balas: s.balas.filter(b => cerca(b, GP.VISION + 200)).map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), vx: Math.round(b.vx), vy: Math.round(b.vy) })),
@@ -885,7 +886,7 @@ const Golpe = {
     else if (a.t === "usar" && typeof a.q === "string") Golpe.usar(s, J, a.q);
     // Lo que trae cada uno de partidas anteriores (equipo de ladrón y experiencia de policía); solo antes de elegir rol
     else if (a.t === "comprar" && typeof a.i === "string") Golpe.comprar(s, J, a.i);
-    else if (a.t === "kit" && J.rol === "civil" && !J.kitListo) { J.kitListo = 1; J.kit = Golpe.limpiarKit(a.kit); J.xp = Math.max(0, Math.min(999, a.xp | 0)); J.banco = Math.max(0, Math.min(1e7, a.banco | 0)); }
+    else if (a.t === "kit" && J.rol === "civil" && !J.kitListo) { J.kitListo = 1; J.kit = Golpe.limpiarKit(a.kit); J.xp = Math.max(0, Math.min(999, a.xp | 0)); J.banco = Math.max(0, Math.min(1e7, a.banco | 0)); J.clan = Golpe.limpiarTag(a.clan); }
   },
   resultado(s, pid) {
     if (!s || s.fase !== "fin") return null;
@@ -975,7 +976,7 @@ const Golpe = {
   /* ---------- En este teléfono (contra bots) ---------- */
   empezarLocal() {
     const c = Golpe.cfg(), u = BD.sesion();
-    S.extra = Golpe.crear([{ id: "p0", name: u ? u.nombre : "Vos", look: u ? u.look : Cuenta.look(), kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total }], { local: true, nivel: c.nivel, dens: c.dens });
+    S.extra = Golpe.crear([{ id: "p0", name: u ? u.nombre : "Vos", look: u ? u.look : Cuenta.look(), kit: Golpe.kit(), xp: Golpe.xp(), banco: Golpe.banco().total, clan: Golpe.clanTag ? Golpe.clanTag() : "" }], { local: true, nivel: c.nivel, dens: c.dens });
     S.extra.juego = "golpe";
     go("golpe");
   },
@@ -1024,6 +1025,7 @@ const Golpe = {
         <p><b>Policía.</b> Solo hiere ladrones; al bajarlos los arresta. Sube de rango con los arrestos. Si lo matan, vuelve a la comisaría. Al terminar el turno cobra sueldo, una parte de lo confiscado y algunos ítems.</p>
         <p><b>Controles.</b> Dedo izquierdo: mover o manejar. Dedo derecho: apuntar y disparar. En la compu: WASD, mouse y clic; E agarra, Q cura, F sube o baja del auto.</p></details>
       <button class="btn tb-girar" id="exJugar">${Golpe.boton}</button>
+      <button class="btn ghost" id="gpCiudades">Ciudades, terrenos y clanes</button>
       <p class="summary center">Con amigos: creá una sala en "Jugar online" y elegí Golpe. Entran juntos y los del mismo rol son equipo.</p>
       <button class="btn ghost" id="exAtras">Volver</button></section>`;
     const guardar = () => { store.set("golpeCfg", c); render(); };
@@ -1031,13 +1033,14 @@ const Golpe = {
     app.querySelectorAll("[data-gpn]").forEach(x => x.onclick = () => { c.nivel = x.dataset.gpn; guardar(); });
     on("gpVenderG", () => { if (confirm(`¿Vender todo lo de la guarida por $${vg}? En el reducidor de la ciudad te pagarían el doble.`)) Golpe.venderGuarida(); });
     on("exJugar", () => Golpe.empezarLocal());
+    on("gpCiudades", () => go("golpeCiudades"));
     on("exAtras", () => go("home"));
   },
 
   /* ---------- Online (en el anfitrión) ---------- */
   empezarOn(R) {
     const c = Golpe.cfg();
-    const jug = R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, look: p.id === "H" ? Cuenta.look() : p.look, kit: p.id === "H" ? Golpe.kit() : null, xp: p.id === "H" ? Golpe.xp() : 0, banco: p.id === "H" ? Golpe.banco().total : 0 }));
+    const jug = R.players.filter(p => p.on).map(p => ({ id: p.id, name: p.name, look: p.id === "H" ? Cuenta.look() : p.look, kit: p.id === "H" ? Golpe.kit() : null, xp: p.id === "H" ? Golpe.xp() : 0, banco: p.id === "H" ? Golpe.banco().total : 0, clan: p.id === "H" && Golpe.clanTag ? Golpe.clanTag() : "" }));
     for (const j of jug) if (j.id === "H") j.kitListo = 1;
     if (jug.length > 8) return "Golpe es de hasta 8 personas.";
     R.ex = Golpe.crear(jug, { local: false, nivel: c.nivel, dens: c.dens });
@@ -1059,6 +1062,12 @@ const Golpe = {
   },
   turnoInfo() { return null; }
 };
+/* Aviso corto abajo de la pantalla (la app no tenía uno general) */
+function toast(txt) {
+  let el = document.getElementById("gpToast");
+  if (!el) { el = document.createElement("div"); el.id = "gpToast"; el.className = "gp-toast"; document.body.appendChild(el); }
+  el.textContent = txt; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 2600);
+}
 EXTRA.golpe = Golpe;
 PANTALLAS.golpeIntro = () => Golpe.intro();
 PANTALLAS.golpe = () => Golpe.pantallaLocal();

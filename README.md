@@ -109,8 +109,10 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - **Autos y patrulleros:** subir/bajar, manejo arcade, **baúl** para guardar lo robado, frenan balas. Los civiles bot también manejan.
 - **Policía:** solo hiere ladrones; al bajarlos los arresta. **Rangos** (cadete a comisario) según arrestos acumulados, con mejor arma, chaleco y sueldo. Si lo matan vuelve a la comisaría. Al terminar el turno cobra sueldo, una parte de lo confiscado y algunos ítems incautados.
 - Online, el teléfono del anfitrión es el **servidor**: los demás solo mandan entradas; a cada uno se le manda solo lo que ve (los escondidos o metidos en otro edificio no se mandan).
-- Se guarda por perfil en el teléfono: plata, equipo de ladrón, guarida (lo sacado sin vender, se puede vender a mitad de precio) y arrestos de policía.
-- Código: `js/golpe.js` (ciudad, reglas, bots, autos, armería y servidor) y `js/golpe-vista.js` (dibujo, íconos, controles y HUD).
+- **En la nube** (con sesión iniciada): plata, equipo de ladrón, guarida (lo sacado sin vender, se vende a mitad de precio) y arrestos de policía van a la tabla `golpe_cuentas`, que solo cambian funciones del servidor con controles (cada partida se cobra una vez, topes por partida, no se gasta más de lo que hay, equipos válidos). El teléfono guarda copia y una cola de pendientes por si no hay internet. Sin sesión, todo queda en el teléfono.
+- **Ciudades, terrenos y clanes** (pantalla aparte, en la nube): 3 ciudades con lotes limitados (Villa Norte, Puerto Sur, Barrio Alto), hasta 2 terrenos por persona, renta diaria por terreno. Cada ciudad tiene 4 zonas: la controla el clan con más terrenos en ella (mínimo 2) y eso suma $500 por día a cada miembro. Clanes de hasta 12 con código de invitación; el tag aparece al lado del nombre en la partida.
+- SQL para activarlo: `supabase/golpe.sql` (también al final de `esquema.sql`).
+- Código: `js/golpe.js` (ciudad, reglas, bots, autos, armería, servidor y guardado), `js/golpe-vista.js` (dibujo, íconos, controles y HUD) y `js/golpe-ciudades.js` (terrenos y clanes).
 
 ### Trabajos diarios: Tala, Mina y Pesca
 - Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.

@@ -318,7 +318,7 @@ Object.assign(Golpe, {
     }
     // Edificios
     const alarma = {}; for (const [id, on, son] of v.alarmas || []) alarma[id] = { on, son };
-    const cajasAb = new Set(v.cajas || []);
+    const cajasAb = new Set(v.cajas || []), mueblesAb = new Set(v.muebles || []);
     for (const E of M.ed) {
       if (!E) continue;
       const D = GP.EDIF[E.tipo], ex = E.x0 * T, ey = E.y0 * T, ew = (E.x1 - E.x0 + 1) * T, eh = (E.y1 - E.y0 + 1) * T;
@@ -351,6 +351,7 @@ Object.assign(Golpe, {
     for (const o of M.obj) {
       if (Math.abs(o.x - cx) > vw || Math.abs(o.y - cy) > vh) continue;
       if (o.ed && o.ed !== miEd) continue;
+      if (o.k === "mueble") { Golpe.dibMueble(ctx, o, mueblesAb.has(o.id)); continue; }
       if (o.k === "alarma") {
         const A = alarma[o.ed] || {}, led = A.son ? (Math.floor(now / 200) % 2 ? "#ff3b3b" : "#5a1010") : A.on ? "#e03131" : "#40c057";
         ctx.fillStyle = "#1e2024"; ctx.fillRect(o.x - 11, o.y - 14, 22, 28); ctx.strokeStyle = "#555a61"; ctx.lineWidth = 2; ctx.strokeRect(o.x - 11, o.y - 14, 22, 28);
@@ -409,6 +410,31 @@ Object.assign(Golpe, {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     if (U.dolor && now - U.dolor < 300) { const k = 1 - (now - U.dolor) / 300, g2 = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7); g2.addColorStop(0, "rgba(255,0,0,0)"); g2.addColorStop(1, `rgba(255,30,30,${0.45 * k})`); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
     if (!U.miniT || now - U.miniT > 200) { U.miniT = now; Golpe.dibMini(cx, cy, now); }
+  },
+  /* Muebles vistos desde arriba, cerrados o ya abiertos (vacíos) */
+  dibMueble(ctx, o, ab) {
+    ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.rot || 0);
+    const sombra = (w, h) => { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.fillRect(-w / 2 + 3, -h / 2 + 4, w, h); };
+    if (o.m === "vitrina") {
+      sombra(36, 20);
+      ctx.fillStyle = "#5b4630"; ctx.fillRect(-18, -10, 36, 20);
+      ctx.fillStyle = ab ? "rgba(40,48,56,.9)" : "rgba(170,215,235,.55)"; ctx.fillRect(-15, -7, 30, 14);
+      if (ab) { ctx.strokeStyle = "rgba(220,240,250,.8)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(-3, 1); ctx.lineTo(4, -5); ctx.moveTo(-3, 1); ctx.lineTo(1, 6); ctx.moveTo(6, 2); ctx.lineTo(13, -4); ctx.stroke(); }
+      else { ctx.fillStyle = "#e3b341"; ctx.fillRect(-10, -2, 5, 4); ctx.fillStyle = "#c9ecff"; ctx.fillRect(-1, -3, 4, 5); ctx.fillStyle = "#d4a72c"; ctx.beginPath(); ctx.arc(9, 0, 2.5, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.fillRect(-14, -6, 10, 2); }
+    } else if (o.m === "estante") {
+      sombra(38, 14);
+      ctx.fillStyle = "#7a5634"; ctx.fillRect(-19, -7, 38, 14); ctx.strokeStyle = "#4f3620"; ctx.lineWidth = 1.5; ctx.strokeRect(-19, -7, 38, 14);
+      if (!ab) { const cols = ["#c0504d", "#4f81bd", "#9bbb59", "#d9b26a", "#8064a2"]; for (let i = 0; i < 5; i++) { ctx.fillStyle = cols[i]; ctx.fillRect(-16 + i * 7, -5, 5, 10); } }
+      else { ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(-16, -5, 32, 10); ctx.fillStyle = "#c9b27a"; ctx.fillRect(8, -4, 5, 4); }
+    } else {
+      const ropero = o.m === "ropero", w = ropero ? 32 : 28, h = ropero ? 18 : 20;
+      sombra(w, h);
+      ctx.fillStyle = ropero ? "#6b4a2b" : "#5c4127"; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.strokeStyle = "#3a2817"; ctx.lineWidth = 1.5; ctx.strokeRect(-w / 2, -h / 2, w, h);
+      ctx.beginPath(); if (ropero) { ctx.moveTo(0, -h / 2); ctx.lineTo(0, h / 2); } else { ctx.moveTo(-w / 2, -3); ctx.lineTo(w / 2, -3); ctx.moveTo(-w / 2, 4); ctx.lineTo(w / 2, 4); } ctx.stroke();
+      if (ab) { ctx.fillStyle = "#3a2817"; if (ropero) { ctx.fillRect(-w / 2 - 6, -h / 2, 6, h); ctx.fillRect(w / 2, -h / 2, 6, h); } else ctx.fillRect(-w / 2 + 3, h / 2, w - 6, 7); }
+      else { ctx.fillStyle = "#c9b27a"; if (ropero) { ctx.fillRect(-3, -2, 2, 4); ctx.fillRect(1, -2, 2, 4); } else { ctx.fillRect(-2, -7, 4, 2); ctx.fillRect(-2, 0, 4, 2); ctx.fillRect(-2, 6, 4, 2); } }
+    }
+    ctx.restore();
   },
   /* Persona vista desde arriba: hombros, brazos y cabeza */
   dibCuerpo(ctx, x, y, a, o) {
@@ -515,6 +541,7 @@ Object.assign(Golpe, {
     for (const o of U.M.obj) if (o.k === "tienda" || o.k === "armeria") { x.fillStyle = o.k === "armeria" ? "#ffd43b" : "#cc5de8"; x.fillRect(o.x * k - 3, o.y * k - 3, 6, 6); }
     x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 1; x.beginPath(); x.arc(cx * k, cy * k, GP.VISION * k, 0, 7); x.stroke();
     for (const o of U.M.salidas) { x.fillStyle = "#51cf66"; x.beginPath(); x.arc(o.x * k, o.y * k, 5, 0, 7); x.fill(); x.strokeStyle = "#0b3d1a"; x.lineWidth = 1.5; x.stroke(); }
+    for (const b of v.buscados || []) if (b.x !== undefined && Math.floor(now / 300) % 2) { x.fillStyle = "#ff3b3b"; x.beginPath(); x.arc(b.x * k, b.y * k, 3.5 + b.nivel, 0, 7); x.fill(); }
     for (const e of v.equipo || []) if (e.est === "vivo") { x.fillStyle = "#ffd43b"; x.beginPath(); x.arc(e.x * k, e.y * k, 3, 0, 7); x.fill(); }
     x.fillStyle = "#fff"; x.beginPath(); x.arc(cx * k, cy * k, 3.5, 0, 7); x.fill(); x.strokeStyle = "#000"; x.lineWidth = 1; x.stroke();
   },
@@ -537,12 +564,14 @@ Object.assign(Golpe, {
         ${Y.rol === "policia" ? `<span class="ar-chip">${ic("placa")}<b>${Y.arrestos}</b><small>arresto${Y.arrestos === 1 ? "" : "s"}</small></span>` : ""}
         <div class="gp-vida"><i style="width:${k * 100}%;background:${k > 0.5 ? "#40c057" : k > 0.25 ? "#fcc419" : "#fa5252"}"></i><span>Vida ${Math.max(0, Y.hp)}${Y.ch ? ` · Chaleco ${Y.ch}` : ""}</span></div>
         ${Y.rol !== "civil" ? `<div class="gp-arma">${arma}</div>` : `<div class="gp-arma"><small>Civil: no podés robar. Volvete ladrón o andá a la comisaría.</small></div>`}
+        ${Y.rol === "ladron" && Y.civMuertos ? `<span class="ar-chip gp-buscado">${Golpe.nivelBuscado ? (Math.floor(Y.civMuertos / 3) ? `Más buscado · nivel ${Math.floor(Y.civMuertos / 3)}` : `Civiles muertos: ${Y.civMuertos}/3`) : ""}</span>` : ""}
+        ${(v.buscados || []).length ? `<div class="gp-buscados"><b>Más buscados</b>${v.buscados.map(b => `<span>${esc(b.name)} <small>nivel ${b.nivel} · $${b.rec}</small></span>`).join("")}</div>` : ""}
         ${Y.moch.length ? `<div class="gp-moch">${Y.moch.map(it => `<i style="--rc:${GP.RAR[it.r][1]}">${ic("art-" + GP.ART[it.a][1], `${GP.ART[it.a][0]} · ${GP.RAR[it.r][0]} · $${it.v}`)}</i>`).join("")}</div>` : ""}`;
       if (top.dataset.h !== html) { top.innerHTML = html; top.dataset.h = html; }
       Golpe.botones(Y, v);
       Golpe.pintarTienda(Y);
       const tr = byId("gpTrab");
-      if (tr) { tr.hidden = !Y.trab; if (Y.trab) { tr.firstChild.textContent = Y.trab.tipo === "alarma" ? "Desactivando la alarma…" : "Abriendo la caja fuerte…"; tr.lastChild.style.width = Math.round(Y.trab.p * 100) + "%"; } }
+      if (tr) { tr.hidden = !Y.trab; if (Y.trab) { tr.firstChild.textContent = Y.trab.tipo === "alarma" ? "Desactivando la alarma…" : Y.trab.tipo === "mueble" ? (Y.trab.m === "vitrina" ? "Rompiendo la vitrina…" : Y.trab.m === "estante" ? "Revisando el estante…" : `Abriendo el ${GP.MUEBLE[Y.trab.m].n}…`) : "Abriendo la caja fuerte…"; tr.lastChild.style.width = Math.round(Y.trab.p * 100) + "%"; } }
     }
     const feed = byId("gpFeed");
     if (feed) { const html = (v.feed || []).filter(f => v.t - f.t < 8).map(f => `<div>${esc(f.txt)}</div>`).join(""); if (feed.dataset.h !== html) { feed.innerHTML = html; feed.dataset.h = html; } }
@@ -600,6 +629,8 @@ Object.assign(Golpe, {
         if (A && (A.d.tipo !== "patrullero" || Y.rol === "policia")) b.push(["subir", A.d.tipo === "patrullero" ? "Subir al patrullero" : "Subir al auto"]);
         if (Y.rol === "ladron") {
           if (Y.moch.length && cerca("tienda", 70)) b.push(["vender", `Vender todo · $${Y.valor}`, "gp-dorado"]);
+          const mAb = new Set(v.muebles || []), mb = U.M.obj.filter(o => o.k === "mueble" && !mAb.has(o.id) && d(o) < 50).sort((a, c) => d(a) - d(c))[0];
+          if (mb && !Y.trab) b.push(["abrir", GP.MUEBLE[mb.m].accion, "gp-dorado"]);
           const pa = cerca("alarma"); if (pa && alarma[pa.ed]) b.push(["alarma", "Desactivar alarma"]);
           const cj = cerca("caja"); if (cj && !(v.cajas || []).includes(cj.id)) b.push(["caja", Y.llaves ? "Abrir caja fuerte" : "Caja fuerte: necesitás una llave", Y.llaves ? "" : "gp-off"]);
           if (Y.baul && A) { if (Y.moch.length && Y.baul.n < Y.baul.cupo) b.push(["guardar", `Guardar en el baúl · ${Y.baul.n}/${Y.baul.cupo}`]); if (Y.baul.n && Y.moch.length < Y.cupo) b.push(["sacar", `Sacar del baúl · ${Y.baul.n}`]); }

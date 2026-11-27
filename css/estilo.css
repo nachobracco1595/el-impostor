@@ -2293,3 +2293,7 @@ body.en-golpe .audio-ctl { top: calc(180px + var(--sat)); }
 .gp-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 9999; max-width: 86vw; padding: 10px 16px; border-radius: 12px; background: rgba(18, 16, 26, .95); border: 1px solid var(--line); font-weight: 700; transition: opacity .2s, transform .2s; }
 .gp-toast.on { opacity: 1; transform: translate(-50%, 0); }
 .gp-sinverif { border-color: #f59f00 !important; color: #ffe8a1; font-size: 12px; }
+.gp-buscado { border-color: #e03131 !important; color: #ffc9c9; font-size: 12px; }
+.gp-buscados { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 5px 8px; border-radius: 10px; background: rgba(60, 10, 14, .78); border: 1px solid rgba(224, 49, 49, .6); font-size: 12px; }
+.gp-buscados b { color: #ff8787; text-transform: uppercase; letter-spacing: .5px; font-size: 11px; }
+.gp-buscados small { opacity: .75; }

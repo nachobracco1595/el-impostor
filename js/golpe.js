@@ -11,6 +11,10 @@
      · Las armas, el chaleco y el bolso que conserva quedan guardados para la próxima vez que sea ladrón.
    - En los edificios que se roban hay ALARMA: al robar suena y avisa a la policía, salvo que antes la desactives
      en su panel. Las CAJAS FUERTES se abren con LLAVES que se encuentran por la ciudad: tienen lo mejor y plata.
+   - Lo que se roba está casi todo guardado: VITRINAS, ESTANTES, CAJONERAS y ROPEROS que el ladrón abre. Cada
+     lugar robado se repone a los 2 minutos, salvo que haya alguien adentro.
+   - El ladrón que mata civiles se penaliza: cada 3, sube un nivel en la lista de LOS MÁS BUSCADOS (la policía lo
+     ve en su mapa y cobra recompensa al arrestarlo; los reducidores le pagan menos). Sale de la lista preso o muerto.
    - Para esconderse: arbustos en las plazas y contenedores en las veredas. Escondido, nadie te ve de lejos.
    - AUTOS estacionados (con baúl para guardar lo robado) y patrulleros. Los civiles también manejan.
    - La partida es una SESIÓN: nadie queda afuera. El ladrón que escapa, cae preso o muere vuelve a la zona
@@ -73,6 +77,12 @@ const GP = {
     ["Cadete", "Cad.", 0, { a: "pistola", r: 0 }, 1, 100], ["Agente", "Ag.", 3, { a: "pistola", r: 1 }, 2, 150],
     ["Cabo", "Cabo", 8, { a: "subfusil", r: 1 }, 2, 200], ["Sargento", "Sgto.", 15, { a: "subfusil", r: 2 }, 3, 260],
     ["Inspector", "Insp.", 25, { a: "rifle", r: 2 }, 3, 330], ["Comisario", "Crio.", 40, { a: "rifle", r: 3 }, 3, 420]],
+  // Muebles que se abren: qué hay en cada tipo de lugar y cuánto se tarda en abrirlos
+  MUEBLES: { casa: ["cajonera", "cajonera", "estante", "ropero"], kiosco: ["vitrina", "estante", "estante"], farmacia: ["vitrina", "estante", "estante"],
+    deposito: ["estante", "estante", "estante", "cajonera"], joyeria: ["vitrina", "vitrina", "vitrina", "vitrina"], banco: ["cajonera", "cajonera", "cajonera"], museo: ["vitrina", "vitrina", "vitrina", "vitrina"] },
+  MUEBLE: { vitrina: { n: "vitrina", accion: "Romper la vitrina", dur: 1.6, arts: [2, 3], extra: 0 }, estante: { n: "estante", accion: "Revisar el estante", dur: 1.2, arts: [1, 3], extra: 1 },
+    cajonera: { n: "cajonera", accion: "Abrir la cajonera", dur: 1.4, arts: [1, 2], extra: 2 }, ropero: { n: "ropero", accion: "Abrir el ropero", dur: 1.4, arts: [1, 2], extra: 2 } },
+  REPONER: 120, RECOMPENSA: 500,
   PARTE: 0.3, QUEDA: 2, ALARMA: 45, ABRIR: 2.5, DESACTIVAR: 3, MAX_POLI: 6, VUELVE_MIN: 14, CASTIGO: 8, CASA: 4,
   AUTO: { auto: { vmax: 300, cupo: 6 }, patrullero: { vmax: 340, cupo: 0 } },
   COLORES_AUTO: ["#e03131", "#1971c2", "#f08c00", "#2f9e44", "#868e96", "#f8f9fa", "#5f3dc4", "#212529"],
@@ -160,6 +170,14 @@ const Golpe = {
       }
       for (let i = 0; i < (D.cajas || 0); i++) { const [a, c] = piso(); pone("caja", a, c); }
       if (D.tienda) { const [a, c] = piso(); pone("tienda", a, c); }
+      // Muebles, contra alguna pared (sin tapar puertas)
+      for (const mk of GP.MUEBLES[tipo] || []) {
+        let lugar = null;
+        for (let i = 0; i < 80 && !lugar; i++) { const [a, c] = piso(); if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => get(a + dx, c + dy) === 2)) lugar = [a, c]; }
+        if (!lugar) lugar = piso();
+        const [a, c] = lugar, pared = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => get(a + dx, c + dy) === 2) || [0, -1];
+        obj.push({ id: obj.length + 1, k: "mueble", m: mk, ed: id, tx: a, ty: c, x: (a + 0.5) * T + pared[0] * 8, y: (c + 0.5) * T + pared[1] * 8, rot: pared[0] ? Math.PI / 2 : 0 });
+      }
     }
     // Contenedores en las veredas (escondites)
     for (let n = 0, intentos = 0; n < 45 && intentos < 2000; intentos++) {
@@ -254,21 +272,13 @@ const Golpe = {
   soltar(s, it, x, y) { const a = Math.random() * 6.28, d = 10 + Math.random() * 22; it.id = ++s.nId; it.x = x + Math.cos(a) * d; it.y = y + Math.sin(a) * d; if (!Golpe.libre(s.M, it.x, it.y, 4)) { it.x = x; it.y = y; } s.items.push(it); },
   llenar(s) {
     const M = s.M, T = GP.T;
-    for (const E of M.ed.slice(1)) {
-      const D = GP.EDIF[E.tipo], poner = it => { const [x, y] = Golpe.pisoAzar(M, Math.random, E); Golpe.soltar(s, it, (x + 0.5) * T, (y + 0.5) * T); };
-      const n = D.cosas[0] + Math.floor(Math.random() * (D.cosas[1] - D.cosas[0] + 1));
-      for (let i = 0; i < n; i++) poner(Golpe.artefacto(D.tier));
-      if (E.tipo !== "reducidor") {
-        for (let i = 0; i < (D.armas || (Math.random() < 0.4 ? 1 : 0)); i++) poner(Golpe.armaAzar(D.tier));
-        for (let i = 0; i < (D.chalecos || (Math.random() < 0.22 ? 1 : 0)); i++) poner({ k: "chaleco", n: Math.min(3, 1 + (Golpe.rareza(D.tier) >> 1)) });
-        for (let i = 0; i < (D.curas || (Math.random() < 0.35 ? 1 : 0)); i++) poner({ k: "cura" });
-        for (let i = 0; i < (D.bolsos || (Math.random() < 0.15 ? 1 : 0)); i++) poner({ k: "bolso", n: GP.BOLSOS[1 + Math.min(2, Golpe.rareza(D.tier) >> 1)] });
-        if (Math.random() < (D.llaves || 0.08)) poner({ k: "llave" });
-      }
-    }
-    // Alarmas y cajas fuertes
-    s.alarmas = {}; s.cajas = {};
+    s.alarmas = {}; s.cajas = {}; s.muebles = {}; s.robado = {};
     for (const o of M.obj) { if (o.k === "alarma") s.alarmas[o.ed] = { on: true, son: 0, panel: o.id }; if (o.k === "caja") s.cajas[o.id] = { ab: false }; }
+    for (const E of M.ed.slice(1)) Golpe.surtir(s, E);
+    // La comisaría tiene armas y chalecos a mano (en el piso)
+    const Cm = M.ed.find(e => e && e.tipo === "comisaria"), D = GP.EDIF.comisaria, poner = it => { const [x, y] = Golpe.pisoAzar(M, Math.random, Cm); Golpe.soltar(s, it, (x + 0.5) * T, (y + 0.5) * T); };
+    for (let i = 0; i < D.armas; i++) poner(Golpe.armaAzar(D.tier));
+    for (let i = 0; i < D.chalecos; i++) poner({ k: "chaleco", n: 1 + (i % 2) });
     // Autos estacionados; los dos más cerca de la comisaría son patrulleros
     const C = M.ed.find(e => e && e.tipo === "comisaria"), cc = { x: (C.x0 + 5) * T, y: (C.y0 + 5) * T };
     const lugares = M.estac.slice().sort((a, b) => Math.hypot(a.x - cc.x, a.y - cc.y) - Math.hypot(b.x - cc.x, b.y - cc.y));
@@ -278,6 +288,41 @@ const Golpe = {
       s.autos.push({ id: "a" + (++s.nId), tipo, x: e.x, y: e.y, ang: e.a, v: 0, cond: null, color: tipo === "patrullero" ? "#f8f9fa" : GP.COLORES_AUTO[Math.floor(Math.random() * GP.COLORES_AUTO.length)], baul: [], cupo: GP.AUTO[tipo].cupo });
     });
   },
+  /* Llena (o repone) un lugar: casi todo va adentro de sus muebles; algo poco queda en el piso o sobre una mesa */
+  surtir(s, E) {
+    const M = s.M, T = GP.T, D = GP.EDIF[E.tipo]; if (E.tipo === "reducidor" || E.tipo === "comisaria") return;
+    const mueblesE = M.obj.filter(o => o.k === "mueble" && o.ed === E.id);
+    const extras = [];
+    for (let i = 0; i < (D.armas || (Math.random() < 0.35 ? 1 : 0)); i++) extras.push(Golpe.armaAzar(D.tier));
+    for (let i = 0; i < (D.chalecos || (Math.random() < 0.2 ? 1 : 0)); i++) extras.push({ k: "chaleco", n: Math.min(3, 1 + (Golpe.rareza(D.tier) >> 1)) });
+    for (let i = 0; i < (D.curas || (Math.random() < 0.35 ? 1 : 0)); i++) extras.push({ k: "cura" });
+    for (let i = 0; i < (D.bolsos || (Math.random() < 0.15 ? 1 : 0)); i++) extras.push({ k: "bolso", n: GP.BOLSOS[1 + Math.min(2, Golpe.rareza(D.tier) >> 1)] });
+    if (Math.random() < (D.llaves || 0.12)) extras.push({ k: "llave" });
+    if (Math.random() < 0.3) extras.push({ k: "plata", v: 40 + Math.round(Math.random() * 16) * 10 });
+    for (const o of mueblesE) {
+      const MM = GP.MUEBLE[o.m], n = MM.arts[0] + Math.floor(Math.random() * (MM.arts[1] - MM.arts[0] + 1));
+      const cont = Array.from({ length: n }, () => Golpe.artefacto(Math.min(3, D.tier + (o.m === "vitrina" ? 1 : 0))));
+      s.muebles[o.id] = { ab: false, cont };
+    }
+    // Los extras (armas, chalecos, llaves…) van a cajoneras, roperos y estantes; si no hay, al piso
+    const guardan = mueblesE.filter(o => GP.MUEBLE[o.m].extra);
+    extras.forEach((it, i) => { if (guardan.length && Math.random() < 0.85) s.muebles[guardan[i % guardan.length].id].cont.push(it); else { const [x, y] = Golpe.pisoAzar(M, Math.random, E); Golpe.soltar(s, it, (x + 0.5) * T, (y + 0.5) * T); } });
+    // Poquito a la vista
+    if (Math.random() < 0.35 || !mueblesE.length) { const [x, y] = Golpe.pisoAzar(M, Math.random, E); Golpe.soltar(s, Golpe.artefacto(D.tier), (x + 0.5) * T, (y + 0.5) * T); }
+  },
+  /* A los 2 minutos de robado un lugar, se repone todo (muebles, caja fuerte y alarma), salvo que haya alguien adentro */
+  reponer(s) {
+    for (const [id, t] of Object.entries(s.robado)) {
+      if (s.t - t < GP.REPONER) continue;
+      if (s.jug.some(j => (j.est === "vivo" || j.est === "caido") && j.bldg === +id)) continue;
+      const E = s.M.ed[id]; delete s.robado[id];
+      for (const o of s.M.obj) if (o.ed === +id && o.k === "caja") s.cajas[o.id] = { ab: false };
+      if (s.alarmas[id]) { s.alarmas[id].on = true; s.alarmas[id].son = 0; }
+      Golpe.surtir(s, E);
+    }
+  },
+  marcarRobado(s, ed) { if (ed && s.robado[ed] === undefined) s.robado[ed] = s.t; },
+  nivelBuscado(J) { return Math.floor((J.civMuertos || 0) / 3); },
   valor(J) { return J.moch.reduce((a, it) => a + (it.v || 0), 0); },
   botin(J) { return Golpe.valor(J) + (J.plata || 0); },
   puntajeArma(a) { if (!a) return 0; const W = GP.ARMAS[a.a]; return W.dmg * W.bal / W.cad * (1 + 0.15 * a.r) + a.r * 25; },
@@ -365,7 +410,8 @@ const Golpe = {
     if (J.rol !== "policia" || J.premio != null) return;
     const items = J.incaut.slice().sort(() => Math.random() - 0.5).slice(0, GP.QUEDA);
     J.premioItems = items;
-    J.premio = GP.RANGOS[J.rango || 0][5] + Math.round(J.confis * GP.PARTE / 10) * 10 + items.reduce((a, it) => a + (it.v || 0), 0);
+    J.premio = GP.RANGOS[J.rango || 0][5] + Math.round(J.confis * GP.PARTE / 10) * 10 + items.reduce((a, it) => a + (it.v || 0), 0) + (J.recompensa || 0);
+    J.recompensa = 0;
   },
   /* El policía deja de trabajar (en la comisaría): cobra y deja el lugar libre para otro */
   terminarTurno(s, J) {
@@ -449,6 +495,7 @@ const Golpe = {
     Golpe.balas(s, dt);
     s.hits = s.hits.filter(h => s.t - h.t < 0.7);
     for (const a of Object.values(s.alarmas)) if (a.son && s.t > a.son) a.son = 0;
+    if (Math.floor(s.t) !== Math.floor(s.t - dt)) Golpe.reponer(s);
     for (const r of s.respawn.slice()) if (s.t >= r.t && s.t < GP.DURACION - 40) { s.respawn.splice(s.respawn.indexOf(r), 1); Golpe.bot(s, r.rol); }
     if (s.jug.length > 70) s.jug = s.jug.filter(j => !j.cpu || j.est === "vivo" || s.t - (j.fin || 0) < 30);
     const humanos = s.jug.filter(j => !j.cpu);
@@ -488,7 +535,7 @@ const Golpe = {
     for (let i = s.items.length - 1; i >= 0; i--) {
       const it = s.items[i]; if (Math.hypot(it.x - J.x, it.y - J.y) > 28) continue;
       const L = J.rol === "ladron";
-      if (it.k === "art" && L && J.moch.length < J.cupo) { J.moch.push({ k: "art", a: it.a, r: it.r, v: it.v }); s.items.splice(i, 1); J.junto = s.t; Golpe.robo(s, J); }
+      if (it.k === "art" && L && J.moch.length < J.cupo) { J.moch.push({ k: "art", a: it.a, r: it.r, v: it.v }); s.items.splice(i, 1); J.junto = s.t; Golpe.robo(s, J); Golpe.marcarRobado(s, J.bldg); }
       else if (it.k === "plata" && L) { J.plata += it.v; s.items.splice(i, 1); J.junto = s.t; }
       else if (it.k === "llave" && L && J.llaves < 3) { J.llaves++; s.items.splice(i, 1); J.junto = s.t; }
       else if (it.k === "bolso" && L && it.n > J.cupo) { if (J.cupo > 10) Golpe.soltar(s, { k: "bolso", n: J.cupo }, J.x, J.y); J.cupo = it.n; s.items.splice(i, 1); J.junto = s.t; }
@@ -513,11 +560,19 @@ const Golpe = {
     J.trab.t += dt;
     if (J.trab.t < J.trab.dur) return;
     if (J.trab.tipo === "alarma") { const A = s.alarmas[o.ed]; if (A) { A.on = false; A.son = 0; } }
+    if (J.trab.tipo === "mueble") {
+      const Mb = s.muebles[o.id];
+      if (Mb && !Mb.ab) {
+        Mb.ab = true; Golpe.robo(s, J); Golpe.marcarRobado(s, o.ed);
+        for (const it of Mb.cont) Golpe.soltar(s, it, o.x, o.y);
+        Mb.cont = [];
+      }
+    }
     if (J.trab.tipo === "caja") {
       const C = s.cajas[o.id];
       if (C && !C.ab && J.llaves > 0) {
         C.ab = true; J.llaves--;
-        Golpe.robo(s, J);
+        Golpe.robo(s, J); Golpe.marcarRobado(s, o.ed);
         const n = 3 + Math.floor(Math.random() * 3);
         for (let i = 0; i < n; i++) Golpe.soltar(s, Golpe.artefacto(3, 2), o.x, o.y);
         Golpe.soltar(s, { k: "plata", v: 300 + Math.round(Math.random() * 90) * 10 }, o.x, o.y);
@@ -532,7 +587,12 @@ const Golpe = {
     const L = J.rol === "ladron";
     if (q === "vender" && L && !J.auto) {
       const o = Golpe.cerca(s, J, "tienda", 70); if (!o || !J.moch.length) return;
-      const v = Golpe.valor(J); J.plata += v; J.moch = []; J.vendio = { v, t: s.t };
+      // Los reducidores le pagan menos al que está entre los más buscados
+      const v = Math.round(Golpe.valor(J) * Math.max(0.4, 1 - 0.15 * Golpe.nivelBuscado(J)) / 10) * 10; J.plata += v; J.moch = []; J.vendio = { v, t: s.t };
+    } else if (q === "abrir" && L && !J.auto) {
+      const o = s.M.obj.filter(o => o.k === "mueble" && s.muebles[o.id] && !s.muebles[o.id].ab && Math.hypot(o.x - J.x, o.y - J.y) < 50).sort((a, b) => Math.hypot(a.x - J.x, a.y - J.y) - Math.hypot(b.x - J.x, b.y - J.y))[0];
+      if (!o) return;
+      J.trab = { tipo: "mueble", obj: o.id, t: 0, dur: GP.MUEBLE[o.m].dur, m: o.m };
     } else if (q === "alarma" && L && !J.auto) {
       const o = Golpe.cerca(s, J, "alarma"); if (!o || !s.alarmas[o.ed] || !s.alarmas[o.ed].on) return;
       J.trab = { tipo: "alarma", obj: o.id, t: 0, dur: GP.DESACTIVAR };
@@ -683,7 +743,9 @@ const Golpe = {
     if (q.auto) Golpe.bajar(s, q);
     if (b.rol === "policia" && q.rol === "ladron") {
       // Arrestado: pierde lo robado y la plata, conserva armas, chaleco y bolso
-      const v = Golpe.botin(q), gear = { arma: q.arma, chaleco: q.chaleco, bolso: q.cupo };
+      const v = Golpe.botin(q), gear = { arma: q.arma, chaleco: q.chaleco, bolso: q.cupo }, nivel = Golpe.nivelBuscado(q);
+      q.civMuertos = 0;
+      if (autor && nivel) { autor.recompensa = (autor.recompensa || 0) + GP.RECOMPENSA * nivel; Golpe.aviso(s, `Recompensa de $${GP.RECOMPENSA * nivel} por atrapar a ${q.name}, de los más buscados`); }
       if (autor) {
         autor.confis += v; autor.arrestos++; autor.arrTurno = (autor.arrTurno || 0) + 1; autor.incaut.push(...q.moch.map(it => ({ ...it })));
         const nuevo = Golpe.rango((autor.xp || 0) + autor.arrTurno);
@@ -706,6 +768,12 @@ const Golpe = {
     } else {
       // Muerto: lo deja todo tirado (un ladrón muerto pierde también armas, chaleco y bolso)
       q.est = "muerto"; if (autor) autor.kills++;
+      // Matar civiles se paga: cada 3, un nivel más en la lista de los más buscados
+      if (autor && autor.rol === "ladron" && q.rol === "civil") {
+        autor.civMuertos = (autor.civMuertos || 0) + 1;
+        if (autor.civMuertos % 3 === 0) Golpe.aviso(s, `${autor.name} entró a la lista de los más buscados (nivel ${Golpe.nivelBuscado(autor)})`);
+      }
+      q.civMuertos = 0;
       for (const it of q.moch) Golpe.soltar(s, { ...it }, q.x, q.y);
       if (q.plata) Golpe.soltar(s, { k: "plata", v: q.plata }, q.x, q.y);
       for (let i = 0; i < (q.llaves || 0); i++) Golpe.soltar(s, { k: "llave" }, q.x, q.y);
@@ -830,6 +898,8 @@ const Golpe = {
       }
       if (IA.meta2 <= 0) {
         IA.meta2 = 9 + Math.random() * 8;
+        const bus = s.jug.filter(q => q.rol === "ladron" && q.est === "vivo" && Golpe.nivelBuscado(q) > 0).sort((a, b) => Golpe.nivelBuscado(b) - Golpe.nivelBuscado(a))[0];
+        if (bus && Math.random() < 0.8) { IA.meta = { x: bus.x, y: bus.y }; IA.camino = null; return; }
         const l = s.jug.filter(q => q.rol === "ladron" && q.est === "vivo" && !q.escondido && Math.hypot(q.x - J.x, q.y - J.y) < 1100).sort((a, b) => Golpe.botin(b) - Golpe.botin(a))[0];
         if (l && Math.random() < 0.4) IA.meta = { x: l.x, y: l.y };
         else { const [x, y] = Golpe.calleAzar(M, Math.random); IA.meta = { x: (x + 0.5) * T, y: (y + 0.5) * T }; }
@@ -877,6 +947,19 @@ const Golpe = {
       else if (it.k === "cura" && J.cura < 2) p = 60;
       p = p / (1 + d / 250);
       if (p > mp) { mp = p; mejor = it; }
+    }
+    // Muebles cerrados: valen lo que se espera encontrar adentro
+    let mueble = null;
+    if (J.moch.length < J.cupo) for (const o of M.obj) {
+      if (o.k !== "mueble" || !s.muebles[o.id] || s.muebles[o.id].ab) continue;
+      const d = Math.hypot(o.x - J.x, o.y - J.y); if (d > 1200) continue;
+      const p = (o.m === "vitrina" ? 260 : 150) * (1 + GP.EDIF[M.ed[o.ed].tipo].tier * 0.5) / (1 + d / 250);
+      if (p > mp) { mp = p; mueble = o; }
+    }
+    if (mueble) {
+      if (Math.hypot(mueble.x - J.x, mueble.y - J.y) < 44) { if (!J.trab) Golpe.usar(s, J, "abrir"); IA.meta = { x: J.x, y: J.y, mueble: mueble.id }; return; }
+      if (!IA.meta || IA.meta.mueble !== mueble.id) { IA.meta = { x: mueble.x, y: mueble.y, mueble: mueble.id }; IA.camino = null; }
+      return;
     }
     if (mejor) { if (!IA.meta || IA.meta.item !== mejor.id) { IA.meta = { x: mejor.x, y: mejor.y, item: mejor.id }; IA.camino = null; } }
     else if (!IA.meta || IA.meta2 <= 0 || Math.hypot(IA.meta.x - J.x, IA.meta.y - J.y) < 30) {
@@ -927,6 +1010,9 @@ const Golpe = {
       hits: s.hits.filter(h => h.de === pid || h.a === pid || cerca(h, GP.VISION)).map(h => ({ x: h.x, y: h.y, d: h.d, yo: h.de === pid, a: h.a === pid, ch: h.ch, t: h.t })),
       alarmas: Object.entries(s.alarmas).map(([id, a]) => [+id, a.on ? 1 : 0, a.son ? 1 : 0]),
       cajas: Object.entries(s.cajas).filter(([, c]) => c.ab).map(([id]) => +id),
+      muebles: Object.entries(s.muebles).filter(([, m]) => m.ab).map(([id]) => +id),
+      buscados: s.jug.filter(j => j.rol === "ladron" && j.est === "vivo" && Golpe.nivelBuscado(j) > 0).sort((a, b) => Golpe.nivelBuscado(b) - Golpe.nivelBuscado(a)).slice(0, 5)
+        .map(j => ({ id: j.id, name: j.name, nivel: Golpe.nivelBuscado(j), rec: GP.RECOMPENSA * Golpe.nivelBuscado(j), ...(me && me.rol === "policia" ? { x: Math.round(j.x), y: Math.round(j.y) } : {}) })),
       equipo: s.jug.filter(j => me && !j.cpu && j.team === me.team && j !== me).map(j => ({ id: j.id, name: j.name, x: Math.round(j.x), y: Math.round(j.y), est: j.est, hp: Math.round(j.hp) })),
       humanos: s.jug.filter(j => !j.cpu).map(j => ({ id: j.id, name: j.name, rol: j.rol, est: j.est, valor: j.ganado || 0, escapes: j.escapes || 0, items: 0, kills: j.kills, arrestos: j.arrestos, puesto: j.puesto, pts: Golpe.puntaje(j), rango: j.rol === "policia" ? GP.RANGOS[j.rango || 0][0] : null }))
     };
@@ -935,7 +1021,7 @@ const Golpe = {
       v.yo = { id: me.id, rol: me.rol, est: me.est, x: Math.round(me.x * 10) / 10, y: Math.round(me.y * 10) / 10, hp: Math.round(me.hp), hpMax: me.hpMax, ch: me.chaleco, arma: me.arma, cura: me.cura,
         moch: me.rol === "ladron" ? me.moch : [], cupo: me.cupo, valor: me.rol === "ladron" ? Golpe.valor(me) : 0, plata: me.rol === "ladron" ? me.plata : 0, llaves: me.llaves || 0, premio: me.premio,
         kills: me.kills, arrestos: me.arrestos, rango: me.rol === "policia" ? me.rango || 0 : null, ext: Math.round(me.ext * 10) / 10, bldg: me.bldg, auto: me.auto || null, esc: me.escondido ? 1 : 0,
-        trab: me.trab ? { tipo: me.trab.tipo, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" || me.est === "casa" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
+        civMuertos: me.civMuertos || 0, trab: me.trab ? { tipo: me.trab.tipo, m: me.trab.m, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" || me.est === "casa" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
         baul: (A || Ac) && (A || Ac).cupo ? { id: (A || Ac).id, n: (A || Ac).baul.length, cupo: (A || Ac).cupo, items: (A || Ac).baul } : null,
         junto: me.junto && s.t - me.junto < 0.3 ? 1 : 0, vendio: me.vendio && s.t - me.vendio.t < 2 ? me.vendio.v : 0,
         seguro: me.seguro ? 1 : 0, verif: me.verif === false ? 0 : 1, banco: Math.max(0, me.banco || 0),

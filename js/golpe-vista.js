@@ -537,7 +537,7 @@ Object.assign(Golpe, {
     const U = UI.gp, cv = byId("gpMini"); if (!cv || !U) return;
     const x = cv.getContext("2d"), k = cv.width / (GP.N * GP.T), v = U.v, T = GP.T;
     x.drawImage(U.mini, 0, 0, cv.width, cv.height);
-    for (const [id, , son] of v.alarmas || []) if (son && Math.floor(now / 400) % 2) { const E = U.M.ed[id]; x.strokeStyle = "#ff3b3b"; x.lineWidth = 3; x.strokeRect(E.x0 * T * k, E.y0 * T * k, 10 * T * k, 10 * T * k); }
+    if (v.yo && v.yo.rol === "policia") for (const [id, , son] of v.alarmas || []) if (son && Math.floor(now / 400) % 2) { const E = U.M.ed[id]; x.strokeStyle = "#ff3b3b"; x.lineWidth = 3; x.strokeRect(E.x0 * T * k, E.y0 * T * k, 10 * T * k, 10 * T * k); }
     for (const o of U.M.obj) if (o.k === "tienda" || o.k === "armeria") { x.fillStyle = o.k === "armeria" ? "#ffd43b" : "#cc5de8"; x.fillRect(o.x * k - 3, o.y * k - 3, 6, 6); }
     x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 1; x.beginPath(); x.arc(cx * k, cy * k, GP.VISION * k, 0, 7); x.stroke();
     for (const o of U.M.salidas) { x.fillStyle = "#51cf66"; x.beginPath(); x.arc(o.x * k, o.y * k, 5, 0, 7); x.fill(); x.strokeStyle = "#0b3d1a"; x.lineWidth = 1.5; x.stroke(); }
@@ -581,6 +581,7 @@ Object.assign(Golpe, {
       if (v.fase === "fin") txt = "";
       else if (v.t < 0) txt = String(Math.ceil(-v.t));
       else if (Y.nota) txt = Y.nota;
+      else if (Y.alarmaEn != null) txt = `La alarma suena en ${Y.alarmaEn} s · desactivala en el panel`;
       else if (Y.ultRun && Y.ultRun.tipo === "escape") txt = `Escapaste${Y.ultRun.plata ? ` con $${Y.ultRun.plata}` : ""} · volvés a la zona segura`;
       else if (Y.ultRun && Y.ultRun.tipo === "preso") txt = "Te arrestaron: perdiste lo robado, conservás tu equipo";
       else if (Y.ultRun && Y.ultRun.tipo === "muerto") txt = "Te mataron: perdiste todo";

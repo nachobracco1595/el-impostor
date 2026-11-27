@@ -9,8 +9,8 @@
      · Si lo mata otro ladrón, pierde TODO (también armas, chaleco y bolso).
      · Si lo agarra la policía, pierde lo robado y la plata, pero conserva armas, chaleco y bolso.
      · Las armas, el chaleco y el bolso que conserva quedan guardados para la próxima vez que sea ladrón.
-   - En los edificios que se roban hay ALARMA: al robar suena y avisa a la policía, salvo que antes la desactives
-     en su panel. Las CAJAS FUERTES se abren con LLAVES que se encuentran por la ciudad: tienen lo mejor y plata.
+   - En los edificios que se roban hay ALARMA: a los 10 segundos de entrar un ladrón empieza a sonar y la policía
+     la ve (los civiles y policías no la activan), salvo que el ladrón la desactive antes en su panel. Las CAJAS FUERTES se abren con LLAVES que se encuentran por la ciudad: tienen lo mejor y plata.
    - Lo que se roba está casi todo guardado: VITRINAS, ESTANTES, CAJONERAS y ROPEROS que el ladrón abre. Cada
      lugar robado se repone a los 2 minutos, salvo que haya alguien adentro.
    - El ladrón que mata civiles se penaliza: cada 3, sube un nivel en la lista de LOS MÁS BUSCADOS (la policía lo
@@ -83,7 +83,7 @@ const GP = {
   MUEBLE: { vitrina: { n: "vitrina", accion: "Romper la vitrina", dur: 1.6, arts: [2, 3], extra: 0 }, estante: { n: "estante", accion: "Revisar el estante", dur: 1.2, arts: [1, 3], extra: 1 },
     cajonera: { n: "cajonera", accion: "Abrir la cajonera", dur: 1.4, arts: [1, 2], extra: 2 }, ropero: { n: "ropero", accion: "Abrir el ropero", dur: 1.4, arts: [1, 2], extra: 2 } },
   REPONER: 120, RECOMPENSA: 500,
-  PARTE: 0.3, QUEDA: 2, ALARMA: 45, ABRIR: 2.5, DESACTIVAR: 3, MAX_POLI: 6, VUELVE_MIN: 14, CASTIGO: 8, CASA: 4,
+  PARTE: 0.3, QUEDA: 2, ALARMA: 45, DEMORA_ALARMA: 10, ABRIR: 2.5, DESACTIVAR: 3, MAX_POLI: 6, VUELVE_MIN: 14, CASTIGO: 8, CASA: 4,
   AUTO: { auto: { vmax: 300, cupo: 6 }, patrullero: { vmax: 340, cupo: 0 } },
   COLORES_AUTO: ["#e03131", "#1971c2", "#f08c00", "#2f9e44", "#868e96", "#f8f9fa", "#5f3dc4", "#212529"],
   NOMBRES: {
@@ -440,7 +440,8 @@ const Golpe = {
   aCasa(s, J, kit) {
     J.kit = Golpe.limpiarKit(kit); J.est = "casa"; J.vuelve = s.t + GP.CASA; J.auto = null; J.trab = null; J.moch = []; J.plata = 0; J.llaves = 0;
   },
-  aviso(s, txt) { s.feed.push({ txt, t: s.t }); if (s.feed.length > 6) s.feed.shift(); },
+  // pol: aviso solo para la policía (por radio)
+  aviso(s, txt, pol) { s.feed.push({ txt, t: s.t, pol: !!pol }); if (s.feed.length > 8) s.feed.shift(); },
 
   tick(s, dt) {
     if (s.fase === "fin") return;
@@ -494,7 +495,7 @@ const Golpe = {
     for (const A of s.autos) if (!A.cond && A.v) { A.v *= Math.pow(0.05, dt); if (Math.abs(A.v) < 5) A.v = 0; else Golpe.moverAuto(s, A, dt); }
     Golpe.balas(s, dt);
     s.hits = s.hits.filter(h => s.t - h.t < 0.7);
-    for (const a of Object.values(s.alarmas)) if (a.son && s.t > a.son) a.son = 0;
+    Golpe.alarmas(s);
     if (Math.floor(s.t) !== Math.floor(s.t - dt)) Golpe.reponer(s);
     for (const r of s.respawn.slice()) if (s.t >= r.t && s.t < GP.DURACION - 40) { s.respawn.splice(s.respawn.indexOf(r), 1); Golpe.bot(s, r.rol); }
     if (s.jug.length > 70) s.jug = s.jug.filter(j => !j.cpu || j.est === "vivo" || s.t - (j.fin || 0) < 30);
@@ -535,7 +536,7 @@ const Golpe = {
     for (let i = s.items.length - 1; i >= 0; i--) {
       const it = s.items[i]; if (Math.hypot(it.x - J.x, it.y - J.y) > 28) continue;
       const L = J.rol === "ladron";
-      if (it.k === "art" && L && J.moch.length < J.cupo) { J.moch.push({ k: "art", a: it.a, r: it.r, v: it.v }); s.items.splice(i, 1); J.junto = s.t; Golpe.robo(s, J); Golpe.marcarRobado(s, J.bldg); }
+      if (it.k === "art" && L && J.moch.length < J.cupo) { J.moch.push({ k: "art", a: it.a, r: it.r, v: it.v }); s.items.splice(i, 1); J.junto = s.t; Golpe.marcarRobado(s, J.bldg); }
       else if (it.k === "plata" && L) { J.plata += it.v; s.items.splice(i, 1); J.junto = s.t; }
       else if (it.k === "llave" && L && J.llaves < 3) { J.llaves++; s.items.splice(i, 1); J.junto = s.t; }
       else if (it.k === "bolso" && L && it.n > J.cupo) { if (J.cupo > 10) Golpe.soltar(s, { k: "bolso", n: J.cupo }, J.x, J.y); J.cupo = it.n; s.items.splice(i, 1); J.junto = s.t; }
@@ -544,13 +545,21 @@ const Golpe = {
       else if (it.k === "arma" && !J.arma && J.rol !== "civil") { J.arma = { a: it.a, r: it.r }; s.items.splice(i, 1); J.junto = s.t; }
     }
   },
-  /* Robar adentro de un edificio con la alarma conectada la hace sonar */
-  robo(s, J) {
-    const A = J.bldg && s.alarmas[J.bldg];
-    if (!A || !A.on || A.son) return;
-    A.son = s.t + GP.ALARMA;
-    const tipo = s.M.ed[J.bldg].tipo, lugar = { casa: "una casa", kiosco: "un kiosco", farmacia: "una farmacia", deposito: "un depósito", joyeria: "una joyería", banco: "un banco", museo: "el museo" }[tipo] || "un local";
-    Golpe.aviso(s, `¡Suena la alarma en ${lugar}!`);
+  /* Alarmas: si un ladrón entra a un lugar con la alarma conectada, a los 10 segundos empieza a sonar (los civiles
+     y los policías no la activan). Si la desactiva en el panel antes, no suena. Mientras suena, la policía la ve. */
+  alarmas(s) {
+    for (const [id, A] of Object.entries(s.alarmas)) {
+      if (A.son && s.t > A.son) A.son = 0;
+      if (!A.on || A.son) { A.cuenta = null; continue; }
+      const adentro = s.jug.some(j => j.est === "vivo" && j.rol === "ladron" && j.bldg === +id);
+      if (!adentro) { A.cuenta = null; continue; }
+      if (A.cuenta == null) A.cuenta = s.t;
+      if (s.t - A.cuenta >= GP.DEMORA_ALARMA) {
+        A.son = s.t + GP.ALARMA; A.cuenta = null;
+        const tipo = s.M.ed[id].tipo, lugar = { casa: "una casa", kiosco: "un kiosco", farmacia: "una farmacia", deposito: "un depósito", joyeria: "una joyería", banco: "un banco", museo: "el museo" }[tipo] || "un local";
+        Golpe.aviso(s, `Alarma activada en ${lugar}`, true);
+      }
+    }
   },
   /* Trabajos que llevan unos segundos: desactivar una alarma o abrir una caja fuerte */
   trabajar(s, J, dt) {
@@ -563,7 +572,7 @@ const Golpe = {
     if (J.trab.tipo === "mueble") {
       const Mb = s.muebles[o.id];
       if (Mb && !Mb.ab) {
-        Mb.ab = true; Golpe.robo(s, J); Golpe.marcarRobado(s, o.ed);
+        Mb.ab = true; Golpe.marcarRobado(s, o.ed);
         for (const it of Mb.cont) Golpe.soltar(s, it, o.x, o.y);
         Mb.cont = [];
       }
@@ -572,7 +581,7 @@ const Golpe = {
       const C = s.cajas[o.id];
       if (C && !C.ab && J.llaves > 0) {
         C.ab = true; J.llaves--;
-        Golpe.robo(s, J); Golpe.marcarRobado(s, o.ed);
+        Golpe.marcarRobado(s, o.ed);
         const n = 3 + Math.floor(Math.random() * 3);
         for (let i = 0; i < n; i++) Golpe.soltar(s, Golpe.artefacto(3, 2), o.x, o.y);
         Golpe.soltar(s, { k: "plata", v: 300 + Math.round(Math.random() * 90) * 10 }, o.x, o.y);
@@ -893,7 +902,7 @@ const Golpe = {
     if (J.rol === "policia") {
       // Alarmas sonando: van para allá. Si no, por radio se enteran de algún ladrón, o patrullan.
       const al = Object.entries(s.alarmas).filter(([, a]) => a.son).map(([id]) => M.ed[id]).map(E => ({ E, d: Math.hypot((E.x0 + 5) * T - J.x, (E.y0 + 5) * T - J.y) })).sort((a, b) => a.d - b.d)[0];
-      if (al && al.d < 2600 && (!IA.meta || !IA.meta.alarma || IA.meta.alarma !== al.E.id) && Math.random() < 0.75) {
+      if (al && al.d < 2600 && (!IA.meta || !IA.meta.alarma || IA.meta.alarma !== al.E.id) && ((IA.dec = IA.dec || {})[al.E.id + ":" + Math.round(s.alarmas[al.E.id].son)] ??= Math.random() < 0.7)) {
         const [x, y] = Golpe.pisoAzar(M, Math.random, al.E); IA.meta = { x: (x + 0.5) * T, y: (y + 0.5) * T, alarma: al.E.id }; IA.camino = null; IA.meta2 = 25; return;
       }
       if (IA.meta2 <= 0) {
@@ -996,7 +1005,7 @@ const Golpe = {
   },
   view(s, pid) {
     const me = s.jug.find(j => j.id === pid);
-    const base = { game: "golpe", id: s.id, me: pid, semilla: s.semilla, fase: s.fase, t: Math.round(s.t * 100) / 100, dur: GP.DURACION, feed: s.feed.slice(-4) };
+    const base = { game: "golpe", id: s.id, me: pid, semilla: s.semilla, fase: s.fase, t: Math.round(s.t * 100) / 100, dur: GP.DURACION, feed: s.feed.filter(f => !f.pol || (me && me.rol === "policia")).slice(-4).map(({ txt, t }) => ({ txt, t })) };
     let ojo = me;
     if (me && me.est !== "vivo") ojo = s.jug.find(j => !j.cpu && j.team === me.team && j.est === "vivo") || me;
     const visibles = ojo ? s.jug.filter(j => j.est === "vivo" && !j.auto && Golpe.ve(ojo, j)) : [];
@@ -1008,7 +1017,8 @@ const Golpe = {
       items: s.items.filter(it => cerca(it, GP.VISION + 60) && (!Golpe.edificioEn(s.M, it.x, it.y) || Golpe.edificioEn(s.M, it.x, it.y) === ojo.bldg)).map(it => ({ id: it.id, x: Math.round(it.x), y: Math.round(it.y), k: it.k, a: it.a, r: it.r, n: it.n, v: it.v })),
       balas: s.balas.filter(b => cerca(b, GP.VISION + 200)).map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), vx: Math.round(b.vx), vy: Math.round(b.vy) })),
       hits: s.hits.filter(h => h.de === pid || h.a === pid || cerca(h, GP.VISION)).map(h => ({ x: h.x, y: h.y, d: h.d, yo: h.de === pid, a: h.a === pid, ch: h.ch, t: h.t })),
-      alarmas: Object.entries(s.alarmas).map(([id, a]) => [+id, a.on ? 1 : 0, a.son ? 1 : 0]),
+      // La policía ve todas las alarmas; los demás, solo las de los lugares que tienen cerca (las escuchan)
+      alarmas: Object.entries(s.alarmas).filter(([id]) => (me && me.rol === "policia") || (ojo && Math.hypot((s.M.ed[id].x0 + 5) * GP.T - ojo.x, (s.M.ed[id].y0 + 5) * GP.T - ojo.y) < GP.VISION + 500)).map(([id, a]) => [+id, a.on ? 1 : 0, a.son ? 1 : 0]),
       cajas: Object.entries(s.cajas).filter(([, c]) => c.ab).map(([id]) => +id),
       muebles: Object.entries(s.muebles).filter(([, m]) => m.ab).map(([id]) => +id),
       buscados: s.jug.filter(j => j.rol === "ladron" && j.est === "vivo" && Golpe.nivelBuscado(j) > 0).sort((a, b) => Golpe.nivelBuscado(b) - Golpe.nivelBuscado(a)).slice(0, 5)
@@ -1021,7 +1031,7 @@ const Golpe = {
       v.yo = { id: me.id, rol: me.rol, est: me.est, x: Math.round(me.x * 10) / 10, y: Math.round(me.y * 10) / 10, hp: Math.round(me.hp), hpMax: me.hpMax, ch: me.chaleco, arma: me.arma, cura: me.cura,
         moch: me.rol === "ladron" ? me.moch : [], cupo: me.cupo, valor: me.rol === "ladron" ? Golpe.valor(me) : 0, plata: me.rol === "ladron" ? me.plata : 0, llaves: me.llaves || 0, premio: me.premio,
         kills: me.kills, arrestos: me.arrestos, rango: me.rol === "policia" ? me.rango || 0 : null, ext: Math.round(me.ext * 10) / 10, bldg: me.bldg, auto: me.auto || null, esc: me.escondido ? 1 : 0,
-        civMuertos: me.civMuertos || 0, trab: me.trab ? { tipo: me.trab.tipo, m: me.trab.m, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" || me.est === "casa" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
+        civMuertos: me.civMuertos || 0, alarmaEn: me.rol === "ladron" && me.bldg && s.alarmas[me.bldg] && s.alarmas[me.bldg].cuenta != null ? Math.max(0, Math.ceil(GP.DEMORA_ALARMA - (s.t - s.alarmas[me.bldg].cuenta))) : null, trab: me.trab ? { tipo: me.trab.tipo, m: me.trab.m, p: Math.round(me.trab.t / me.trab.dur * 100) / 100 } : null, vuelve: me.est === "caido" || me.est === "casa" ? Math.max(0, Math.ceil(me.vuelve - s.t)) : 0,
         baul: (A || Ac) && (A || Ac).cupo ? { id: (A || Ac).id, n: (A || Ac).baul.length, cupo: (A || Ac).cupo, items: (A || Ac).baul } : null,
         junto: me.junto && s.t - me.junto < 0.3 ? 1 : 0, vendio: me.vendio && s.t - me.vendio.t < 2 ? me.vendio.v : 0,
         seguro: me.seguro ? 1 : 0, verif: me.verif === false ? 0 : 1, banco: Math.max(0, me.banco || 0),
@@ -1198,7 +1208,7 @@ const Golpe = {
         <p><b>Zona segura.</b> Todos entran por ahí. Nadie puede herir a nadie y todos se ven como civiles. En la armería comprás armas, chalecos, bolsos, botiquines y mejoras.</p>
         <p><b>Civil.</b> No puede robar, pero puede manejar. Tocá «Volverse ladrón» o andá a la comisaría para hacerte policía. No hay vuelta atrás.</p>
         <p><b>Ladrón.</b> Arrancás con lo que tengas guardado (al principio, nada): armate robando. El bolso tiene ${GP.BOLSOS[0]} lugares y hay más grandes. Vendé lo robado en un reducidor para tener plata y llegá a una salida para quedarte con todo.</p>
-        <p><b>Alarmas y cajas fuertes.</b> Al robar suena la alarma y viene la policía, salvo que antes la desactives en su panel, al lado de la puerta. Las cajas fuertes se abren con llaves que aparecen por la ciudad.</p>
+        <p><b>Alarmas y cajas fuertes.</b> Si entrás como ladrón a un lugar con alarma, a los 10 segundos empieza a sonar y la policía se entera. Desactivala antes en su panel, al lado de la puerta, y no suena. Las cajas fuertes se abren con llaves que aparecen por la ciudad.</p>
         <p><b>Escondites y autos.</b> En arbustos y contenedores no te ven de lejos. Los autos tienen baúl para guardar lo robado.</p>
         <p><b>Policía.</b> Solo hiere ladrones; al bajarlos los arresta. Sube de rango con los arrestos. Si lo matan, vuelve a la comisaría. Al terminar el turno cobra sueldo, una parte de lo confiscado y algunos ítems.</p>
         <p><b>Controles.</b> Dedo izquierdo: mover o manejar. Dedo derecho: apuntar y disparar. En la compu: WASD, mouse y clic; E agarra, Q cura, F sube o baja del auto.</p></details>

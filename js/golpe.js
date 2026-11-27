@@ -902,27 +902,74 @@ const Golpe = {
     return `A tu cuenta se suman <b>+${c.puntos} puntos</b>.`;
   },
 
-  /* ---------- Lo que se guarda en este teléfono (por perfil) ----------
-     banco: plata sacada · kit: armas, chaleco y bolso de ladrón · guarida: cosas que sacaste sin vender · xp: arrestos */
+  /* ---------- Lo que se guarda: plata, equipo de ladrón, guarida y arrestos ----------
+     Con sesión en la nube, la verdad está en Supabase (tabla golpe_cuentas, que solo cambian funciones del
+     servidor con controles: ver supabase/golpe.sql). El teléfono guarda una copia para mostrarla al toque
+     y una cola de resultados pendientes por si no hay internet. Sin nube, todo queda en el teléfono. */
   claveP(k) { const u = BD.sesion(); return "golpe" + k + ":" + (u ? u.id : "anon"); },
   banco() { return store.get(Golpe.claveP("Banco"), { total: 0, golpes: [] }); },
   kit() { return Golpe.limpiarKit(store.get(Golpe.claveP("Kit"), null)); },
   guarida() { return store.get(Golpe.claveP("Guarida"), []); },
   xp() { return store.get(Golpe.claveP("Xp"), 0); },
+  enNube() { const u = BD.sesion(); return !!(u && u.nube && typeof Nube !== "undefined" && Nube.sb && Nube.user && Golpe.nubeFalta !== true); },
+  /* Copia local de lo que devolvió el servidor */
+  copiar(d) {
+    if (!d || !d.ok) return;
+    const b = Golpe.banco(); b.total = Number(d.plata) || 0; store.set(Golpe.claveP("Banco"), b);
+    store.set(Golpe.claveP("Kit"), Golpe.limpiarKit(d.kit)); store.set(Golpe.claveP("Guarida"), Array.isArray(d.guarida) ? d.guarida : []);
+    store.set(Golpe.claveP("Xp"), Number(d.xp) || 0);
+  },
+  async sincronizar() {
+    if (!Golpe.enNube() || Golpe.sincronizando) return;
+    Golpe.sincronizando = true;
+    try {
+      // Primero sube los resultados que quedaron pendientes
+      const pend = store.get(Golpe.claveP("Pend"), []);
+      for (const r of pend.slice()) { const ok = await Golpe.subir(r); if (!ok) break; pend.shift(); store.set(Golpe.claveP("Pend"), pend); }
+      const { data, error } = await Nube.sb.rpc("golpe_estado", { importar: { plata: Golpe.banco().total, kit: Golpe.kit(), xp: Golpe.xp() } });
+      if (error) { if (/golpe_estado|PGRST202|does not exist/i.test(error.message + error.code)) Golpe.nubeFalta = true; throw error; }
+      const antes = JSON.stringify([Golpe.banco().total, Golpe.kit(), Golpe.guarida(), Golpe.xp()]);
+      Golpe.copiar(data);
+      if (S.screen === "golpeIntro" && antes !== JSON.stringify([Golpe.banco().total, Golpe.kit(), Golpe.guarida(), Golpe.xp()])) render();
+    } catch (e) { console.warn("Golpe: no se pudo sincronizar", e); }
+    Golpe.sincronizando = false;
+  },
+  /* Manda un resultado al servidor. true si quedó guardado (o si el servidor dice que ya estaba). */
+  async subir(r) {
+    try {
+      const { data, error } = await Nube.sb.rpc("golpe_resultado", { partida: r.id, rol: r.rol, escapo: !!r.escapo, plata: r.plata | 0, gasto: r.gasto | 0,
+        kit: r.kit === undefined || r.kit === null ? null : r.kit, perdio: r.kit === null, guarida: r.guarida || [], arrestos: r.arrestos | 0 });
+      if (error) { if (/golpe_resultado|PGRST202|does not exist/i.test(error.message + error.code)) Golpe.nubeFalta = true; return false; }
+      if (data && data.ok) Golpe.copiar(data);
+      else if (data && data.motivo === "gasto") toast("El servidor no aceptó el gasto de esa partida.");
+      return true;
+    } catch (e) { return false; }
+  },
   guardarBotin(r) {
     if (!r) return;
     const b = Golpe.banco(); if (b.golpes.includes(r.id)) return;
+    // Al toque en el teléfono (para mostrarlo), y después lo confirma el servidor
     b.golpes = [r.id, ...b.golpes].slice(0, 50); b.total = Math.max(0, b.total + (r.plata || 0) - (r.gasto || 0)); store.set(Golpe.claveP("Banco"), b);
     if (r.guarida && r.guarida.length) store.set(Golpe.claveP("Guarida"), [...Golpe.guarida(), ...r.guarida].slice(-60));
     if (r.kit !== undefined) store.set(Golpe.claveP("Kit"), r.kit === null ? Golpe.kitBase() : r.kit);
     if (r.rol === "policia" && r.arrestos) store.set(Golpe.claveP("Xp"), Golpe.xp() + r.arrestos);
+    if (Golpe.enNube()) {
+      const pend = store.get(Golpe.claveP("Pend"), []);
+      store.set(Golpe.claveP("Pend"), [...pend, { id: r.id, rol: r.rol, escapo: r.escapo, plata: r.plata, gasto: r.gasto, kit: r.kit, guarida: r.guarida, arrestos: r.arrestos }].slice(-20));
+      Golpe.sincronizar();
+    }
   },
   /* En la guarida se puede vender lo que trajiste, pero el reducidor de la ciudad paga el doble */
-  venderGuarida() {
+  async venderGuarida() {
     const g = Golpe.guarida(); if (!g.length) return;
+    if (Golpe.enNube()) {
+      const { data, error } = await Nube.sb.rpc("golpe_vender_guarida");
+      if (!error && data && data.ok) { Golpe.copiar(data); toast(`Vendiste lo de la guarida por $${data.vendido}`); render(); return; }
+      if (error && !/golpe_vender|PGRST202|does not exist/i.test(error.message + error.code)) { toast("No se pudo vender: revisá la conexión."); return; }
+    }
     const v = Math.round(g.reduce((a, it) => a + it.v, 0) * 0.5 / 10) * 10, b = Golpe.banco();
     b.total += v; store.set(Golpe.claveP("Banco"), b); store.set(Golpe.claveP("Guarida"), []);
-    toast(`Vendiste lo de la guarida por $${v}`);
+    toast(`Vendiste lo de la guarida por $${v}`); render();
   },
 
   /* ---------- En este teléfono (contra bots) ---------- */
@@ -951,10 +998,11 @@ const Golpe = {
   },
   intro() {
     const c = Golpe.cfg(), b = Golpe.banco(), K = Golpe.kit(), g = Golpe.guarida(), xp = Golpe.xp(), R = GP.RANGOS[Golpe.rango(xp)], sig = GP.RANGOS[Golpe.rango(xp) + 1];
+    if (!Golpe.sincroVista) { Golpe.sincroVista = true; Golpe.sincronizar().then(() => { Golpe.sincroVista = false; }); }
     const vg = Math.round(g.reduce((a, it) => a + it.v, 0) * 0.5 / 10) * 10, ic = (k, t) => `<img class="gp-ic" src="${Golpe.icono(k)}" alt="" title="${t || ""}">`;
     app.innerHTML = `${head(0)}<section class="screen ex-intro ex-golpe">
       <div class="tb-hero"><span class="ex-arte">${Golpe.svg()}</span><span class="tb-neon">GOLPE</span><p class="sub">${Golpe.descripcion}</p></div>
-      <div class="panel gp-banco"><span>Plata guardada</span><b>$${b.total.toLocaleString("es-AR")}</b><small>${b.golpes.length} golpe${b.golpes.length === 1 ? "" : "s"} · se usa en la armería de la zona segura</small></div>
+      <div class="panel gp-banco"><span>Plata guardada</span><b>$${b.total.toLocaleString("es-AR")}</b><small>Se usa en la armería de la zona segura · ${Golpe.enNube() ? "guardada en tu cuenta" : BD.sesion() && BD.sesion().nube ? "guardada en este teléfono (falta activar Golpe en la nube)" : "guardada en este teléfono: iniciá sesión para no perderla"}</small></div>
       <div class="panel gp-kit"><span class="label">Tu equipo de ladrón</span>
         <div class="gp-kit-fila">
           <span>${ic(K.arma ? "arma-" + K.arma.a : "sin-arma")} ${K.arma ? `<b style="color:${GP.RAR[K.arma.r][1]}">${GP.ARMAS[K.arma.a].n}</b> <small>${GP.RAR[K.arma.r][0]}</small>` : "<small>Sin arma</small>"}</span>
@@ -981,7 +1029,7 @@ const Golpe = {
     const guardar = () => { store.set("golpeCfg", c); render(); };
     app.querySelectorAll("[data-gpd]").forEach(x => x.onclick = () => { c.dens = x.dataset.gpd; guardar(); });
     app.querySelectorAll("[data-gpn]").forEach(x => x.onclick = () => { c.nivel = x.dataset.gpn; guardar(); });
-    on("gpVenderG", () => { if (confirm(`¿Vender todo lo de la guarida por $${vg}? En el reducidor de la ciudad te pagarían el doble.`)) { Golpe.venderGuarida(); render(); } });
+    on("gpVenderG", () => { if (confirm(`¿Vender todo lo de la guarida por $${vg}? En el reducidor de la ciudad te pagarían el doble.`)) Golpe.venderGuarida(); });
     on("exJugar", () => Golpe.empezarLocal());
     on("exAtras", () => go("home"));
   },

@@ -172,7 +172,7 @@ function juegosMenu() {
     ["arena", "Arena y Torre", "Héroes con clases, evoluciones y prestigio. Duelos con ELO y hordas piso por piso.", MenuArte.arena(), "t-arena", "#ff6b7d"],
     ["casino", "Casino", "Ruleta, tragamonedas, blackjack y bingo.", MenuArte.casino(), "t-casino", "#ff5fa2"],
     ["trabajos", "Trabajos diarios", "Tala, mina y pesca: 3 por día.", MenuArte.trabajos(), "t-trab", "#94d82d"],
-    ["golpe", "Golpe", "Robo en la ciudad: ladrones, policías y civiles. Botín raro, armas y salidas.", Golpe.svg(), "t-golpe", "#ff4d63"],
+    ["golpe", "Golpe", "Robo en la ciudad: entrás como civil y elegís ser ladrón o policía. Autos, alarmas, cajas fuertes y armería.", Golpe.svg(), "t-golpe", "#ff4d63"],
     ["circo", "Circo", "Aros de fuego, cuerda floja y pelotas.", MenuArte.circo(), "t-circo", "#ff922b"],
     ["bowling", "Bowling", "Strikes, spares y efecto con el dedo.", MenuArte.bowling(), "t-bowl", "#9775fa"],
     ["arco", "Arco y flecha", "Diana, viento y pulso firme.", MenuArte.arco(), "t-arco", "#ffd43b"],

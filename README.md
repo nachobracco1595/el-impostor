@@ -100,13 +100,17 @@ Logo e íconos en `img/` (`icono.svg`, `icono-512.png`, `logo-horizontal.png`, `
 - Las peleas **online con amigos** cambian tu **ELO** (sube más si le ganas a alguien con más ELO); contra la compu el ELO no se mueve, pero igual da monedas y experiencia. Todas las peleas dan monedas. Hay ranking de la Arena por ELO.
 
 ### Golpe (robo en la ciudad)
-- Ciudad vista desde arriba que sale de una semilla: casas, kioscos, farmacias, depósito, joyería, banco, museo, comisaría y plazas. Adentro de los edificios hay artefactos (celulares, relojes, cuadros, lingotes, diamantes…) en 5 rarezas, armas, chalecos y botiquines. El banco, la joyería y el museo tienen lo mejor.
-- Todos entran como 🧍 **civil**: no puede robar ni tiene armas. Con un botón se vuelve 🦹 **ladrón** (puede atacar a cualquiera y quedarse con lo que lleva), o va a la 🚓 **comisaría** y se hace 👮 **policía** (solo hiere ladrones: al bajarlos los arresta y confisca lo robado). No hay vuelta atrás.
-- Solo el ladrón ve su mochila. Para quedarse con el botín tiene que llegar a una **salida** y aguantar 4 segundos. El policía cobra al terminar su turno (en una salida o al acabarse el tiempo): sueldo, una parte de lo confiscado y algunos ítems incautados.
-- Armas (pistola, subfusil, escopeta, rifle) en 5 rarezas: la rareza sube el daño y la **penetración**. Los chalecos (nivel 1 a 3) frenan parte del daño, pero una bala de mucha penetración los atraviesa.
-- Doble joystick: el dedo izquierdo mueve y el derecho apunta y dispara. En la compu: WASD, mouse y clic (E agarra un arma, Q usa botiquín).
-- Contra bots en un teléfono u online (hasta 8, los del mismo rol son equipo). Online, el teléfono del anfitrión es el **servidor**: los demás solo mandan hacia dónde se mueven y apuntan, el anfitrión calcula todo y a cada uno le manda solo lo que ve (nadie recibe la posición de alguien escondido en otro edificio). Lo sacado se guarda como botín (más adelante: comprar terrenos).
-- Código: `js/golpe.js` (ciudad, reglas, bots y servidor) y `js/golpe-vista.js` (dibujo, controles y HUD).
+- Ciudad grande vista desde arriba (6×6 manzanas) que sale de una semilla: casas, kioscos, farmacias, depósitos, joyerías, bancos, museo, comisaría, reducidores, plazas y la **zona segura**. Todo dibujado, sin emojis: personas vistas desde arriba (policías de uniforme, ladrones con pasamontañas), autos, techos, sendas peatonales.
+- **Zona segura (lobby):** todos entran por ahí; nadie puede herir a nadie y todos se ven como civiles. Ahí está la **armería**: armas, mejoras de rareza, chalecos, bolsos y botiquines, pagando con la plata encima o la guardada.
+- **Civil:** no puede robar, pero puede manejar. Con un botón se vuelve **ladrón**, o en la comisaría se hace **policía**. No hay vuelta atrás.
+- **Ladrón:** arranca sin nada (o con lo que compró o conservó) y se arma robando. Bolso de 10 lugares (hay de 14, 18 y 24). Vende en un **reducidor** para tener plata y tiene que llegar a una **salida** (a pie o en auto) para quedarse con todo. Si lo mata otro ladrón, pierde todo (también armas, chaleco y bolso); si lo agarra la policía, pierde lo robado y la plata pero conserva el equipo. El equipo queda guardado para la próxima.
+- **Alarmas y cajas fuertes:** al robar suena la alarma y avisa a la policía, salvo que antes la desactives en su panel. Las cajas fuertes se abren con **llaves** que aparecen por la ciudad y tienen lo mejor y plata.
+- **Escondites:** arbustos en las plazas y contenedores en las veredas; escondido, nadie te ve de lejos.
+- **Autos y patrulleros:** subir/bajar, manejo arcade, **baúl** para guardar lo robado, frenan balas. Los civiles bot también manejan.
+- **Policía:** solo hiere ladrones; al bajarlos los arresta. **Rangos** (cadete a comisario) según arrestos acumulados, con mejor arma, chaleco y sueldo. Si lo matan vuelve a la comisaría. Al terminar el turno cobra sueldo, una parte de lo confiscado y algunos ítems incautados.
+- Online, el teléfono del anfitrión es el **servidor**: los demás solo mandan entradas; a cada uno se le manda solo lo que ve (los escondidos o metidos en otro edificio no se mandan).
+- Se guarda por perfil en el teléfono: plata, equipo de ladrón, guarida (lo sacado sin vender, se puede vender a mitad de precio) y arrestos de policía.
+- Código: `js/golpe.js` (ciudad, reglas, bots, autos, armería y servidor) y `js/golpe-vista.js` (dibujo, íconos, controles y HUD).
 
 ### Trabajos diarios: Tala, Mina y Pesca
 - Tres mundos para recorrer como en La Nave (joystick o flechas): un **bosque**, una **cueva** y un **lago**. El mapa sale de una semilla del día, así que todos ven el mismo.

@@ -2297,3 +2297,4 @@ body.en-golpe .audio-ctl { top: calc(180px + var(--sat)); }
 .gp-buscados { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 5px 8px; border-radius: 10px; background: rgba(60, 10, 14, .78); border: 1px solid rgba(224, 49, 49, .6); font-size: 12px; }
 .gp-buscados b { color: #ff8787; text-transform: uppercase; letter-spacing: .5px; font-size: 11px; }
 .gp-buscados small { opacity: .75; }
+.gp-radio { border-color: #4dabf7 !important; color: #d0ebff; }

@@ -49,6 +49,7 @@ Object.assign(Golpe, {
       case "cura": rr(-20, -15, 40, 30, 4, "#f1f3f5", "#adb5bd"); rr(-4, -10, 8, 20, 1, "#d63c3c"); rr(-10, -4, 20, 8, 1, "#d63c3c"); break;
       case "llave": circ(-12, 0, 9, null, "#d4a72c", 5); ctx.strokeStyle = "#d4a72c"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(22, 0); ctx.moveTo(14, 0); ctx.lineTo(14, 8); ctx.moveTo(20, 0); ctx.lineTo(20, 7); ctx.stroke(); break;
       case "plata": rr(-22, -12, 44, 24, 3, "#79a865", "#3b5e33"); rr(-5, -12, 10, 24, 0, "#c9b27a"); break;
+      case "radio": rr(-9, -18, 18, 34, 4, "#2b2d31", "#0c0d0f"); rr(-5, -26, 4, 10, 1, "#1a1b1e"); rr(-6, -12, 12, 9, 1, "#7fbf6a"); for (let i = 0; i < 3; i++) rr(-6, 1 + i * 4, 12, 2, 1, "#555a61"); circ(4, -21, 2, "#e03131"); break;
       case "placa": poly([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 9 : 20; return [Math.cos(a) * r, Math.sin(a) * r]; }), "#d4a72c", "#8a6a12"); circ(0, 0, 5, "#1c4f8c"); break;
       default: circ(0, 0, 14, "#888");
     }
@@ -119,6 +120,7 @@ Object.assign(Golpe, {
     const abajo = e => {
       if (e.target.closest("button, .ar-fin, .gp-top, .gp-tienda, .chat-panel")) return;
       if (e.pointerType === "mouse") { if (e.button === 0) U.apu.f = true; return; }
+      U.raton = null;   // con el dedo no se apunta con el mouse (algunos teléfonos mandan toques como si fueran mouse)
       const izq = e.clientX < innerWidth / 2;
       if ([...Object.values(dedos)].some(d => d.izq === izq)) return;
       dedos[e.pointerId] = { izq, cx: e.clientX, cy: e.clientY };
@@ -126,7 +128,8 @@ Object.assign(Golpe, {
       mover(e); e.preventDefault();
     };
     const mover = e => {
-      if (e.pointerType === "mouse") { U.raton = { x: e.clientX, y: e.clientY }; return; }
+      if (e.pointerType === "mouse") { if (!U.tactil) U.raton = { x: e.clientX, y: e.clientY }; return; }
+      U.tactil = true; U.raton = null;
       const d = dedos[e.pointerId]; if (!d) return;
       let dx = e.clientX - d.cx, dy = e.clientY - d.cy; const m = Math.hypot(dx, dy), max = 48;
       if (m > max) { dx = dx / m * max; dy = dy / m * max; }
@@ -139,7 +142,7 @@ Object.assign(Golpe, {
       if (e.pointerType === "mouse") { if (e.button === 0) U.apu.f = false; return; }
       const d = dedos[e.pointerId]; if (!d) return;
       delete dedos[e.pointerId];
-      if (d.izq) { U.mov.x = 0; U.mov.y = 0; } else U.apu.f = false;
+      if (d.izq) { U.mov.x = 0; U.mov.y = 0; } else { U.apu.f = false; U.apu.x = 0; U.apu.y = 0; }
       joy(d.izq ? "i" : "d", null);
     };
     const teclaAbajo = e => {
@@ -373,7 +376,7 @@ Object.assign(Golpe, {
     // Cosas en el piso
     for (const it of v.items || []) {
       const ib = GP.BOLSOS.indexOf(it.n);
-      const col = it.k === "art" || it.k === "arma" ? GP.RAR[it.r][1] : it.k === "chaleco" ? GP.RAR[Math.min(4, it.n + 1)][1] : it.k === "bolso" ? GP.RAR[Math.max(0, ib) + 1][1] : it.k === "llave" || it.k === "plata" ? "#ffd43b" : "#e9ecef";
+      const col = it.k === "art" || it.k === "arma" ? GP.RAR[it.r][1] : it.k === "chaleco" ? GP.RAR[Math.min(4, it.n + 1)][1] : it.k === "bolso" ? GP.RAR[Math.max(0, ib) + 1][1] : it.k === "llave" || it.k === "plata" ? "#ffd43b" : it.k === "radio" ? "#4dabf7" : "#e9ecef";
       const p = 0.6 + 0.4 * Math.sin(now / 300 + it.id);
       ctx.fillStyle = Golpe.alfa(col, 0.12 + 0.1 * p); ctx.beginPath(); ctx.arc(it.x, it.y, 18, 0, 7); ctx.fill();
       ctx.strokeStyle = Golpe.alfa(col, 0.75); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(it.x, it.y, 17, 0, 7); ctx.stroke();
@@ -541,6 +544,7 @@ Object.assign(Golpe, {
     for (const o of U.M.obj) if (o.k === "tienda" || o.k === "armeria") { x.fillStyle = o.k === "armeria" ? "#ffd43b" : "#cc5de8"; x.fillRect(o.x * k - 3, o.y * k - 3, 6, 6); }
     x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 1; x.beginPath(); x.arc(cx * k, cy * k, GP.VISION * k, 0, 7); x.stroke();
     for (const o of U.M.salidas) { x.fillStyle = "#51cf66"; x.beginPath(); x.arc(o.x * k, o.y * k, 5, 0, 7); x.fill(); x.strokeStyle = "#0b3d1a"; x.lineWidth = 1.5; x.stroke(); }
+    for (const p of (v.yo && v.yo.radioPol) || []) { x.fillStyle = "#4dabf7"; x.strokeStyle = "#0b2a4a"; x.lineWidth = 1.5; x.beginPath(); x.arc(p.x * k, p.y * k, p.auto ? 4.5 : 3.5, 0, 7); x.fill(); x.stroke(); }
     for (const b of v.buscados || []) if (b.x !== undefined && Math.floor(now / 300) % 2) { x.fillStyle = "#ff3b3b"; x.beginPath(); x.arc(b.x * k, b.y * k, 3.5 + b.nivel, 0, 7); x.fill(); }
     for (const e of v.equipo || []) if (e.est === "vivo") { x.fillStyle = "#ffd43b"; x.beginPath(); x.arc(e.x * k, e.y * k, 3, 0, 7); x.fill(); }
     x.fillStyle = "#fff"; x.beginPath(); x.arc(cx * k, cy * k, 3.5, 0, 7); x.fill(); x.strokeStyle = "#000"; x.lineWidth = 1; x.stroke();
@@ -564,6 +568,7 @@ Object.assign(Golpe, {
         ${Y.rol === "policia" ? `<span class="ar-chip">${ic("placa")}<b>${Y.arrestos}</b><small>arresto${Y.arrestos === 1 ? "" : "s"}</small></span>` : ""}
         <div class="gp-vida"><i style="width:${k * 100}%;background:${k > 0.5 ? "#40c057" : k > 0.25 ? "#fcc419" : "#fa5252"}"></i><span>Vida ${Math.max(0, Y.hp)}${Y.ch ? ` · Chaleco ${Y.ch}` : ""}</span></div>
         ${Y.rol !== "civil" ? `<div class="gp-arma">${arma}</div>` : `<div class="gp-arma"><small>Civil: no podés robar. Volvete ladrón o andá a la comisaría.</small></div>`}
+        ${Y.radio ? `<span class="ar-chip gp-radio">${ic("radio")}<b>Radio policial</b><small>${(Y.radioPol || []).length} cerca</small></span>` : ""}
         ${Y.rol === "ladron" && Y.civMuertos ? `<span class="ar-chip gp-buscado">${Golpe.nivelBuscado ? (Math.floor(Y.civMuertos / 3) ? `Más buscado · nivel ${Math.floor(Y.civMuertos / 3)}` : `Civiles muertos: ${Y.civMuertos}/3`) : ""}</span>` : ""}
         ${(v.buscados || []).length ? `<div class="gp-buscados"><b>Más buscados</b>${v.buscados.map(b => `<span>${esc(b.name)} <small>nivel ${b.nivel} · $${b.rec}</small></span>`).join("")}</div>` : ""}
         ${Y.moch.length ? `<div class="gp-moch">${Y.moch.map(it => `<i style="--rc:${GP.RAR[it.r][1]}">${ic("art-" + GP.ART[it.a][1], `${GP.ART[it.a][0]} · ${GP.RAR[it.r][0]} · $${it.v}`)}</i>`).join("")}</div>` : ""}`;
